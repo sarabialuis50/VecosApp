@@ -1373,6 +1373,7 @@ export default function ClientProfilePage() {
                     onOpenChange={setShowWheelModal}
                     slug={slug}
                     businessName="Fogón & Mesa"
+                    userPhone={user?.telefono}
                 />
 
                 {/* Modal 2: Direcciones */}

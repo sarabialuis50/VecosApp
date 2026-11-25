@@ -26,7 +26,7 @@ DEFAULT_WHEEL_CONFIG_BACKEND = {
     "segmentos": [
         {"id": 1, "label": "Bebida gratis", "emoji": "🥤", "tipo": "producto", "valor": 0, "probabilidad": 5, "limite_diario": 5, "color": "#10B981", "textColor": "#FFFFFF", "costo_aprox": "Bajo"},
         {"id": 2, "label": "Postre gratis", "emoji": "🍮", "tipo": "producto", "valor": 0, "probabilidad": 5, "limite_diario": 5, "color": "#F59E0B", "textColor": "#111814", "costo_aprox": "Bajo"},
-        {"id": 3, "label": "Papas o acompañ.", "emoji": "🍟", "tipo": "producto", "valor": 0, "probabilidad": 10, "limite_diario": 10, "color": "#EF4444", "textColor": "#FFFFFF", "costo_aprox": "Bajo"},
+        {"id": 3, "label": "Papas o acompañamiento", "emoji": "🍟", "tipo": "producto", "valor": 0, "probabilidad": 10, "limite_diario": 10, "color": "#EF4444", "textColor": "#FFFFFF", "costo_aprox": "Bajo"},
         {"id": 4, "label": "10% de descuento", "emoji": "🏷️", "tipo": "descuento", "valor": 10, "probabilidad": 20, "limite_diario": 30, "color": "#3B82F6", "textColor": "#FFFFFF", "costo_aprox": "Variable"},
         {"id": 5, "label": "15% de descuento", "emoji": "🔥", "tipo": "descuento", "valor": 15, "probabilidad": 10, "limite_diario": 15, "color": "#8B5CF6", "textColor": "#FFFFFF", "costo_aprox": "Variable"},
         {"id": 6, "label": "Doble puntos", "emoji": "⚡", "tipo": "multiplicador", "valor": 2, "probabilidad": 20, "limite_diario": 30, "color": "#EC4899", "textColor": "#FFFFFF", "costo_aprox": "Bajo"},

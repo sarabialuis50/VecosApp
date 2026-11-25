@@ -27,7 +27,7 @@ export const DEFAULT_WHEEL_SEGMENTS = [
   },
   {
     id: 3,
-    label: 'Papas o acompañ.',
+    label: 'Papas o acompañamiento',
     emoji: '🍟',
     tipo: 'producto',
     valor: 0,
@@ -127,13 +127,19 @@ export function loadWheelConfigLocal() {
     const raw = localStorage.getItem(WHEEL_STORAGE_KEYS.CONFIG);
     if (raw) {
       const parsed = JSON.parse(raw);
+      const rawSegs =
+        Array.isArray(parsed.segmentos) && parsed.segmentos.length === 8
+          ? parsed.segmentos
+          : DEFAULT_WHEEL_SEGMENTS;
+      const normalizedSegs = rawSegs.map((s) =>
+        s.label === 'Papas o acompañ.'
+          ? { ...s, label: 'Papas o acompañamiento' }
+          : s
+      );
       return {
         ...DEFAULT_WHEEL_CONFIG,
         ...parsed,
-        segmentos:
-          Array.isArray(parsed.segmentos) && parsed.segmentos.length === 8
-            ? parsed.segmentos
-            : DEFAULT_WHEEL_SEGMENTS,
+        segmentos: normalizedSegs,
       };
     }
   } catch (e) {

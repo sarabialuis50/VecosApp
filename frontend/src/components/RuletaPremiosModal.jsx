@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import {
@@ -13,6 +15,7 @@ import {
   RotateCw,
   Ticket,
   ShieldCheck,
+  LogIn,
 } from 'lucide-react';
 import {
   Dialog,
@@ -55,6 +58,31 @@ const describeSlice = (cx, cy, r, startAngle, endAngle) => {
   ].join(' ');
 };
 
+const wrapWheelLabel = (rawLabel = '') => {
+  const label = String(rawLabel).trim();
+  if (label.length <= 13) return [label];
+  const words = label.split(/\s+/);
+  if (words.length >= 2) {
+    let bestSplit = 1;
+    let bestDiff = Infinity;
+    for (let idx = 1; idx < words.length; idx++) {
+      const l1 = words.slice(0, idx).join(' ');
+      const l2 = words.slice(idx).join(' ');
+      const diff = Math.abs(l1.length - l2.length);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestSplit = idx;
+      }
+    }
+    return [
+      words.slice(0, bestSplit).join(' '),
+      words.slice(bestSplit).join(' '),
+    ];
+  }
+  const mid = Math.ceil(label.length / 2);
+  return [label.slice(0, mid), label.slice(mid)];
+};
+
 export default function RuletaPremiosModal({
   open,
   onOpenChange,
@@ -63,16 +91,13 @@ export default function RuletaPremiosModal({
   configOverride = null,
   previewMode = false,
   onSpinComplete = null,
+  userPhone = null,
 }) {
+  const navigate = useNavigate();
   const [wheelConfig, setWheelConfig] = useState(() => configOverride || loadWheelConfigLocal());
-  const [phone, setPhone] = useState(() => {
-    try {
-      return localStorage.getItem('fogon_mesa_customer_phone') || '';
-    } catch {
-      return '';
-    }
-  });
+  const [phone, setPhone] = useState('');
   const [identified, setIdentified] = useState(previewMode);
+  const [checkingAuth, setCheckingAuth] = useState(false);
   const [customerStatus, setCustomerStatus] = useState({
     puntos_disponibles: 50,
     tiros_gratis_restantes: 1,
@@ -87,31 +112,97 @@ export default function RuletaPremiosModal({
   const [winResult, setWinResult] = useState(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  // Sync config whenever modal opens or configOverride changes
+  // Sync config & authenticated client phone automatically whenever modal opens
   useEffect(() => {
-    if (open) {
-      const cfg = configOverride || loadWheelConfigLocal();
-      setWheelConfig(cfg);
-      setWinResult(null);
-      setCopiedCode(false);
-      if (previewMode) {
-        setIdentified(true);
-        setCustomerStatus({
-          puntos_disponibles: 120,
-          tiros_gratis_restantes: cfg.tiros_gratis_dia ?? 1,
-          tiros_puntos_restantes: cfg.permitir_tiro_puntos ? (cfg.max_tiros_puntos_dia ?? 2) : 0,
-          costo_tiro_puntos: cfg.costo_tiro_puntos ?? 30,
-          permitir_tiro_puntos: !!cfg.permitir_tiro_puntos,
-          historial_cliente: [],
-        });
-      } else if (phone && phone.replace(/\D/g, '').length >= 7) {
-        refreshLocalCustomerStatus(phone, cfg);
-        setIdentified(true);
-      } else {
-        setIdentified(false);
-      }
+    if (!open) return;
+
+    const cfg = configOverride || loadWheelConfigLocal();
+    setWheelConfig(cfg);
+    setWinResult(null);
+    setCopiedCode(false);
+
+    if (previewMode) {
+      setIdentified(true);
+      setCheckingAuth(false);
+      setCustomerStatus({
+        puntos_disponibles: 120,
+        tiros_gratis_restantes: cfg.tiros_gratis_dia ?? 1,
+        tiros_puntos_restantes: cfg.permitir_tiro_puntos ? (cfg.max_tiros_puntos_dia ?? 2) : 0,
+        costo_tiro_puntos: cfg.costo_tiro_puntos ?? 30,
+        permitir_tiro_puntos: !!cfg.permitir_tiro_puntos,
+        historial_cliente: [],
+      });
+      return;
     }
-  }, [open, configOverride, previewMode]);
+
+    const resolveAuthenticatedPhone = async () => {
+      let token = null;
+      try {
+        token = localStorage.getItem('client_token');
+      } catch {}
+
+      if (!token) {
+        setPhone('');
+        setIdentified(false);
+        setCheckingAuth(false);
+        return;
+      }
+
+      if (userPhone && String(userPhone).replace(/\D/g, '').length >= 7) {
+        setPhone(String(userPhone));
+        refreshLocalCustomerStatus(userPhone, cfg);
+        setIdentified(true);
+        setCheckingAuth(false);
+        return;
+      }
+
+      if (token === 'universal-client-token') {
+        let profilePhone = '+57 300 123 4567';
+        try {
+          const savedProfile = localStorage.getItem('universal_client_profile');
+          if (savedProfile) {
+            const parsed = JSON.parse(savedProfile);
+            if (parsed.telefono) profilePhone = parsed.telefono;
+          }
+        } catch {}
+        setPhone(profilePhone);
+        refreshLocalCustomerStatus(profilePhone, cfg);
+        setIdentified(true);
+        setCheckingAuth(false);
+        return;
+      }
+
+      setCheckingAuth(true);
+      try {
+        const rawApi =
+          (import.meta.env &&
+            (import.meta.env.VITE_API_URL ||
+              import.meta.env.VITE_BACKEND_URL ||
+              import.meta.env.REACT_APP_BACKEND_URL)) ||
+          '';
+        const apiBase = rawApi ? (rawApi.endsWith('/api') ? rawApi : `${rawApi}/api`) : '/api';
+        const res = await axios.get(`${apiBase}/client/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const fetchedPhone = res.data?.telefono || '';
+        if (fetchedPhone && fetchedPhone.replace(/\D/g, '').length >= 7) {
+          setPhone(fetchedPhone);
+          refreshLocalCustomerStatus(fetchedPhone, cfg);
+          setIdentified(true);
+        } else {
+          setPhone('');
+          setIdentified(false);
+        }
+      } catch {
+        setPhone('');
+        setIdentified(false);
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    resolveAuthenticatedPhone();
+  }, [open, configOverride, previewMode, userPhone]);
 
   const refreshLocalCustomerStatus = (rawPhone, cfgInput) => {
     const cfg = cfgInput || wheelConfig;
@@ -141,19 +232,9 @@ export default function RuletaPremiosModal({
     });
   };
 
-  const handleIdentify = (e) => {
-    e.preventDefault();
-    const cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.length < 7) {
-      toast.error('Ingresa un número de WhatsApp válido (mínimo 7 dígitos)');
-      return;
-    }
-    try {
-      localStorage.setItem('fogon_mesa_customer_phone', cleanPhone);
-    } catch {}
-    setPhone(cleanPhone);
-    refreshLocalCustomerStatus(cleanPhone, wheelConfig);
-    setIdentified(true);
+  const handleGoToAccount = () => {
+    onOpenChange(false);
+    navigate(`/${slug}/mi-cuenta`);
   };
 
   const handleSpin = (usePoints = false) => {
@@ -293,37 +374,34 @@ export default function RuletaPremiosModal({
           </DialogHeader>
         </div>
 
-        {/* Step 1: Quick WhatsApp Identification (Customer Mode) */}
-        {!identified && !previewMode ? (
-          <form onSubmit={handleIdentify} className="px-6 pb-8 pt-2 space-y-5">
+        {/* Step 1: Require Registered Account (Customer Mode) */}
+        {checkingAuth && !previewMode ? (
+          <div className="px-6 py-12 flex flex-col items-center justify-center gap-3 text-slate-300">
+            <RotateCw className="w-6 h-6 animate-spin text-[#4ADE80]" />
+            <p className="text-xs font-semibold">Cargando tu cuenta...</p>
+          </div>
+        ) : !identified && !previewMode ? (
+          <div className="px-6 pb-8 pt-2 space-y-5">
             <div className="p-5 rounded-3xl bg-white/5 border border-white/10 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="size-11 rounded-2xl bg-[#4ADE80]/20 text-[#4ADE80] flex items-center justify-center shrink-0">
-                  <Phone className="w-5 h-5" />
+                  <LogIn className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-white">Ingresa tu WhatsApp para girar</p>
+                  <p className="text-sm font-black text-white">Inicia sesión para girar la ruleta</p>
                   <p className="text-[11px] text-slate-400">
-                    Tienes <strong className="text-[#4ADE80]">{wheelConfig.tiros_gratis_dia || 1} tiro gratis hoy</strong> y nunca pierdes.
+                    Tienes <strong className="text-[#4ADE80]">{wheelConfig.tiros_gratis_dia || 1} tiro gratis hoy</strong>. Tus premios y puntos se guardan automáticamente en tu perfil.
                   </p>
                 </div>
               </div>
 
-              <Input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Ej: 300 123 4567"
-                className="h-12 rounded-2xl bg-white/10 border-white/15 text-white placeholder:text-slate-400 text-center font-black text-base tracking-wider focus-visible:ring-[#4ADE80]"
-                required
-              />
-
               <Button
-                type="submit"
+                type="button"
+                onClick={handleGoToAccount}
                 className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#4ADE80] to-[#22C55E] hover:brightness-110 text-[#0F172A] font-black text-sm uppercase tracking-wider shadow-lg shadow-[#4ADE80]/30"
               >
                 <Gift className="w-4 h-4 mr-2" />
-                Desbloquear mi Giro Gratis
+                Iniciar sesión / Crear cuenta
               </Button>
             </div>
 
@@ -331,7 +409,7 @@ export default function RuletaPremiosModal({
               <span className="flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-[#4ADE80]" /> 100% Premios reales</span>
               <span className="flex items-center gap-1"><Coins className="w-3.5 h-3.5 text-amber-400" /> Suma puntos siempre</span>
             </div>
-          </form>
+          </div>
         ) : (
           <div className="px-5 pb-6 space-y-5">
             {/* Customer Balance & Spins Bar */}
@@ -405,10 +483,24 @@ export default function RuletaPremiosModal({
                       const startAngle = i * sliceAngle;
                       const endAngle = startAngle + sliceAngle;
                       const midAngle = startAngle + sliceAngle / 2;
-                      const emojiPos = polarToCartesian(150, 150, 114, midAngle);
-                      const textPos = polarToCartesian(150, 150, 78, midAngle);
-                      const shortLabel =
-                        seg.label.length > 14 ? `${seg.label.slice(0, 13)}…` : seg.label;
+                      const emojiPos = polarToCartesian(150, 150, 131, midAngle);
+                      const textPos = polarToCartesian(150, 150, 79, midAngle);
+                      const displayLabel =
+                        seg.label === 'Papas o acompañ.'
+                          ? 'Papas o acompañamiento'
+                          : seg.label;
+                      const labelLines = wrapWheelLabel(displayLabel);
+                      const maxLineLen = Math.max(...labelLines.map((l) => l.length));
+                      const labelFontSize =
+                        labelLines.length === 1
+                          ? maxLineLen > 11
+                            ? '8.8'
+                            : '9.5'
+                          : maxLineLen > 12
+                          ? '7.4'
+                          : maxLineLen > 10
+                          ? '8'
+                          : '8.5';
 
                       return (
                         <g key={seg.id || i}>
@@ -423,7 +515,7 @@ export default function RuletaPremiosModal({
                             y={emojiPos.y}
                             textAnchor="middle"
                             dominantBaseline="central"
-                            fontSize="20"
+                            fontSize="16"
                             transform={`rotate(${midAngle}, ${emojiPos.x}, ${emojiPos.y})`}
                           >
                             {seg.emoji || '🎁'}
@@ -432,13 +524,24 @@ export default function RuletaPremiosModal({
                             x={textPos.x}
                             y={textPos.y}
                             fill={seg.textColor || '#FFFFFF'}
-                            fontSize="9.5"
+                            fontSize={labelFontSize}
                             fontWeight="900"
                             textAnchor="middle"
                             dominantBaseline="central"
                             transform={`rotate(${midAngle - 90}, ${textPos.x}, ${textPos.y})`}
                           >
-                            {shortLabel}
+                            {labelLines.length === 1 ? (
+                              labelLines[0]
+                            ) : (
+                              <>
+                                <tspan x={textPos.x} dy="-0.5em">
+                                  {labelLines[0]}
+                                </tspan>
+                                <tspan x={textPos.x} dy="1.15em">
+                                  {labelLines[1]}
+                                </tspan>
+                              </>
+                            )}
                           </text>
                         </g>
                       );
@@ -477,14 +580,16 @@ export default function RuletaPremiosModal({
                   exit={{ opacity: 0, scale: 0.9 }}
                   className="p-4 rounded-3xl bg-gradient-to-r from-[#4ADE80]/20 via-emerald-500/15 to-amber-400/20 border-2 border-[#4ADE80]/50 text-center space-y-3"
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="text-3xl">{winResult.premio_emoji}</span>
-                    <div className="text-left">
+                  <div className="flex items-center justify-center gap-3 w-full px-1">
+                    <span className="text-3xl shrink-0">{winResult.premio_emoji}</span>
+                    <div className="text-left min-w-0">
                       <p className="text-[10px] font-black uppercase tracking-widest text-[#4ADE80]">
                         ¡Felicidades, ganaste!
                       </p>
-                      <p className="text-lg font-black text-white leading-tight">
-                        {winResult.premio_label}
+                      <p className="text-lg sm:text-xl font-black text-white leading-snug break-words">
+                        {winResult.premio_label === 'Papas o acompañ.'
+                          ? 'Papas o acompañamiento'
+                          : winResult.premio_label}
                       </p>
                     </div>
                   </div>
@@ -550,19 +655,26 @@ export default function RuletaPremiosModal({
                   {isSpinning ? '¡Buena suerte! Girando...' : '¡Girar Gratis Ahora!'}
                 </Button>
               ) : customerStatus.permitir_tiro_puntos && customerStatus.tiros_puntos_restantes > 0 ? (
-                <Button
-                  type="button"
-                  disabled={isSpinning || customerStatus.puntos_disponibles < customerStatus.costo_tiro_puntos}
-                  onClick={() => handleSpin(true)}
-                  className="w-full h-12 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-[#0F172A] font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-amber-500/25 hover:brightness-110 disabled:opacity-50"
-                >
-                  <Coins className="w-4 h-4 mr-2" />
-                  {isSpinning
-                    ? 'Girando con puntos...'
-                    : customerStatus.puntos_disponibles >= customerStatus.costo_tiro_puntos
-                    ? `Girar de nuevo por ${customerStatus.costo_tiro_puntos} pts (${customerStatus.tiros_puntos_restantes} disp. hoy)`
-                    : `Necesitas ${customerStatus.costo_tiro_puntos} pts para otro giro`}
-                </Button>
+                <div className="space-y-1.5">
+                  <Button
+                    type="button"
+                    disabled={isSpinning || customerStatus.puntos_disponibles < customerStatus.costo_tiro_puntos}
+                    onClick={() => handleSpin(true)}
+                    className="w-full h-12 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-[#0F172A] font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-amber-500/25 hover:brightness-110 disabled:opacity-50"
+                  >
+                    <Coins className="w-4 h-4 mr-2" />
+                    {isSpinning
+                      ? 'Girando con puntos...'
+                      : customerStatus.puntos_disponibles >= customerStatus.costo_tiro_puntos
+                      ? `Girar de nuevo por ${customerStatus.costo_tiro_puntos} puntos`
+                      : `Necesitas ${customerStatus.costo_tiro_puntos} puntos para otro giro`}
+                  </Button>
+                  <p className="text-[11px] text-center text-slate-300 font-medium">
+                    {customerStatus.tiros_puntos_restantes === 1
+                      ? 'Te queda 1 intento extra por hoy'
+                      : `Te quedan ${customerStatus.tiros_puntos_restantes} intentos extra por hoy`}
+                  </p>
+                </div>
               ) : (
                 <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-center">
                   <p className="text-xs font-black text-amber-300">¡Has completado tus giros de hoy!</p>
@@ -572,16 +684,10 @@ export default function RuletaPremiosModal({
                 </div>
               )}
 
-              {!previewMode && (
-                <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 pt-1">
-                  <span>WhatsApp: {phone}</span>
-                  <button
-                    type="button"
-                    onClick={() => setIdentified(false)}
-                    className="underline hover:text-white"
-                  >
-                    Cambiar número
-                  </button>
+              {!previewMode && phone && (
+                <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 px-1 pt-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#4ADE80]" />
+                  <span>Cuenta vinculada: <strong className="text-slate-300">{phone}</strong></span>
                 </div>
               )}
             </div>
