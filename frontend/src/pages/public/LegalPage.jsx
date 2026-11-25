@@ -9,8 +9,8 @@ export default function LegalPage() {
     const [activeSection, setActiveSection] = React.useState('autorizacion');
 
     const legalLinks = [
-        { id: 'terminos', title: 'Términos y Condiciones de Uso de la Plataforma Menu.IA', icon: FileText },
-        { id: 'autorizacion', title: 'Autorización de Tratamiento de datos personales Usuarios – Menu.IA', icon: Shield },
+        { id: 'terminos', title: 'Términos y Condiciones de Uso – Fogón & Mesa', icon: FileText },
+        { id: 'autorizacion', title: 'Autorización de Tratamiento de datos personales Usuarios – Fogón & Mesa', icon: Shield },
         { id: 'privacidad', title: 'Política de Tratamiento de Datos Personales (Política de Privacidad)', icon: Shield },
         { id: 'cookies', title: 'Política de Cookies – Colombia', icon: Cookie },
     ];
@@ -20,33 +20,33 @@ export default function LegalPage() {
             case 'terminos':
                 return (
                     <>
-                        <p className="text-xs font-black uppercase tracking-widest text-[#22B8CF] mb-4">Legal & Términos</p>
+                        <p className="text-xs font-black uppercase tracking-widest text-[#C86414] mb-4">Legal & Términos</p>
                         <h1 className="text-3xl md:text-4xl font-black text-[#111814] mb-8 leading-tight">
-                            Términos y Condiciones de Uso de la Plataforma Menu.IA
+                            Términos y Condiciones de Uso – Fogón & Mesa
                         </h1>
                         <div className="space-y-6 text-gray-600 leading-relaxed font-medium text-sm md:text-base">
                             <h2 className="text-xl font-black text-[#111814] mt-10">1. ASPECTOS GENERALES</h2>
                             <p>
-                                <strong>Menu.IA</strong> es una plataforma tecnológica constituida conforme a las leyes colombianas, con domicilio en la ciudad de Bogotá D.C., quien para los efectos de los presentes Términos y Condiciones se denominará “Menu.IA”.
+                                <strong>Fogón & Mesa</strong> es un establecimiento comercial gastronómico y plataforma digital constituida conforme a las leyes colombianas, quien para los efectos de los presentes Términos y Condiciones se denominará “Fogón & Mesa”.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">2. DEFINICIONES</h2>
                             <ul className="list-disc pl-6 space-y-3">
-                                <li><strong>Comercio Aliado:</strong> Establecimiento de comercio (restaurante, bar, café, etc.) que exhibe y comercializa productos a través de Menu.IA.</li>
-                                <li><strong>Duntos:</strong> Puntos de fidelidad o intangibles que el Usuario acumula en su cuenta para redimir en productos o beneficios dentro de los comercios aliados.</li>
-                                <li><strong>Plataforma Menu.IA:</strong> Ecosistema virtual compuesto por la página web, Web-Apps de pedidos, App de Meseros y App de Reparto.</li>
-                                <li><strong>Repartidor:</strong> Persona encargada de la gestión del pedido desde el comercio hasta el domicilio del Usuario, utilizando las herramientas de despacho de Menu.IA.</li>
-                                <li><strong>Usuario/Consumidor:</strong> Persona natural que utiliza la plataforma para adquirir productos y servicios comercializados por los Comercios Aliados.</li>
+                                <li><strong>Restaurante:</strong> Establecimiento gastronómico Fogón & Mesa que exhibe y comercializa sus productos.</li>
+                                <li><strong>Puntos de Fidelidad:</strong> Puntos o beneficios que el Usuario acumula en su cuenta para redimir en productos o beneficios en Fogón & Mesa.</li>
+                                <li><strong>Plataforma Fogón & Mesa:</strong> Ecosistema virtual compuesto por la página web y servicio de pedidos en línea.</li>
+                                <li><strong>Repartidor:</strong> Persona encargada de la entrega del pedido desde el restaurante hasta el domicilio del Usuario.</li>
+                                <li><strong>Usuario/Consumidor:</strong> Persona natural que utiliza la plataforma para adquirir productos y servicios comercializados por Fogón & Mesa.</li>
                             </ul>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">3. OBJETO</h2>
                             <p>
-                                Los presentes Términos y Condiciones regulan la autorización de uso que otorga Menu.IA a los Usuarios para que éstos ingresen a la Plataforma, se informen sobre los productos exhibidos por los Comercios Aliados y realicen pedidos de manera digital.
+                                Los presentes Términos y Condiciones regulan el uso que otorga Fogón & Mesa a los Usuarios para que éstos ingresen a la Plataforma, se informen sobre los productos y realicen pedidos de manera digital.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">4. FUNCIONAMIENTO DE LA PLATAFORMA</h2>
                             <p>
-                                Menu.IA actúa como un <strong>portal de contacto</strong> y herramienta de gestión SaaS. Los Comercios Aliados son los únicos responsables de los precios, disponibilidad, calidad y entrega de los productos. Menu.IA no comercializa productos de manera directa ni presta servicios de logística propios, sino que pone a disposición la tecnología para conectar Comercios, Usuarios y Repartidores.
+                                Fogón & Mesa ofrece su servicio de pedidos en línea y entrega a domicilio o consumo en el local a través de su plataforma tecnológica directa.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">5. DEBERES DEL USUARIO</h2>
@@ -55,28 +55,28 @@ export default function LegalPage() {
                                 <li>Ingresar datos veraces al registrarse o realizar pedidos.</li>
                                 <li>Abstenerse de utilizar la plataforma para actos ilícitos o contrarios a la moral.</li>
                                 <li>Disponer de los fondos necesarios para el pago de los pedidos.</li>
-                                <li>Tratar de manera respetuosa al personal de los Comercios Aliados y Repartidores.</li>
+                                <li>Tratar de manera respetuosa al personal de Fogón & Mesa y Repartidores.</li>
                                 <li>Verificar los datos del pedido (productos y dirección) antes de finalizar la compra.</li>
                             </ul>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">6. PRECIOS Y TARIFAS</h2>
                             <p>
-                                Los precios son fijados exclusivamente por los Comercios Aliados. Menu.IA podrá cobrar una "Tarifa de Servicio" por el uso de la tecnología, la cual será siempre informada en el resumen de pago (Check-Out) antes de confirmar el pedido.
+                                Los precios son fijados por Fogón & Mesa y se informan claramente en el resumen antes de confirmar el pedido.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">7. PRODUCTOS DE USO RESTRINGIDO</h2>
                             <p>
-                                La adquisición de bebidas alcohólicas y tabaco está estrictamente prohibida para menores de edad. Menu.IA y los Comercios Aliados se reservan el derecho de exigir la identificación oficial al momento de la entrega.
+                                La adquisición de bebidas alcohólicas está estrictamente prohibida para menores de edad. Fogón & Mesa se reserva el derecho de exigir la identificación oficial al momento de la entrega.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">8. GARANTÍA Y RETRACTO</h2>
                             <p>
-                                Cualquier reclamación por calidad, estado o garantía de los productos debe tramitarse directamente con el Comercio Aliado que realizó la venta, de conformidad con la Ley 1480 de 2011.
+                                Cualquier reclamación por calidad o estado de los productos debe tramitarse directamente con Fogón & Mesa, de conformidad con la Ley 1480 de 2011.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">9. INDEMNIDAD Y MODIFICACIONES</h2>
                             <p>
-                                Menu.IA podrá modificar estos términos en cualquier momento para mejorar el servicio. El Usuario es responsable de revisar periódicamente las actualizaciones en esta sección.
+                                Fogón & Mesa podrá modificar estos términos en cualquier momento para mejorar el servicio. El Usuario es responsable de revisar periódicamente las actualizaciones en esta sección.
                             </p>
                         </div>
                     </>
@@ -84,27 +84,27 @@ export default function LegalPage() {
             case 'cookies':
                 return (
                     <>
-                        <p className="text-xs font-black uppercase tracking-widest text-[#22B8CF] mb-4">Legal & Privacidad</p>
+                        <p className="text-xs font-black uppercase tracking-widest text-[#C86414] mb-4">Legal & Privacidad</p>
                         <h1 className="text-3xl md:text-4xl font-black text-[#111814] mb-8 leading-tight">
-                            Política de Cookies – Menu.IA
+                            Política de Cookies – Fogón & Mesa
                         </h1>
                         <div className="space-y-6 text-gray-600 leading-relaxed font-medium text-sm md:text-base">
                             <section>
                                 <p>
-                                    <strong>Menu.IA</strong> es una plataforma tecnológica constituida conforme a las leyes colombianas, con domicilio en la ciudad de Bogotá D.C., la cual administra y opera el ecosistema digital de Menu.IA por medio de la cual se conectan tres (3) tipos de usuarios: i) <strong>Aliados Comerciales</strong>, que exhiben, ofrecen y comercializan sus productos y/o servicios en la plataforma para que éstos sean adquiridos por los Usuarios/Consumidores por medio del mismo; ii) <strong>Usuarios/Consumidores</strong>, quienes a través del Sitio Web adquieren productos y/o servicios comercializados por los Aliados Comerciales; y iii) <strong>Usuarios de Gestión</strong>, quienes operan la plataforma para la preparación, gestión de órdenes y entrega de las solicitudes realizadas en el Sitio Web de Menu.IA.
+                                    <strong>Fogón & Mesa</strong> es un restaurante y plataforma digital constituida conforme a las leyes colombianas, con domicilio en la ciudad de Bogotá D.C., la cual administra y opera su ecosistema digital para la visualización de carta, pedidos y atención personalizada.
                                 </p>
                                 <p className="mt-4">
                                     Por medio de la presente <strong>POLÍTICA DE COOKIES</strong> se da a conocer a los Usuarios/Consumidores el tratamiento que se le da a las cookies en su plataforma y a la información personal recolectada y almacenada por las mismas.
                                 </p>
                                 <p className="mt-4">
-                                    Se aclara que con el propósito de proteger la información personal recolectada y almacenada por las Cookies sobre los Usuarios/Consumidores que tengan relación con <strong>Menu.IA</strong>, la presente Política de Cookies da cumplimiento estricto a la Política de Privacidad y a la Autorización de Tratamiento de Datos Personales de la plataforma.
+                                    Se aclara que con el propósito de proteger la información personal recolectada y almacenada por las Cookies sobre los Usuarios/Consumidores que tengan relación con <strong>Fogón & Mesa</strong>, la presente Política de Cookies da cumplimiento estricto a la Política de Privacidad y a la Autorización de Tratamiento de Datos Personales de la plataforma.
                                 </p>
                             </section>
 
                             <section>
                                 <h2 className="text-xl font-black text-[#111814] mb-4">NATURALEZA JURÍDICA</h2>
                                 <p>
-                                    Por medio de la presente Política de Cookies se identifican el tipo de Cookies que se usan en el ecosistema digital de <strong>Menu.IA</strong> y el uso que se le dará a las mismas.
+                                    Por medio de la presente Política de Cookies se identifican el tipo de Cookies que se usan en el ecosistema digital de <strong>Fogón & Mesa</strong> y el uso que se le dará a las mismas.
                                 </p>
                             </section>
 
@@ -113,17 +113,17 @@ export default function LegalPage() {
                                 <ul className="space-y-4">
                                     <li><strong>Dato personal:</strong> Cualquier información concerniente o vinculada a personas naturales determinadas o determinables.</li>
                                     <li><strong>Base de datos personales:</strong> Conjunto organizado de datos personales que son objeto de tratamiento por una persona natural o jurídica.</li>
-                                    <li><strong>Cookies:</strong> Archivos que recolectan información sobre los hábitos de navegación e inclinaciones de consumo de un Usuario/Consumidor en el Sitio Web de <strong>Menu.IA</strong> y eventualmente podrían conformar una base de datos. Las Cookies son recuperadas y almacenadas por Menu.IA para la consulta de las actividades y preferencias de los Usuarios/Consumidores, permitiendo identificar cómo mejorar el servicio ofrecido.</li>
+                                    <li><strong>Cookies:</strong> Archivos que recolectan información sobre los hábitos de navegación e inclinaciones de consumo de un Usuario/Consumidor en el Sitio Web de <strong>Fogón & Mesa</strong> y eventualmente podrían conformar una base de datos. Las Cookies son recuperadas y almacenadas por Fogón & Mesa para la consulta de las actividades y preferencias de los Usuarios/Consumidores, permitiendo identificar cómo mejorar el servicio ofrecido.</li>
                                     <li><strong>Comercio Electrónico:</strong> Comprende el envío, transmisión, recepción, almacenamiento de mensajes de datos por vía electrónica (Ley 527 de 1999).</li>
                                     <li><strong>Sitio Web:</strong> Serie de páginas web interrelacionadas entre sí e identificadas por un mismo nombre de dominio, accesibles mediante un navegador de internet.</li>
                                     <li><strong>Mensajes de datos:</strong> La información generada, enviada, recibida, almacenada o comunicada por medios electrónicos u ópticos.</li>
-                                    <li><strong>Titular del dato personal:</strong> Persona natural cuyos datos son objeto de tratamiento, incluyendo Suscriptores, Clientes, Aliados y terceros.</li>
+                                    <li><strong>Titular del dato personal:</strong> Persona natural cuyos datos son objeto de tratamiento, incluyendo Suscriptores, Clientes y terceros.</li>
                                 </ul>
                             </section>
 
                             <section>
                                 <h2 className="text-xl font-black text-[#111814] mb-4">TIPOS DE COOKIES UTILIZADAS</h2>
-                                <p className="mb-4"><strong>Menu.IA</strong> utiliza en su plataforma las siguientes Cookies:</p>
+                                <p className="mb-4"><strong>Fogón & Mesa</strong> utiliza en su plataforma las siguientes Cookies:</p>
                                 <ul className="list-disc pl-6 space-y-3">
                                     <li><strong>Cookies de Sesión:</strong> Recolectan información relativa al acceso y uso mientras el Usuario navega y se conservan únicamente durante ese tiempo.</li>
                                     <li><strong>Cookies Persistentes:</strong> Se almacenan durante un tiempo limitado en el navegador, aun cuando el Usuario ha finalizado de navegar.</li>
@@ -131,7 +131,7 @@ export default function LegalPage() {
                                     <li><strong>Cookies Funcionales:</strong> Almacenan preferencias (idioma, última dirección de envío, etc.) para ofrecer correctamente los servicios.</li>
                                     <li><strong>Cookies Analíticas:</strong> Permiten conocer el comportamiento de navegación y registrar contenidos de interés para mejorar el servicio.</li>
                                     <li><strong>Cookies Sociales:</strong> Permiten la interacción con redes sociales y widgets externos en la plataforma.</li>
-                                    <li><strong>Cookies de Publicidad e Identificación:</strong> Recopilan preferencias para ofrecer publicidad relevante y establecer coincidencias con datos personales para enviar comunicaciones pertinentes.</li>
+                                    <li><strong>Cookies de Publicidad e Identificación:</strong> Recopilan preferencias para ofrecer beneficios relevantes y enviar comunicaciones pertinentes.</li>
                                 </ul>
                             </section>
 
@@ -141,7 +141,7 @@ export default function LegalPage() {
                                     <li><strong>Seguridad:</strong> Detectar actividad sospechosa o fraudulenta para proteger la cuenta del Usuario.</li>
                                     <li><strong>Autenticación:</strong> Reconocer e identificar al Usuario/Consumidor cuando visite el Sitio Web.</li>
                                     <li><strong>Personalización:</strong> Recordar búsquedas anteriores para ofrecer información adicional relacionada con sus intereses.</li>
-                                    <li><strong>Rendimiento y Análisis:</strong> Realizar estudios internos sobre intereses y comportamientos para comprender mejor las necesidades de los Usuarios y perfeccionar las iniciativas comerciales.</li>
+                                    <li><strong>Rendimiento y Análisis:</strong> Comprender mejor las preferencias de los clientes y perfeccionar nuestro menú y atención.</li>
                                 </ul>
                             </section>
 
@@ -151,19 +151,19 @@ export default function LegalPage() {
                                     Los Usuarios tienen la posibilidad de borrar, restringir o bloquear el uso de Cookies a través de la configuración de su navegador. Tenga en cuenta que cada navegador tiene su propia forma operativa de control:
                                 </p>
                                 <div className="flex flex-wrap gap-4 mt-4">
-                                    <a href="https://support.google.com/chrome/answer/95647" target="_blank" rel="noopener noreferrer" className="text-[#22B8CF] hover:underline font-bold">Google Chrome</a>
-                                    <a href="https://support.mozilla.org/es/kb/habilitar-y-deshabilitar-cookies-sitios-web-rastrear-preferencias" target="_blank" rel="noopener noreferrer" className="text-[#22B8CF] hover:underline font-bold">Mozilla Firefox</a>
-                                    <a href="https://support.apple.com/es-es/guide/safari/sfri11471/mac" target="_blank" rel="noopener noreferrer" className="text-[#22B8CF] hover:underline font-bold">Safari</a>
+                                    <a href="https://support.google.com/chrome/answer/95647" target="_blank" rel="noopener noreferrer" className="text-[#C86414] hover:underline font-bold">Google Chrome</a>
+                                    <a href="https://support.mozilla.org/es/kb/habilitar-y-deshabilitar-cookies-sitios-web-rastrear-preferencias" target="_blank" rel="noopener noreferrer" className="text-[#C86414] hover:underline font-bold">Mozilla Firefox</a>
+                                    <a href="https://support.apple.com/es-es/guide/safari/sfri11471/mac" target="_blank" rel="noopener noreferrer" className="text-[#C86414] hover:underline font-bold">Safari</a>
                                 </div>
                                 <p className="mt-4 italic">
-                                    Nota: Si realiza modificaciones en la configuración de las Cookies, <strong>Menu.IA</strong> no asegura el correcto funcionamiento de todas las funcionalidades de su Sitio Web.
+                                    Nota: Si realiza modificaciones en la configuración de las Cookies, <strong>Fogón & Mesa</strong> no asegura el correcto funcionamiento de todas las funcionalidades de su Sitio Web.
                                 </p>
                             </section>
 
                             <section>
                                 <h2 className="text-xl font-black text-[#111814] mb-4">CANAL DE CONTACTO</h2>
                                 <p>
-                                    Cualquier consulta sobre el uso de Cookies en nuestra plataforma puede dirigirse al correo: <span className="text-[#22C55E] font-bold">info@menuia.co</span>
+                                    Cualquier consulta sobre el uso de Cookies en nuestra plataforma puede dirigirse al correo: <span className="text-[#C86414] font-bold">contacto@fogonmesa.com</span>
                                 </p>
                             </section>
 
@@ -179,18 +179,18 @@ export default function LegalPage() {
             case 'privacidad':
                 return (
                     <>
-                        <p className="text-xs font-black uppercase tracking-widest text-[#22B8CF] mb-4">Legal & Privacidad</p>
+                        <p className="text-xs font-black uppercase tracking-widest text-[#C86414] mb-4">Legal & Privacidad</p>
                         <h1 className="text-3xl md:text-4xl font-black text-[#111814] mb-8 leading-tight">
-                            Política de Tratamiento de Datos Personales – Menu.IA
+                            Política de Tratamiento de Datos Personales – Fogón & Mesa
                         </h1>
                         <div className="space-y-6 text-gray-600 leading-relaxed font-medium text-sm md:text-base">
                             <section>
                                 <h2 className="text-xl font-black text-[#111814] mb-4">I. Introducción</h2>
                                 <p>
-                                    <strong>Menu.IA</strong> es una plataforma tecnológica que tiene como actividad principal conectar a consumidores finales con establecimientos gastronómicos (Comercios Aliados) a través de una infraestructura digital compuesta por una Web-App de pedidos, App de Meseros y App de Gestión de Reparto.
+                                    <strong>Fogón & Mesa</strong> es un restaurante y plataforma digital que tiene como actividad principal la preparación, comercialización y entrega de alimentos y bebidas tradicionales a través de su sitio web de pedidos.
                                 </p>
                                 <p>
-                                    Con la finalidad de dar cumplimiento estricto a la normatividad vigente de protección de Datos Personales, de acuerdo a lo establecido en la Ley 1581 de 2012 y el Decreto 1074 de 2015, presentamos esta Política con el propósito de proteger la información brindada por nuestros Titulares (clientes, comerciales, aliados y colaboradores).
+                                    Con la finalidad de dar cumplimiento estricto a la normatividad vigente de protección de Datos Personales, de acuerdo a lo establecido en la Ley 1581 de 2012 y el Decreto 1074 de 2015, presentamos esta Política con el propósito de proteger la información brindada por nuestros Titulares (clientes y colaboradores).
                                 </p>
                             </section>
 
@@ -199,8 +199,8 @@ export default function LegalPage() {
                                 <ul className="list-disc pl-6 space-y-2">
                                     <li><strong>Autorización:</strong> Consentimiento previo, expreso e informado del Titular.</li>
                                     <li><strong>Dato Personal:</strong> Cualquier información vinculada a una persona natural.</li>
-                                    <li><strong>Responsable del Tratamiento:</strong> Menu.IA, quien decide sobre el uso de los datos.</li>
-                                    <li><strong>Titular:</strong> Persona natural cuyos datos son objeto de tratamiento (Usuario final, dueño de comercio, repartidor).</li>
+                                    <li><strong>Responsable del Tratamiento:</strong> Fogón & Mesa, quien decide sobre el uso de los datos.</li>
+                                    <li><strong>Titular:</strong> Persona natural cuyos datos son objeto de tratamiento (Cliente o usuario).</li>
                                 </ul>
                             </section>
 
@@ -224,12 +224,12 @@ export default function LegalPage() {
 
                             <section>
                                 <h2 className="text-xl font-black text-[#111814] mb-4">V. Finalidades del Tratamiento</h2>
-                                <p>Los datos recolectados por Menu.IA tienen como objetivos:</p>
+                                <p>Los datos recolectados por Fogón & Mesa tienen como objetivos:</p>
                                 <ul className="list-disc pl-6 space-y-2">
-                                    <li>Gestionar pedidos y pagos en los Comercios Aliados.</li>
-                                    <li>Operar el sistema de fidelidad y recompensas (Duntos).</li>
-                                    <li>Enviar notificaciones operativas y de marketing vía WhatsApp, Email y Push.</li>
-                                    <li>Mejorar la experiencia de usuario mediante análisis de comportamiento.</li>
+                                    <li>Gestionar pedidos y pagos en Fogón & Mesa.</li>
+                                    <li>Operar el sistema de fidelidad, ruleta y puntos de recompensas.</li>
+                                    <li>Enviar notificaciones operativas y de confirmación vía WhatsApp, SMS y Correo Electrónico.</li>
+                                    <li>Mejorar la experiencia de usuario y atención al cliente.</li>
                                     <li>Garantizar la seguridad y prevención de fraudes en los pedidos.</li>
                                     <li>Cumplir con obligaciones contables y administrativas.</li>
                                 </ul>
@@ -238,7 +238,7 @@ export default function LegalPage() {
                             <section>
                                 <h2 className="text-xl font-black text-[#111814] mb-4">VI. Procedimientos para Consultas y Reclamos</h2>
                                 <p>
-                                    Para cualquier solicitud relacionada con sus datos, puede escribirnos a <span className="text-[#22C55E] font-bold">info@menuia.co</span>.
+                                    Para cualquier solicitud relacionada con sus datos, puede escribirnos a <span className="text-[#C86414] font-bold">contacto@fogonmesa.com</span>.
                                     Las consultas serán atendidas en un plazo máximo de diez (10) días hábiles, y los reclamos en quince (15) días hábiles, conforme a lo estipulado por la ley colombiana.
                                 </p>
                             </section>
@@ -256,17 +256,17 @@ export default function LegalPage() {
             default:
                 return (
                     <>
-                        <p className="text-xs font-black uppercase tracking-widest text-[#22B8CF] mb-4">Legal & Privacidad</p>
+                        <p className="text-xs font-black uppercase tracking-widest text-[#C86414] mb-4">Legal & Privacidad</p>
                         <h1 className="text-3xl md:text-4xl font-black text-[#111814] mb-8 leading-tight">
-                            Autorización de Tratamiento de datos personales Usuarios – Menu.IA
+                            Autorización de Tratamiento de datos personales Usuarios – Fogón & Mesa
                         </h1>
                         <div className="space-y-6 text-gray-600 leading-relaxed font-medium text-sm md:text-base">
                             <p>
-                                Para <strong>Menu.IA</strong>, sociedad debidamente constituida bajo las normas de la República de Colombia, proteger la privacidad de sus usuarios es muy importante. Por lo tanto, <strong>Menu.IA</strong> da estricto cumplimiento a lo dispuesto en la Ley Estatutaria 1581 de 2012, reglamentada parcialmente por los Decretos 1377 de 2013 y Decreto 886 de 2014, normas compiladas en el Decreto Único Nacional del Sector Comercio, Industria y Turismo 1074 de 2015 y aquellas normas que lo modifiquen.
+                                Para <strong>Fogón & Mesa</strong>, proteger la privacidad de sus usuarios es muy importante. Por lo tanto, <strong>Fogón & Mesa</strong> da estricto cumplimiento a lo dispuesto en la Ley Estatutaria 1581 de 2012, reglamentada parcialmente por los Decretos 1377 de 2013 y Decreto 886 de 2014, normas compiladas en el Decreto Único Nacional del Sector Comercio, Industria y Turismo 1074 de 2015 y aquellas normas que lo modifiquen.
                             </p>
 
                             <p>
-                                <strong>Menu.IA</strong> le informa que sus datos serán tratados conforme a la <strong>POLÍTICA DE TRATAMIENTO DE DATOS PERSONALES</strong> que se encuentra publicada en nuestra plataforma. En este caso, Menu.IA actúa como <strong>Responsable del Tratamiento</strong> de los Datos Personales, manteniendo su confidencialidad bajo altos estándares de seguridad tecnológica.
+                                <strong>Fogón & Mesa</strong> le informa que sus datos serán tratados conforme a la <strong>POLÍTICA DE TRATAMIENTO DE DATOS PERSONALES</strong> que se encuentra publicada en nuestra plataforma. En este caso, Fogón & Mesa actúa como <strong>Responsable del Tratamiento</strong> de los Datos Personales, manteniendo su confidencialidad bajo altos estándares de seguridad tecnológica.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">1. Datos Recolectados y Tratamiento</h2>
@@ -277,14 +277,14 @@ export default function LegalPage() {
                             <h2 className="text-xl font-black text-[#111814] mt-10">2. Finalidades del Tratamiento</h2>
                             <p>El titular acepta de manera expresa que sus datos sean utilizados para:</p>
                             <ul className="list-disc pl-6 space-y-2">
-                                <li>Gestionar la creación y administración de la cuenta del usuario en la plataforma.</li>
-                                <li>Facilitar la comunicación entre el Usuario y el Comercio Aliado para la correcta prestación del servicio.</li>
+                                <li>Gestionar la creación y administración de la cuenta o pedidos del usuario en la plataforma.</li>
+                                <li>Facilitar la comunicación para la correcta entrega y preparación de los pedidos.</li>
                                 <li>Envío de notificaciones relativas a pedidos, actualizaciones de estado y soporte técnico.</li>
-                                <li>Implementar y gestionar el programa de lealtad (Duntos) y beneficios personalizados.</li>
-                                <li>Envío de comunicaciones de marketing, ofertas y promociones a través de canales como WhatsApp, SMS, Push y Correo Electrónico.</li>
-                                <li>Realizar análisis de comportamiento del usuario para mejorar la personalización del servicio y la interfaz.</li>
-                                <li>Prevenir fraudes, suplantación de identidad y garantizar la seguridad de la plataforma.</li>
-                                <li>Cumplir con requerimientos legales de autoridades de inspección, vigilancia y control.</li>
+                                <li>Implementar y gestionar el programa de lealtad, ruleta y beneficios personalizados.</li>
+                                <li>Envío de comunicaciones, ofertas especiales y promociones a través de canales como WhatsApp y SMS.</li>
+                                <li>Realizar análisis para mejorar la personalización del servicio gastronómico.</li>
+                                <li>Prevenir fraudes y garantizar la seguridad de la plataforma.</li>
+                                <li>Cumplir con requerimientos legales de autoridades competentes.</li>
                             </ul>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">3. Derechos del Titular</h2>
@@ -298,9 +298,9 @@ export default function LegalPage() {
                             </ul>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">4. Canales de Atención</h2>
-                            <p>Para ejercer sus derechos de "Habeas Data", Menu.IA dispone de los siguientes medios:</p>
+                            <p>Para ejercer sus derechos de "Habeas Data", Fogón & Mesa dispone de los siguientes medios:</p>
                             <ul className="list-disc pl-6 space-y-2">
-                                <li><strong>Atención Electrónica:</strong> A través del soporte oficial en la plataforma o al correo <span className="text-[#22C55E] font-bold">info@menuia.co</span>.</li>
+                                <li><strong>Atención Electrónica:</strong> A través del soporte oficial en la plataforma o al correo <span className="text-[#C86414] font-bold">contacto@fogonmesa.com</span>.</li>
                                 <li><strong>SIC Facilita:</strong> El titular puede acudir al canal dispuesto por la Superintendencia de Industria y Comercio.</li>
                             </ul>
                         </div>
@@ -314,20 +314,17 @@ export default function LegalPage() {
             {/* Header */}
             <nav className="bg-white border-b px-4 py-4 flex items-center justify-between sticky top-0 z-50">
                 <Link to="/" className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg overflow-hidden">
-                        <img src="/logos/logo-icon-white.png" alt="Menu.IA" className="w-full h-full object-cover" />
-                    </div>
-                    <span className="font-heading font-black text-lg tracking-tighter">
-                        <span className="text-[#22C55E]">Menu</span>
-                        <span className="text-[#22B8CF]">.IA</span>
+                    <span className="font-heading font-black text-xl tracking-tight">
+                        <span className="text-[#C86414]">Fogón</span>
+                        <span className="text-[#181615]"> & Mesa</span>
                     </span>
                 </Link>
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" onClick={() => navigate('/')} className="text-sm font-bold text-gray-600">
-                        Ir a Menu.IA
+                    <Button variant="ghost" onClick={() => navigate('/')} className="text-sm font-bold text-gray-700 hover:text-[#C86414]">
+                        Ir a Fogón & Mesa
                     </Button>
-                    <Button onClick={() => navigate('/register')} className="bg-[#4ADE80] text-[#111814] font-bold rounded-xl hidden sm:block">
-                        Quiero ser parte
+                    <Button onClick={() => navigate('/')} className="bg-[#C86414] hover:bg-[#181615] text-white font-bold rounded-xl hidden sm:block transition-colors">
+                        Ver Menú
                     </Button>
                 </div>
             </nav>
@@ -341,11 +338,11 @@ export default function LegalPage() {
                                 key={link.id}
                                 onClick={() => setActiveSection(link.id)}
                                 className={`w-full text-left p-4 rounded-2xl transition-all flex items-start gap-3 group ${activeSection === link.id
-                                    ? 'bg-white shadow-md border border-gray-100 text-[#22C55E]'
+                                    ? 'bg-white shadow-md border border-gray-100 text-[#C86414]'
                                     : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
                                     }`}
                             >
-                                <link.icon className={`w-5 h-5 shrink-0 mt-0.5 ${activeSection === link.id ? 'text-[#22C55E]' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                                <link.icon className={`w-5 h-5 shrink-0 mt-0.5 ${activeSection === link.id ? 'text-[#C86414]' : 'text-gray-400 group-hover:text-gray-600'}`} />
                                 <span className="text-sm font-bold leading-tight">{link.title}</span>
                             </button>
                         ))}
@@ -375,7 +372,7 @@ export default function LegalPage() {
             <footer className="bg-white border-t mt-20 py-12">
                 <div className="max-w-7xl mx-auto px-4">
                     <p className="text-sm font-bold text-gray-400 uppercase tracking-widest text-center">
-                        © 2026 Burger Full - Todos los derechos reservados
+                        © 2026 FOGÓN & MESA - TODOS LOS DERECHOS RESERVADOS
                     </p>
                 </div>
             </footer>
