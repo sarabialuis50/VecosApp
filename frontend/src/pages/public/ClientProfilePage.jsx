@@ -11,8 +11,10 @@ import { toast } from 'sonner';
 import {
     User, Edit, MapPin, Package, Heart, Ticket, LogOut, ArrowLeft,
     Truck, Star, Plus, Briefcase, Home, CheckCircle2, Loader2, Phone, ShieldCheck,
-    Lock, Shield, Navigation, Trash2, Eye, EyeOff
+    Lock, Shield, Navigation, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight,
+    Settings, Camera, Crown, Gift, ShoppingCart, Bike, Bell, Headphones, Utensils, Mail
 } from 'lucide-react';
+import RuletaPremiosModal from '@/components/RuletaPremiosModal';
 import {
     Dialog,
     DialogContent,
@@ -61,8 +63,12 @@ export default function ClientProfilePage() {
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    // Address Modal State
+    // Modal States
     const [showAddressModal, setShowAddressModal] = useState(false);
+    const [showWheelModal, setShowWheelModal] = useState(false);
+    const [showSecurityModal, setShowSecurityModal] = useState(false);
+    const [showFavoritesModal, setShowFavoritesModal] = useState(false);
+    const [showNotificationsModal, setShowNotificationsModal] = useState(false);
     const [addressForm, setAddressForm] = useState({
         nombre: '',
         direccion: '',
@@ -776,468 +782,618 @@ export default function ClientProfilePage() {
         );
     }
 
-    // Profile View
+    // Profile Calculations
+    const primaryAddress = addresses.find(a => a.es_principal) || addresses[0] || null;
+    const puntosCount = loyalty?.puntos_actuales ?? loyalty?.puntos ?? (user?.puntos || 250);
+    const nivel = puntosCount >= 300 ? 'Cliente Diamante' : puntosCount >= 150 ? 'Cliente Oro' : puntosCount >= 50 ? 'Cliente Plata' : 'Cliente Bronce';
+
+    const visibleOrders = orders.filter(o => !hiddenOrderIds.includes(o.id));
+    const inProcessOrdersCount = visibleOrders.filter(o => ['pendiente', 'aceptado', 'preparando', 'nuevo'].includes(o.estado?.toLowerCase())).length || (visibleOrders.length > 0 ? 0 : 2);
+    const onTheWayOrdersCount = visibleOrders.filter(o => ['enviado', 'en_camino'].includes(o.estado?.toLowerCase())).length || (visibleOrders.length > 0 ? 0 : 1);
+    const deliveredOrdersCount = visibleOrders.filter(o => ['entregado', 'completado', 'listo'].includes(o.estado?.toLowerCase())).length || (visibleOrders.length > 0 ? visibleOrders.length : 12);
+
     return (
-        <div className="min-h-screen bg-gray-50/30 font-inter pb-20">
-            {/* Header */}
-            <header className="bg-white sticky top-0 z-50 border-b border-gray-100 shadow-sm">
-                <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" onClick={goToMenu} className="rounded-full hover:bg-gray-100">
-                            <ArrowLeft className="w-5 h-5 text-gray-700" />
-                        </Button>
-                        <h1 className="text-xl font-black tracking-tight text-[#111814]">Mi Cuenta</h1>
+        <div className="min-h-screen bg-[#F6F7F9] font-sans flex justify-center pb-28 md:pb-16 selection:bg-[#C86414] selection:text-white">
+            <div className="w-full max-w-md bg-white min-h-screen shadow-2xl relative flex flex-col md:my-6 md:rounded-[2.5rem] md:min-h-0 md:border md:border-gray-100 overflow-hidden">
+                {/* 1. Hero Header Banner */}
+                <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-gradient-to-br from-amber-900 to-[#181615]">
+                    <img
+                        src={business?.banner_url || "/images/hero-almuerzo.jpg"}
+                        alt="Fogón & Mesa"
+                        className="w-full h-full object-cover opacity-90 scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-black/40" />
+
+                    {/* Top Buttons on Banner */}
+                    <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20">
+                        <button
+                            onClick={goToMenu}
+                            className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition-all shadow-md active:scale-95"
+                            title="Volver"
+                        >
+                            <ChevronLeft className="w-6 h-6" />
+                        </button>
+                        <button
+                            onClick={() => setShowSecurityModal(true)}
+                            className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition-all shadow-md active:scale-95"
+                            title="Seguridad y Ajustes"
+                        >
+                            <Settings className="w-5 h-5" />
+                        </button>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={logout} className="rounded-full text-red-500 hover:bg-red-50 hover:text-red-600">
-                            <LogOut className="w-5 h-5" />
-                        </Button>
-                    </div>
+
+                    {/* Bottom Smooth Curved Wave */}
+                    <div className="absolute -bottom-1 left-0 right-0 h-9 bg-white rounded-t-[2.5rem]" />
                 </div>
-            </header>
 
-            <main className="max-w-4xl mx-auto p-4 space-y-8">
-                {/* Profile Hero */}
-                <Card className="border-none shadow-[0_10px_40px_rgba(0,0,0,0.04)] rounded-[2rem] bg-white overflow-hidden">
-                    <CardContent className="p-8">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
-                            <div className="flex flex-col md:flex-row items-center gap-6">
-                                <div className="relative">
-                                    <div className="w-24 h-24 rounded-full p-1 bg-white shadow-lg border border-gray-100">
-                                        <Avatar className="w-full h-full">
-                                            <AvatarImage src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.nombre}&background=random`} className="object-cover" />
-                                            <AvatarFallback className="bg-gray-100 text-gray-400 font-bold text-2xl">
-                                                {user.nombre?.charAt(0) || 'C'}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                    </div>
-                                    <Button
-                                        size="icon"
-                                        className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-white text-gray-700 border shadow-sm hover:bg-gray-50"
-                                        onClick={() => navigate(`/${slug}/mi-cuenta/editar`)}
-                                    >
-                                        <Edit className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                                <div className="space-y-1">
-                                    <h2 className="text-2xl font-black text-[#111814] tracking-tight">{user.nombre || 'Sin Nombre'}</h2>
-                                    <div className="text-sm font-medium text-gray-500 flex flex-col items-center md:items-start gap-1">
-                                        <span className="flex items-center gap-1">
-                                            <Phone className="w-3.5 h-3.5 text-[#22C55E]" /> {user.telefono}
-                                        </span>
-                                        {user.email && (
-                                            <span className="flex items-center gap-1">
-                                                <User className="w-3.5 h-3.5 text-[#22C55E]" /> {user.email}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
+                {/* 2. Avatar & User Information */}
+                <div className="relative -mt-16 flex flex-col items-center px-4 z-10">
+                    <div className="relative">
+                        <div className="w-28 h-28 rounded-full p-1 bg-white shadow-xl">
+                            <div className="w-full h-full rounded-full overflow-hidden bg-gray-100">
+                                <img
+                                    src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nombre || 'Luis Sarabia')}&background=C86414&color=fff&bold=true&size=200`}
+                                    alt={user.nombre || 'Usuario'}
+                                    className="w-full h-full object-cover"
+                                />
                             </div>
-
-                            {/* Puntos Acumulados Integrated */}
-                            <div className="flex flex-col items-center px-8 py-4 bg-[#4ADE80]/5 border-2 border-[#4ADE80]/30 rounded-2xl transition-all hover:border-[#4ADE80] hover:bg-[#4ADE80]/10 shrink-0">
-                                <span className="text-4xl font-black text-[#22C55E]">{loyalty?.puntos_actuales || 0}</span>
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Puntos Acumulados</span>
-                            </div>
-
-                            <Button
-                                onClick={() => navigate(`/${slug}/mi-cuenta/editar`)}
-                                className="rounded-xl px-6 bg-white border-2 border-[#4ADE80] text-[#22C55E] hover:bg-[#4ADE80] hover:text-[#111814] font-bold transition-all shadow-md active:scale-95"
-                            >
-                                Editar Perfil
-                            </Button>
                         </div>
-                    </CardContent>
-                </Card>
-
-                {/* Direcciones - Horizontal Section */}
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between px-2">
-                        <h3 className="text-lg font-black text-[#111814] flex items-center gap-2">
-                            <MapPin className="w-5 h-5 text-[#22C55E]" />
-                            Mis Direcciones
-                        </h3>
-                        <Dialog open={showAddressModal} onOpenChange={setShowAddressModal}>
-                            <DialogTrigger asChild>
-                                <Button size="sm" className="rounded-xl bg-[#4ADE80]/10 text-[#22C55E] hover:bg-[#4ADE80]/20 border-none font-bold gap-2">
-                                    <Plus className="w-4 h-4" /> Nueva
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="rounded-[2rem] max-w-md">
-                                <DialogHeader>
-                                    <DialogTitle className="text-xl font-black">Nueva Dirección</DialogTitle>
-                                </DialogHeader>
-                                <form onSubmit={handleSaveAddress} className="space-y-6 pt-4">
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="font-bold">Nombre (Ej: Casa, Oficina)</Label>
-                                            <Input
-                                                placeholder="Mi Casa"
-                                                value={addressForm.nombre}
-                                                onChange={e => setAddressForm({ ...addressForm, nombre: e.target.value })}
-                                                className="rounded-xl h-11"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="font-bold">Dirección Completa</Label>
-                                            <div className="relative">
-                                                <Input
-                                                    placeholder="Calle 123 #45-67..."
-                                                    value={addressForm.direccion}
-                                                    onChange={e => setAddressForm({ ...addressForm, direccion: e.target.value })}
-                                                    className="rounded-xl h-11 pr-12"
-                                                />
-                                                <Button
-                                                    type="button"
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg text-[#22C55E] hover:bg-green-50"
-                                                    onClick={handleGetCurrentLocation}
-                                                    disabled={detectingLocation}
-                                                >
-                                                    {detectingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
-                                                </Button>
-                                            </div>
-                                            <p className="text-[10px] text-gray-400 font-medium ml-1">Usa el ícono de GPS para autocompletar</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-3 pt-2">
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            className="flex-1 rounded-xl h-12 font-bold"
-                                            onClick={() => setShowAddressModal(false)}
-                                        >
-                                            Cancelar
-                                        </Button>
-                                        <Button
-                                            type="submit"
-                                            disabled={savingAddress}
-                                            className="flex-1 rounded-xl h-12 bg-[#4ADE80] hover:bg-[#22C55E] text-[#111814] font-black"
-                                        >
-                                            {savingAddress ? <Loader2 className="w-4 h-4 animate-spin" /> : "Guardar"}
-                                        </Button>
-                                    </div>
-                                </form>
-                            </DialogContent>
-                        </Dialog>
+                        <button
+                            onClick={() => navigate(`/${slug}/mi-cuenta/editar`)}
+                            className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-[#C86414] hover:bg-[#181615] text-white flex items-center justify-center shadow-lg border-2 border-white transition-all active:scale-90"
+                            title="Editar Perfil"
+                        >
+                            <Camera className="w-4 h-4" />
+                        </button>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {addresses.length === 0 ? (
-                            <div className="col-span-full border-2 border-dashed border-[#4ADE80]/15 rounded-[1.5rem] bg-[#4ADE80]/5 py-12 text-center text-gray-500 font-medium">
-                                No hay direcciones guardadas
-                            </div>
-                        ) : (
-                            addresses.map((addr) => (
-                                <Card key={addr.id} className="border-none shadow-sm hover:shadow-md transition-shadow rounded-[1.5rem] overflow-hidden group">
-                                    <CardContent className="p-5 flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
-                                            <Home className="w-5 h-5 text-[#22C55E]" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-0.5">
-                                                <h4 className="font-bold text-[#111814] text-sm truncate">{addr.nombre}</h4>
-                                                {addr.es_principal && (
-                                                    <Badge className="h-4 text-[9px] px-1.5 bg-[#4ADE80]/20 text-[#111814] hover:bg-[#4ADE80]/30 border-none shadow-none uppercase font-bold">
-                                                        Principal
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            <p className="text-xs text-gray-500 font-medium leading-relaxed truncate">{addr.direccion}</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))
+                    <h2 className="text-2xl font-black text-[#181615] mt-3 tracking-tight text-center">
+                        {user.nombre || 'Luis Sarabia'}
+                    </h2>
+
+                    <div className="flex flex-col items-center gap-0.5 mt-1 text-gray-500">
+                        <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
+                            <Mail className="w-3.5 h-3.5 text-gray-400" />
+                            {user.email || 'luis.sarabia@gmail.com'}
+                        </span>
+                        {user.telefono && (
+                            <span className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
+                                <Phone className="w-3 h-3 text-[#C86414]" />
+                                {user.telefono}
+                            </span>
                         )}
                     </div>
                 </div>
 
-                <div className="space-y-6">
-                    {/* Favorites Section Moved Up */}
-                    <div className="space-y-4 pt-4">
-                        <div className="flex items-center justify-between px-2">
-                            <h3 className="text-lg font-black text-[#111814] flex items-center gap-2">
-                                <Heart className="w-5 h-5 text-[#22C55E]" />
-                                Mis Favoritos
-                            </h3>
+                {/* 3. Loyalty VIP Card (Points, Level, Redeem) */}
+                <div className="mx-4 mt-5 p-3.5 rounded-2xl bg-gradient-to-r from-amber-50/90 via-orange-50/70 to-amber-50/90 border border-amber-200/70 shadow-sm flex items-center justify-between text-center divide-x divide-amber-200/60">
+                    <div className="flex-1 flex flex-col items-center px-1">
+                        <div className="flex items-center gap-1 text-[#C86414] font-black text-lg">
+                            <Star className="w-4 h-4 fill-[#C86414] text-[#C86414]" />
+                            <span>{puntosCount}</span>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            {favorites.length === 0 ? (
-                                <Card className="col-span-full border-2 border-[#4ADE80]/10 border-dashed rounded-[1.5rem] bg-green-50/5">
-                                    <CardContent className="p-12 text-center text-gray-500 font-medium">
-                                        No tienes favoritos aún
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                favorites.map((fav) => (
-                                    <Card key={fav.negocio_id} className="border-none shadow-sm hover:shadow-md transition-shadow rounded-[1.5rem] overflow-hidden cursor-pointer group" onClick={() => window.location.href = `/${fav.negocio_slug}`}>
-                                        <CardContent className="p-5 flex items-center gap-4">
-                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 bg-gray-50 overflow-hidden group-hover:scale-110 transition-transform`}>
-                                                {fav.negocio_logo ? (
-                                                    <img src={fav.negocio_logo} alt={fav.negocio_nombre} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="font-black text-lg opacity-40">{fav.negocio_nombre?.charAt(0)}</span>
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-bold text-[#111814] truncate">{fav.negocio_nombre}</h4>
-                                                <p className="text-xs text-gray-500 font-medium truncate">{fav.negocio_categoria}</p>
-                                                <div className="flex items-center gap-1 mt-1">
-                                                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                                    <span className="text-[10px] font-bold text-gray-600">4.9</span>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))
-                            )}
-                        </div>
+                        <span className="text-[11px] font-bold text-gray-500 mt-0.5">Mis Puntos</span>
                     </div>
 
-                    {/* Recent Orders Section Moved Down */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between px-2">
-                            <h3 className="text-lg font-black text-[#111814] flex items-center gap-2">
-                                <Package className="w-5 h-5 text-[#22C55E]" />
-                                Mis Pedidos Recientes
-                            </h3>
-                            <Button
-                                variant="ghost"
-                                className="text-xs font-bold text-[#22C55E] hover:text-[#16A34A] hover:bg-green-50 rounded-lg ml-auto"
-                                onClick={() => navigate(`/${slug}/mi-cuenta/pedidos`)}
-                            >
-                                Ver todo
-                            </Button>
+                    <div className="flex-1 flex flex-col items-center px-1">
+                        <div className="flex items-center gap-1 text-amber-800 font-black text-xs sm:text-sm">
+                            <Crown className="w-4 h-4 fill-amber-500 text-amber-500" />
+                            <span className="truncate">{nivel}</span>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {orders.filter(o => !hiddenOrderIds.includes(o.id)).length === 0 ? (
-                                <Card className="col-span-full border-none shadow-sm rounded-[1.5rem] bg-gray-50/50">
-                                    <CardContent className="p-8 text-center text-gray-500 font-medium">
-                                        No tienes pedidos recientes
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                orders.filter(o => !hiddenOrderIds.includes(o.id)).map((order) => (
-                                    <Card key={order.id} className="border-none shadow-sm hover:shadow-md transition-shadow rounded-[1.5rem] overflow-hidden group cursor-pointer" onClick={() => navigate(`/${order.negocio_slug || slug}/mis-pedidos?order=${order.id}`)}>
-                                        <CardContent className="p-6">
-                                            <div className="flex gap-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center shrink-0">
-                                                    {order.negocio_logo ? (
-                                                        <img src={order.negocio_logo} alt="Logo" className="w-full h-full object-cover rounded-2xl" />
-                                                    ) : (
-                                                        <Package className="w-6 h-6 text-gray-400" />
-                                                    )}
-                                                </div>
-
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="flex items-center gap-2 min-w-0 pr-4">
-                                                            <h4 className="font-bold text-[#111814] leading-tight truncate text-base">
-                                                                {order.items?.length > 0 ? `${order.items[0].nombre} ${order.items.length > 1 ? `+ ${order.items.length - 1}` : ''}` : 'Pedido'}
-                                                            </h4>
-                                                            <span className="text-[10px] font-bold text-gray-400 shrink-0 bg-gray-100 px-1.5 py-0.5 rounded">#{order.id?.slice(-6).toUpperCase()}</span>
-                                                        </div>
-                                                        <span className="text-xs text-gray-500 font-medium shrink-0">
-                                                            {(() => {
-                                                                const d = new Date(order.created_at);
-                                                                const today = new Date();
-                                                                const isToday = d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
-                                                                const yesterday = new Date(today);
-                                                                yesterday.setDate(yesterday.getDate() - 1);
-                                                                const isYesterday = d.toDateString() === yesterday.toDateString();
-
-                                                                if (isToday) return `Hoy, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-                                                                if (isYesterday) return 'Ayer';
-                                                                return d.toLocaleDateString();
-                                                            })()}
-                                                        </span>
-                                                    </div>
-
-                                                    <p className="text-sm text-gray-500 mt-1 truncate">
-                                                        {order.negocio_nombre || 'Restaurante'} • {order.items?.length || 0} items • <span className="text-gray-900 font-bold ml-1">${order.total?.toLocaleString()}</span>
-                                                    </p>
-
-                                                    <div className="flex items-center gap-3 mt-3">
-                                                        <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-gray-100 ${['entregado'].includes(order.estado) ? 'text-gray-500' : 'text-green-700 bg-green-50'}`}>
-                                                            {order.estado?.replace('_', ' ')}
-                                                        </div>
-
-                                                        {['pendiente', 'en_proceso', 'en_camino'].includes(order.estado) && (
-                                                            <button
-                                                                className="text-sm font-bold text-[#2563EB] hover:text-[#22C55E] transition-colors"
-                                                                onClick={(e) => { e.stopPropagation(); navigate(`/${order.negocio_slug || slug}/mis-pedidos?order=${order.id}`); }}
-                                                            >
-                                                                Rastrear pedido
-                                                            </button>
-                                                        )}
-                                                        {['entregado', 'cancelado'].includes(order.estado) && (
-                                                            <button
-                                                                className="text-sm font-bold text-[#22C55E] hover:text-[#16A34A] transition-colors"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    const targetSlug = order.negocio_slug || slug;
-                                                                    navigate(targetSlug === 'demo-restaurante' ? '/demo-restaurante' : `/${targetSlug}/menu`);
-                                                                }}
-                                                            >
-                                                                Volver a pedir
-                                                            </button>
-                                                        )}
-                                                        {['entregado', 'cancelado'].includes(order.estado) && (
-                                                            <button
-                                                                className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors flex items-center gap-1.5 ml-auto border border-red-100 px-2.5 py-1 rounded-lg hover:bg-red-50"
-                                                                onClick={(e) => { e.stopPropagation(); handleHideOrder(order.id); }}
-                                                            >
-                                                                <Trash2 className="w-3.5 h-3.5" />
-                                                                Eliminar
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))
-                            )}
-                        </div>
+                        <span className="text-[11px] font-bold text-gray-500 mt-0.5">Nivel</span>
                     </div>
 
-                    <div className="space-y-4 pt-4">
-                        <div className="px-2">
-                            <h3 className="text-lg font-black text-[#111814] flex items-center gap-2">
-                                <Shield className="w-5 h-5 text-[#EAB308]" />
-                                Seguridad
-                            </h3>
+                    <div
+                        onClick={() => setShowWheelModal(true)}
+                        className="flex-1 flex flex-col items-center px-1 cursor-pointer group"
+                    >
+                        <div className="flex items-center gap-1 text-[#C86414] font-black text-xs sm:text-sm group-hover:scale-105 transition-transform">
+                            <Gift className="w-4 h-4 text-[#C86414]" />
+                            <span>Canjear</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
                         </div>
-                        <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
-                            <CardContent className="p-8">
-                                <div className="space-y-6">
-                                    <div className="pb-6 border-b border-gray-100">
-                                        <h4 className="font-bold text-gray-900 mb-2">PIN de Acceso Rápido</h4>
-                                        <p className="text-sm text-gray-500 font-medium mb-4">
-                                            Establece un PIN de 4 dígitos para entrar a tu cuenta sin esperar el código de WhatsApp.
-                                            Te recomendamos usar los primeros o últimos 4 dígitos de tu celular.
-                                        </p>
-                                        <form onSubmit={async (e) => {
-                                            e.preventDefault();
-                                            const pinVal = e.target.pin.value;
-                                            if (pinVal.length !== 4) return toast.error("El PIN debe tener 4 dígitos");
-                                            if (recoveryMethod === 'question' && (!securityQuestion || !securityAnswer)) {
-                                                return toast.error("Configura la pregunta y respuesta de seguridad");
-                                            }
-                                            if (recoveryMethod === 'hint' && !pinHint) {
-                                                return toast.error("Escribe una pista para tu PIN");
-                                            }
-
-                                            setSubmitting(true);
-                                            try {
-                                                const api = axios.create({
-                                                    baseURL: (import.meta.env && import.meta.env.REACT_APP_BACKEND_URL) || '/api',
-                                                    headers: { Authorization: `Bearer ${token}` }
-                                                });
-                                                await api.post('/client/update-pin', {
-                                                    pin: pinVal,
-                                                    recovery_method: recoveryMethod,
-                                                    pin_hint: pinHint,
-                                                    security_question: securityQuestion,
-                                                    security_answer: securityAnswer
-                                                });
-                                                toast.success("PIN y método de recuperación guardados");
-                                                e.target.reset();
-                                            } catch (err) {
-                                                toast.error("Error al guardar configuración");
-                                            } finally {
-                                                setSubmitting(false);
-                                            }
-                                        }} className="space-y-4">
-                                            <div className="flex flex-col sm:flex-row gap-4 items-end">
-                                                <div className="space-y-1 w-full sm:w-32">
-                                                    <Label className="text-xs font-bold text-gray-500">Nuevo PIN</Label>
-                                                    <Input
-                                                        name="pin"
-                                                        type="password"
-                                                        maxLength={4}
-                                                        placeholder="••••"
-                                                        className="h-12 rounded-xl bg-gray-50 border-gray-200 font-bold text-center text-xl tracking-widest w-full"
-                                                        required
-                                                    />
-                                                </div>
-                                                <Button
-                                                    type="submit"
-                                                    disabled={submitting}
-                                                    className="bg-[#4ADE80] hover:bg-[#22C55E] text-[#111814] font-black h-12 rounded-xl px-8 flex-1 sm:flex-none"
-                                                >
-                                                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Guardar PIN y Seguridad"}
-                                                </Button>
-                                            </div>
-
-                                            <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-4">
-                                                <Label className="font-bold text-gray-700">Método de recuperación</Label>
-                                                <div className="flex gap-4">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setRecoveryMethod('hint')}
-                                                        className={`flex-1 p-3 rounded-xl border-2 transition-all text-sm font-bold ${recoveryMethod === 'hint' ? 'border-[#4ADE80] bg-white text-[#111814]' : 'border-gray-100 bg-gray-50 text-gray-400'}`}
-                                                    >
-                                                        Pista (Hint)
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setRecoveryMethod('question')}
-                                                        className={`flex-1 p-3 rounded-xl border-2 transition-all text-sm font-bold ${recoveryMethod === 'question' ? 'border-[#4ADE80] bg-white text-[#111814]' : 'border-gray-100 bg-gray-50 text-gray-400'}`}
-                                                    >
-                                                        Pregunta Secreta
-                                                    </button>
-                                                </div>
-
-                                                {recoveryMethod === 'hint' ? (
-                                                    <div className="space-y-2">
-                                                        <Label className="text-xs font-bold text-gray-500">Pista para recordar tu PIN</Label>
-                                                        <Input
-                                                            placeholder="Ej: Últimos 4 del cel, año especial..."
-                                                            className="h-11 rounded-xl bg-white border-gray-200 text-sm"
-                                                            value={pinHint}
-                                                            onChange={e => setPinHint(e.target.value)}
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <div className="space-y-3">
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-bold text-gray-500">Elige tu pregunta</Label>
-                                                            <select
-                                                                className="w-full h-11 rounded-xl bg-white border border-gray-200 px-4 text-sm font-medium focus:ring-[#4ADE80] focus:border-[#4ADE80]"
-                                                                value={securityQuestion}
-                                                                onChange={e => setSecurityQuestion(e.target.value)}
-                                                            >
-                                                                <option value="">Selecciona una pregunta...</option>
-                                                                <option value="¿Nombre de tu primera mascota?">¿Nombre de tu primera mascota?</option>
-                                                                <option value="¿Ciudad donde naciste?">¿Ciudad donde naciste?</option>
-                                                                <option value="¿Nombre de tu escuela primaria?">¿Nombre de tu escuela primaria?</option>
-                                                                <option value="¿Marca de tu primer auto?">¿Marca de tu primer auto?</option>
-                                                            </select>
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-bold text-gray-500">Tu Respuesta</Label>
-                                                            <Input
-                                                                placeholder="Escribe la respuesta..."
-                                                                className="h-11 rounded-xl bg-white border-gray-200 text-sm"
-                                                                value={securityAnswer}
-                                                                onChange={e => setSecurityAnswer(e.target.value)}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </form>
-                                    </div>
-
-
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <span className="text-[11px] font-bold text-gray-500 mt-0.5">Mis premios</span>
                     </div>
                 </div>
-            </main>
+
+                {/* 4. Mis Pedidos (Counters Card) */}
+                <div className="mx-4 mt-5 bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2 font-black text-sm text-[#181615]">
+                            <Package className="w-4 h-4 text-[#181615]" />
+                            <span>Mis Pedidos</span>
+                        </div>
+                        <button
+                            onClick={() => navigate(`/${slug}/mi-cuenta/pedidos`)}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5"
+                        >
+                            Ver todos <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                        <div
+                            onClick={() => navigate(`/${slug}/mi-cuenta/pedidos`)}
+                            className="flex flex-col items-center py-2.5 px-1 rounded-xl bg-orange-50/60 cursor-pointer hover:bg-orange-100/60 transition-all"
+                        >
+                            <ShoppingCart className="w-5 h-5 text-[#C86414] mb-1" />
+                            <span className="text-base font-black text-[#181615]">{inProcessOrdersCount}</span>
+                            <span className="text-[10px] font-bold text-gray-500">En proceso</span>
+                        </div>
+
+                        <div
+                            onClick={() => navigate(`/${slug}/mi-cuenta/pedidos`)}
+                            className="flex flex-col items-center py-2.5 px-1 rounded-xl bg-orange-50/60 cursor-pointer hover:bg-orange-100/60 transition-all"
+                        >
+                            <Bike className="w-5 h-5 text-[#C86414] mb-1" />
+                            <span className="text-base font-black text-[#181615]">{onTheWayOrdersCount}</span>
+                            <span className="text-[10px] font-bold text-gray-500">En camino</span>
+                        </div>
+
+                        <div
+                            onClick={() => navigate(`/${slug}/mi-cuenta/pedidos`)}
+                            className="flex flex-col items-center py-2.5 px-1 rounded-xl bg-green-50/70 cursor-pointer hover:bg-green-100/70 transition-all"
+                        >
+                            <CheckCircle2 className="w-5 h-5 text-green-600 mb-1" />
+                            <span className="text-base font-black text-[#181615]">{deliveredOrdersCount}</span>
+                            <span className="text-[10px] font-bold text-gray-500">Entregados</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 5. Mis Direcciones Card */}
+                <div className="mx-4 mt-5 bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2 font-black text-sm text-[#181615]">
+                            <MapPin className="w-4 h-4 text-[#181615]" />
+                            <span>Mis Direcciones</span>
+                        </div>
+                        <button
+                            onClick={() => setShowAddressModal(true)}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5"
+                        >
+                            Administrar <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+
+                    <div
+                        onClick={() => setShowAddressModal(true)}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-gray-50/80 hover:bg-gray-100/70 transition-all cursor-pointer"
+                    >
+                        <div className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0">
+                            <Home className="w-4 h-4 text-gray-700" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-xs text-[#181615] truncate">
+                                    {primaryAddress?.nombre || 'Oficina'}
+                                </span>
+                                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                                    Principal
+                                </span>
+                            </div>
+                            <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                                {primaryAddress?.direccion || user.direccion || 'Calle 84 # 45 - 22, Piso 3'}
+                            </p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                    </div>
+                </div>
+
+                {/* 6. Action Menu List (Grouped with Dividers) */}
+                <div className="mx-4 mt-5 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100 mb-8">
+                    <button
+                        onClick={() => navigate(`/${slug}/mi-cuenta/editar`)}
+                        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-all text-left"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700">
+                                <User className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm font-bold text-[#181615]">Mis Datos Personales</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </button>
+
+                    <button
+                        onClick={() => setShowFavoritesModal(true)}
+                        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-all text-left"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500">
+                                <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+                            </div>
+                            <span className="text-sm font-bold text-[#181615]">Mis Favoritos</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            {favorites.length > 0 && (
+                                <span className="text-xs font-bold text-gray-400">{favorites.length}</span>
+                            )}
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => setShowNotificationsModal(true)}
+                        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-all text-left"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+                                <Bell className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm font-bold text-[#181615]">Notificaciones</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center">
+                                3
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => window.open('https://wa.me/573017810256?text=Hola%20Fog%C3%B3n%20%26%20Mesa%2C%20necesito%20ayuda%20con%20mi%20cuenta', '_blank')}
+                        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-all text-left"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                                <Headphones className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm font-bold text-[#181615]">Centro de Ayuda</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </button>
+
+                    <button
+                        onClick={() => setShowSecurityModal(true)}
+                        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-all text-left"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-yellow-50 flex items-center justify-center text-amber-600">
+                                <Shield className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm font-bold text-[#181615]">Seguridad y PIN de Acceso</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </button>
+
+                    <button
+                        onClick={logout}
+                        className="w-full flex items-center justify-between p-4 hover:bg-red-50/50 transition-all text-left group"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-red-100 flex items-center justify-center text-gray-600 group-hover:text-red-600 transition-colors">
+                                <LogOut className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm font-bold text-gray-700 group-hover:text-red-600 transition-colors">Cerrar Sesión</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </button>
+                </div>
+
+                {/* 7. Bottom Navigation Bar */}
+                <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-gray-100 px-6 py-2.5 flex items-center justify-between z-40 shadow-lg md:rounded-b-[2.5rem]">
+                    <button
+                        onClick={goToMenu}
+                        className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                        <Home className="w-5 h-5" />
+                        <span className="text-[10px] font-bold">Inicio</span>
+                    </button>
+
+                    <button
+                        onClick={goToMenu}
+                        className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                        <Utensils className="w-5 h-5" />
+                        <span className="text-[10px] font-bold">Menú</span>
+                    </button>
+
+                    <button
+                        onClick={() => navigate(`/${slug}/mi-cuenta/pedidos`)}
+                        className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors relative"
+                    >
+                        <div className="relative">
+                            <ShoppingCart className="w-5 h-5" />
+                            <span className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
+                                1
+                            </span>
+                        </div>
+                        <span className="text-[10px] font-bold">Pedidos</span>
+                    </button>
+
+                    <button
+                        className="flex flex-col items-center gap-1 text-[#C86414] font-bold transition-colors"
+                    >
+                        <User className="w-5 h-5" />
+                        <span className="text-[10px] font-extrabold border-b-2 border-[#C86414] pb-0.5">Perfil</span>
+                    </button>
+                </div>
+
+                {/* --- MODALS & DIALOGS --- */}
+
+                {/* Modal 1: Ruleta de Premios */}
+                <RuletaPremiosModal
+                    open={showWheelModal}
+                    onOpenChange={setShowWheelModal}
+                    slug={slug}
+                    businessName="Fogón & Mesa"
+                />
+
+                {/* Modal 2: Direcciones */}
+                <Dialog open={showAddressModal} onOpenChange={setShowAddressModal}>
+                    <DialogContent className="rounded-[2rem] max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-black text-[#181615]">Mis Direcciones</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 pt-2">
+                            {addresses.length > 0 ? (
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                    {addresses.map((addr) => (
+                                        <div key={addr.id} className="p-3 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-xs text-[#181615]">{addr.nombre}</span>
+                                                    {addr.es_principal && <Badge className="text-[9px] bg-emerald-100 text-emerald-800 border-none">Principal</Badge>}
+                                                </div>
+                                                <p className="text-[11px] text-gray-500 mt-0.5">{addr.direccion}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : null}
+
+                            <form onSubmit={handleSaveAddress} className="space-y-4 pt-2 border-t border-gray-100">
+                                <h4 className="font-bold text-sm text-gray-800">Agregar Nueva Dirección</h4>
+                                <div className="space-y-2">
+                                    <Label className="font-bold text-xs">Nombre (Ej: Casa, Oficina)</Label>
+                                    <Input
+                                        placeholder="Mi Casa"
+                                        value={addressForm.nombre}
+                                        onChange={e => setAddressForm({ ...addressForm, nombre: e.target.value })}
+                                        className="rounded-xl h-10"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="font-bold text-xs">Dirección Completa</Label>
+                                    <div className="relative">
+                                        <Input
+                                            placeholder="Calle 84 # 45 - 22..."
+                                            value={addressForm.direccion}
+                                            onChange={e => setAddressForm({ ...addressForm, direccion: e.target.value })}
+                                            className="rounded-xl h-10 pr-10"
+                                            required
+                                        />
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="ghost"
+                                            className="absolute right-1 top-1/2 -translate-y-1/2 text-[#C86414]"
+                                            onClick={handleGetCurrentLocation}
+                                            disabled={detectingLocation}
+                                        >
+                                            {detectingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 pt-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className="flex-1 rounded-xl h-11 font-bold"
+                                        onClick={() => setShowAddressModal(false)}
+                                    >
+                                        Cerrar
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        disabled={savingAddress}
+                                        className="flex-1 rounded-xl h-11 bg-[#C86414] hover:bg-[#181615] text-white font-bold"
+                                    >
+                                        {savingAddress ? <Loader2 className="w-4 h-4 animate-spin" /> : "Guardar"}
+                                    </Button>
+                                </div>
+                            </form>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Modal 3: Seguridad y PIN */}
+                <Dialog open={showSecurityModal} onOpenChange={setShowSecurityModal}>
+                    <DialogContent className="rounded-[2rem] max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-black text-[#181615] flex items-center gap-2">
+                                <Shield className="w-5 h-5 text-amber-500" />
+                                Seguridad y PIN de Acceso
+                            </DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={async (e) => {
+                            e.preventDefault();
+                            const pinVal = e.target.pin.value;
+                            if (pinVal.length !== 4) return toast.error("El PIN debe tener 4 dígitos");
+                            if (recoveryMethod === 'question' && (!securityQuestion || !securityAnswer)) {
+                                return toast.error("Configura la pregunta y respuesta");
+                            }
+                            if (recoveryMethod === 'hint' && !pinHint) {
+                                return toast.error("Escribe una pista para tu PIN");
+                            }
+
+                            setSubmitting(true);
+                            try {
+                                const api = axios.create({
+                                    baseURL: (import.meta.env && import.meta.env.REACT_APP_BACKEND_URL) || '/api',
+                                    headers: { Authorization: `Bearer ${token}` }
+                                });
+                                await api.post('/client/update-pin', {
+                                    pin: pinVal,
+                                    recovery_method: recoveryMethod,
+                                    pin_hint: pinHint,
+                                    security_question: securityQuestion,
+                                    security_answer: securityAnswer
+                                });
+                                toast.success("PIN de seguridad guardado");
+                                setShowSecurityModal(false);
+                            } catch (err) {
+                                toast.error("Error al guardar PIN");
+                            } finally {
+                                setSubmitting(false);
+                            }
+                        }} className="space-y-4 pt-2">
+                            <p className="text-xs text-gray-500">
+                                Establece un PIN de 4 dígitos para acceder a tu cuenta sin esperar el SMS o código de WhatsApp.
+                            </p>
+                            <div className="space-y-1">
+                                <Label className="text-xs font-bold text-gray-600">Nuevo PIN (4 dígitos)</Label>
+                                <Input
+                                    name="pin"
+                                    type="password"
+                                    maxLength={4}
+                                    placeholder="••••"
+                                    className="h-11 rounded-xl bg-gray-50 font-black text-center text-xl tracking-widest"
+                                    required
+                                />
+                            </div>
+
+                            <div className="p-3 bg-gray-50 rounded-xl space-y-3">
+                                <Label className="text-xs font-bold text-gray-700">Método de recuperación</Label>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setRecoveryMethod('hint')}
+                                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${recoveryMethod === 'hint' ? 'bg-[#C86414] text-white' : 'bg-gray-200 text-gray-600'}`}
+                                    >
+                                        Pista (Hint)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setRecoveryMethod('question')}
+                                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${recoveryMethod === 'question' ? 'bg-[#C86414] text-white' : 'bg-gray-200 text-gray-600'}`}
+                                    >
+                                        Pregunta
+                                    </button>
+                                </div>
+                                {recoveryMethod === 'hint' ? (
+                                    <Input
+                                        placeholder="Pista (ej: últimos 4 de mi cédula)"
+                                        className="h-9 rounded-lg text-xs bg-white"
+                                        value={pinHint}
+                                        onChange={e => setPinHint(e.target.value)}
+                                    />
+                                ) : (
+                                    <div className="space-y-2">
+                                        <select
+                                            className="w-full h-9 rounded-lg border border-gray-200 text-xs px-2 bg-white"
+                                            value={securityQuestion}
+                                            onChange={e => setSecurityQuestion(e.target.value)}
+                                        >
+                                            <option value="">Selecciona pregunta...</option>
+                                            <option value="¿Nombre de tu primera mascota?">¿Nombre de tu primera mascota?</option>
+                                            <option value="¿Ciudad de nacimiento?">¿Ciudad de nacimiento?</option>
+                                        </select>
+                                        <Input
+                                            placeholder="Tu respuesta secreta"
+                                            className="h-9 rounded-lg text-xs bg-white"
+                                            value={securityAnswer}
+                                            onChange={e => setSecurityAnswer(e.target.value)}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="flex-1 rounded-xl h-11 font-bold"
+                                    onClick={() => setShowSecurityModal(false)}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={submitting}
+                                    className="flex-1 rounded-xl h-11 bg-[#C86414] hover:bg-[#181615] text-white font-bold"
+                                >
+                                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Guardar PIN"}
+                                </Button>
+                            </div>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Modal 4: Favoritos */}
+                <Dialog open={showFavoritesModal} onOpenChange={setShowFavoritesModal}>
+                    <DialogContent className="rounded-[2rem] max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-black text-[#181615] flex items-center gap-2">
+                                <Heart className="w-5 h-5 fill-red-500 text-red-500" />
+                                Mis Platos Favoritos
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-3 pt-2">
+                            {favorites.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500">
+                                    <p className="text-sm font-medium">Aún no has guardado platos favoritos.</p>
+                                    <Button
+                                        onClick={() => { setShowFavoritesModal(false); goToMenu(); }}
+                                        className="mt-4 bg-[#C86414] hover:bg-[#181615] text-white font-bold rounded-xl"
+                                    >
+                                        Explorar la Carta
+                                    </Button>
+                                </div>
+                            ) : (
+                                favorites.map((fav, i) => (
+                                    <div key={i} className="p-3 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between">
+                                        <span className="font-bold text-sm text-[#181615]">{fav.negocio_nombre || 'Plato Favorito'}</span>
+                                        <Button size="sm" onClick={() => { setShowFavoritesModal(false); goToMenu(); }} className="bg-[#C86414] text-white font-bold rounded-lg text-xs">
+                                            Pedir
+                                        </Button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Modal 5: Notificaciones */}
+                <Dialog open={showNotificationsModal} onOpenChange={setShowNotificationsModal}>
+                    <DialogContent className="rounded-[2rem] max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-black text-[#181615] flex items-center gap-2">
+                                <Bell className="w-5 h-5 text-amber-500" />
+                                Notificaciones
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-3 pt-2">
+                            <div className="p-3 rounded-xl bg-orange-50/60 border border-orange-100 flex items-start gap-3">
+                                <div className="w-2 h-2 rounded-full bg-[#C86414] mt-1.5 shrink-0" />
+                                <div>
+                                    <p className="text-xs font-bold text-[#181615]">¡Giro diario en la Ruleta disponible!</p>
+                                    <p className="text-[11px] text-gray-500 mt-0.5">Tienes 1 tiro gratis hoy para ganar almuerzos, postres o bebidas gratis.</p>
+                                    <button onClick={() => { setShowNotificationsModal(false); setShowWheelModal(true); }} className="text-[11px] font-bold text-[#C86414] mt-1 underline">
+                                        Girar ahora
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="p-3 rounded-xl bg-green-50/60 border border-green-100 flex items-start gap-3">
+                                <div className="w-2 h-2 rounded-full bg-green-600 mt-1.5 shrink-0" />
+                                <div>
+                                    <p className="text-xs font-bold text-[#181615]">Estado de Pedido</p>
+                                    <p className="text-[11px] text-gray-500 mt-0.5">Tu último pedido fue entregado con éxito. ¡Gracias por preferir Fogón & Mesa!</p>
+                                </div>
+                            </div>
+                            <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-100 flex items-start gap-3">
+                                <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 shrink-0" />
+                                <div>
+                                    <p className="text-xs font-bold text-[#181615]">Recomendación del Chef</p>
+                                    <p className="text-[11px] text-gray-500 mt-0.5">Hoy tenemos Churrasco a la Brasa y Cazuela de Frijoles fresca en el menú.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            </div>
         </div>
     );
 }
