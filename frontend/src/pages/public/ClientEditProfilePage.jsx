@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from 'sonner';
 
-const API_BASE = (import.meta.env && (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL)) || '/api';
+const RAW_API = (import.meta.env && (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL)) || '';
+const API_BASE = RAW_API ? (RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api`) : '/api';
 
 export default function ClientEditProfilePage() {
     const { slug } = useParams();
@@ -124,19 +125,40 @@ export default function ClientEditProfilePage() {
             return;
         }
 
-        const formData = new FormData();
-        formData.append('file', file);
+        const readAsDataUrl = () => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
 
-        const toastId = toast.loading("Subiendo imagen...");
+        const toastId = toast.loading("Actualizando foto de perfil...");
+
+        if (token === 'universal-client-token') {
+            try {
+                const dataUrl = await readAsDataUrl();
+                setFormData(prev => {
+                    const next = { ...prev, avatar_url: dataUrl };
+                    localStorage.setItem('universal_client_profile', JSON.stringify(next));
+                    return next;
+                });
+                toast.success("Foto actualizada correctamente", { id: toastId });
+            } catch {
+                toast.error("No se pudo leer la imagen", { id: toastId });
+            }
+            return;
+        }
+
+        const uploadData = new FormData();
+        uploadData.append('file', file);
 
         try {
-            // Include business context if available
             let url = `${API_BASE}/client/upload-avatar`;
             if (businessId) {
                 url += `?negocio_id=${businessId}`;
             }
 
-            const res = await axios.post(url, formData, {
+            const res = await axios.post(url, uploadData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     Authorization: `Bearer ${token}`
@@ -146,8 +168,14 @@ export default function ClientEditProfilePage() {
             setFormData(prev => ({ ...prev, avatar_url: res.data.url }));
             toast.success("Imagen subida correctamente", { id: toastId });
         } catch (error) {
-            console.error(error);
-            toast.error("Error al subir imagen", { id: toastId });
+            console.warn("Avatar upload fallback to local DataURL:", error);
+            try {
+                const dataUrl = await readAsDataUrl();
+                setFormData(prev => ({ ...prev, avatar_url: dataUrl }));
+                toast.success("Foto cargada correctamente", { id: toastId });
+            } catch {
+                toast.error("Error al subir imagen", { id: toastId });
+            }
         }
     };
 

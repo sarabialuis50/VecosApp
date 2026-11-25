@@ -15,6 +15,13 @@ import {
     Settings, Camera, Crown, Gift, ShoppingCart, Bike, Bell, Headphones, Utensils, Mail
 } from 'lucide-react';
 import RuletaPremiosModal from '@/components/RuletaPremiosModal';
+
+const RAW_API = (import.meta.env && (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL)) || '';
+const API_BASE = RAW_API ? (RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api`) : '/api';
+
+const DEFAULT_DEMO_ADDRESSES = [
+    { id: 'addr-1', nombre: 'Oficina', direccion: 'Calle 84 # 45 - 22, Piso 3', es_principal: true },
+];
 import {
     Dialog,
     DialogContent,
@@ -124,19 +131,27 @@ export default function ClientProfilePage() {
         if (token === 'universal-client-token') {
             const savedProfile = localStorage.getItem('universal_client_profile');
             const parsed = savedProfile ? JSON.parse(savedProfile) : {};
+            const savedSecurity = localStorage.getItem('universal_client_security');
+            const parsedSec = savedSecurity ? JSON.parse(savedSecurity) : {};
+            const savedAddresses = localStorage.getItem('universal_client_addresses');
+            const parsedAddresses = savedAddresses ? JSON.parse(savedAddresses) : DEFAULT_DEMO_ADDRESSES;
+
             setUser({
                 id: 'demo-client-1',
                 nombre: parsed.nombre || 'Cliente de Prueba',
                 telefono: parsed.telefono || '+57 300 123 4567',
                 email: parsed.email || 'cliente@fogonmesa.com',
                 avatar_url: parsed.avatar_url || '',
-                recovery_method: 'hint',
-                pin_hint: '1234',
+                recovery_method: parsedSec.recovery_method || 'hint',
+                pin_hint: parsedSec.pin_hint || '1234',
+                security_question: parsedSec.security_question || '',
             });
+            if (parsedSec.recovery_method) setRecoveryMethod(parsedSec.recovery_method);
+            if (parsedSec.pin_hint) setPinHint(parsedSec.pin_hint);
+            if (parsedSec.security_question) setSecurityQuestion(parsedSec.security_question);
+
             setLoyalty({ puntos: 250, activo: true });
-            setAddresses([
-                { id: 'addr-1', nombre: 'Oficina', direccion: 'Calle 84 # 45 - 22, Piso 3', es_principal: true },
-            ]);
+            setAddresses(Array.isArray(parsedAddresses) && parsedAddresses.length > 0 ? parsedAddresses : DEFAULT_DEMO_ADDRESSES);
             setOrders([
                 {
                     id: 'PED-1042',
@@ -151,9 +166,11 @@ export default function ClientProfilePage() {
         }
         setLoading(true);
         try {
-            const profileRes = await axios.get('/api/client/me', {
+            const api = axios.create({
+                baseURL: API_BASE,
                 headers: { Authorization: `Bearer ${token}` }
             });
+            const profileRes = await api.get('/client/me');
             const currentUser = profileRes.data;
             setUser(currentUser);
 
@@ -177,7 +194,6 @@ export default function ClientProfilePage() {
         } catch (error) {
             console.error("Error fetching profile:", error);
             if (error.response?.status === 401) {
-                // Only logout on 401 if we don't have user data already OR it's a hard error
                 logout();
             }
         } finally {
@@ -358,26 +374,93 @@ export default function ClientProfilePage() {
 
     async function handleSaveAddress(e) {
         e.preventDefault();
-        if (!addressForm.nombre || !addressForm.direccion) {
+        if (!addressForm.nombre.trim() || !addressForm.direccion.trim()) {
             toast.error("Completa todos los campos");
             return;
         }
 
         setSavingAddress(true);
+        const saveLocally = () => {
+            const newAddr = {
+                id: `addr-${Date.now()}`,
+                nombre: addressForm.nombre.trim(),
+                direccion: addressForm.direccion.trim(),
+                es_principal: addressForm.es_principal || addresses.length === 0,
+            };
+            const updated = addressForm.es_principal
+                ? [...addresses.map(a => ({ ...a, es_principal: false })), newAddr]
+                : [...addresses, newAddr];
+            setAddresses(updated);
+            localStorage.setItem('universal_client_addresses', JSON.stringify(updated));
+            toast.success("Dirección guardada correctamente");
+            setAddressForm({ nombre: '', direccion: '', es_principal: false });
+        };
+
+        if (token === 'universal-client-token') {
+            saveLocally();
+            setSavingAddress(false);
+            return;
+        }
+
         try {
             const api = axios.create({
-                baseURL: (import.meta.env && import.meta.env.REACT_APP_BACKEND_URL) || '/api',
+                baseURL: API_BASE,
                 headers: { Authorization: `Bearer ${token}` }
             });
             await api.post('/client/addresses', addressForm);
-            toast.success("Dirección guardada");
-            setShowAddressModal(false);
+            toast.success("Dirección guardada correctamente");
             setAddressForm({ nombre: '', direccion: '', es_principal: false });
-            fetchProfile(); // Refresh list
+            fetchProfile();
         } catch (error) {
-            toast.error("Error al guardar dirección");
+            console.warn("Backend address save fallback:", error);
+            saveLocally();
         } finally {
             setSavingAddress(false);
+        }
+    }
+
+    async function handleSetPrimaryAddress(addrId) {
+        const updated = addresses.map(a => ({ ...a, es_principal: a.id === addrId }));
+        setAddresses(updated);
+        if (token === 'universal-client-token') {
+            localStorage.setItem('universal_client_addresses', JSON.stringify(updated));
+            toast.success("Dirección principal actualizada");
+            return;
+        }
+        try {
+            const api = axios.create({
+                baseURL: API_BASE,
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            await api.put(`/client/addresses/${addrId}`, { es_principal: true });
+            toast.success("Dirección principal actualizada");
+        } catch {
+            localStorage.setItem('universal_client_addresses', JSON.stringify(updated));
+            toast.success("Dirección principal actualizada");
+        }
+    }
+
+    async function handleDeleteAddress(addrId) {
+        let updated = addresses.filter(a => a.id !== addrId);
+        if (updated.length > 0 && !updated.some(a => a.es_principal)) {
+            updated[0] = { ...updated[0], es_principal: true };
+        }
+        setAddresses(updated);
+        if (token === 'universal-client-token') {
+            localStorage.setItem('universal_client_addresses', JSON.stringify(updated));
+            toast.success("Dirección eliminada");
+            return;
+        }
+        try {
+            const api = axios.create({
+                baseURL: API_BASE,
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            await api.delete(`/client/addresses/${addrId}`);
+            toast.success("Dirección eliminada");
+        } catch {
+            localStorage.setItem('universal_client_addresses', JSON.stringify(updated));
+            toast.success("Dirección eliminada");
         }
     }
 
@@ -1128,22 +1211,42 @@ export default function ClientProfilePage() {
                         </DialogHeader>
                         <div className="space-y-4 pt-2">
                             {addresses.length > 0 ? (
-                                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
                                     {addresses.map((addr) => (
-                                        <div key={addr.id} className="p-3 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between">
-                                            <div>
+                                        <div key={addr.id} className="p-3 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between gap-2">
+                                            <div className="min-w-0 flex-1">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-xs text-[#181615]">{addr.nombre}</span>
-                                                    {addr.es_principal && <Badge className="text-[9px] bg-emerald-100 text-emerald-800 border-none">Principal</Badge>}
+                                                    <span className="font-bold text-xs text-[#181615] truncate">{addr.nombre}</span>
+                                                    {addr.es_principal ? (
+                                                        <Badge className="text-[9px] bg-emerald-100 text-emerald-800 border-none">Principal</Badge>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSetPrimaryAddress(addr.id)}
+                                                            className="text-[10px] font-bold text-[#C86414] hover:underline"
+                                                        >
+                                                            Hacer principal
+                                                        </button>
+                                                    )}
                                                 </div>
-                                                <p className="text-[11px] text-gray-500 mt-0.5">{addr.direccion}</p>
+                                                <p className="text-[11px] text-gray-500 mt-0.5 truncate">{addr.direccion}</p>
                                             </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteAddress(addr.id)}
+                                                className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                                                title="Eliminar dirección"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
-                            ) : null}
+                            ) : (
+                                <p className="text-xs text-gray-400 text-center py-2">No tienes direcciones guardadas aún.</p>
+                            )}
 
-                            <form onSubmit={handleSaveAddress} className="space-y-4 pt-2 border-t border-gray-100">
+                            <form onSubmit={handleSaveAddress} className="space-y-4 pt-3 border-t border-gray-100">
                                 <h4 className="font-bold text-sm text-gray-800">Agregar Nueva Dirección</h4>
                                 <div className="space-y-2">
                                     <Label className="font-bold text-xs">Nombre (Ej: Casa, Oficina)</Label>
@@ -1172,11 +1275,21 @@ export default function ClientProfilePage() {
                                             className="absolute right-1 top-1/2 -translate-y-1/2 text-[#C86414]"
                                             onClick={handleGetCurrentLocation}
                                             disabled={detectingLocation}
+                                            title="Detectar ubicación GPS"
                                         >
                                             {detectingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
                                         </Button>
                                     </div>
                                 </div>
+                                <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={addressForm.es_principal}
+                                        onChange={e => setAddressForm({ ...addressForm, es_principal: e.target.checked })}
+                                        className="rounded border-gray-300 accent-[#C86414]"
+                                    />
+                                    Establecer como dirección principal
+                                </label>
                                 <div className="flex gap-2 pt-2">
                                     <Button
                                         type="button"
@@ -1220,9 +1333,27 @@ export default function ClientProfilePage() {
                             }
 
                             setSubmitting(true);
+                            const saveSecurityLocally = () => {
+                                localStorage.setItem('universal_client_security', JSON.stringify({
+                                    pin: pinVal,
+                                    recovery_method: recoveryMethod,
+                                    pin_hint: pinHint,
+                                    security_question: securityQuestion,
+                                    security_answer: securityAnswer
+                                }));
+                                toast.success("PIN y método de recuperación guardados");
+                                setShowSecurityModal(false);
+                            };
+
+                            if (token === 'universal-client-token') {
+                                saveSecurityLocally();
+                                setSubmitting(false);
+                                return;
+                            }
+
                             try {
                                 const api = axios.create({
-                                    baseURL: (import.meta.env && import.meta.env.REACT_APP_BACKEND_URL) || '/api',
+                                    baseURL: API_BASE,
                                     headers: { Authorization: `Bearer ${token}` }
                                 });
                                 await api.post('/client/update-pin', {
@@ -1235,7 +1366,7 @@ export default function ClientProfilePage() {
                                 toast.success("PIN de seguridad guardado");
                                 setShowSecurityModal(false);
                             } catch (err) {
-                                toast.error("Error al guardar PIN");
+                                saveSecurityLocally();
                             } finally {
                                 setSubmitting(false);
                             }

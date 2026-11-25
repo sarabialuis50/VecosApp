@@ -58,8 +58,10 @@ export default function ClientOrdersPage() {
             return;
         }
         try {
+            const rawApi = (import.meta.env && (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL)) || '';
+            const apiBase = rawApi ? (rawApi.endsWith('/api') ? rawApi : `${rawApi}/api`) : '/api';
             const api = axios.create({
-                baseURL: (import.meta.env && import.meta.env.REACT_APP_BACKEND_URL) || '/api',
+                baseURL: apiBase,
                 headers: { Authorization: `Bearer ${token}` }
             });
 
