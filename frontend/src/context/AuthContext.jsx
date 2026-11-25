@@ -112,29 +112,33 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const normalizedEmail = (email || '').trim().toLowerCase();
-    // Credenciales universales de prueba para desarrollo local
-    if (
-      (normalizedEmail === 'admin@fogonmesa.com' && (password === 'admin123' || password === '123456')) ||
-      password === 'admin123'
-    ) {
-      const demoBusiness = {
-        ...UNIVERSAL_ADMIN_BUSINESS,
-        email: normalizedEmail || UNIVERSAL_ADMIN_BUSINESS.email,
-      };
-      localStorage.setItem('menu.ia_token', UNIVERSAL_ADMIN_TOKEN);
-      setToken(UNIVERSAL_ADMIN_TOKEN);
-      setUser(demoBusiness);
+    try {
+      const response = await axios.post(`${API}/auth/login`, { email: normalizedEmail, password });
+      const { access_token, business } = response.data;
+      localStorage.setItem('menu.ia_token', access_token);
+      setToken(access_token);
+      setUser(business);
       setTrialLocked(null);
-      return demoBusiness;
+      return business;
+    } catch (err) {
+      // Fallback a modo demo offline solo si el backend no está disponible
+      if (
+        (!err.response || err.response.status >= 500) &&
+        ((normalizedEmail === 'admin@fogonmesa.com' && (password === 'admin123' || password === '123456')) ||
+          password === 'admin123')
+      ) {
+        const demoBusiness = {
+          ...UNIVERSAL_ADMIN_BUSINESS,
+          email: normalizedEmail || UNIVERSAL_ADMIN_BUSINESS.email,
+        };
+        localStorage.setItem('menu.ia_token', UNIVERSAL_ADMIN_TOKEN);
+        setToken(UNIVERSAL_ADMIN_TOKEN);
+        setUser(demoBusiness);
+        setTrialLocked(null);
+        return demoBusiness;
+      }
+      throw err;
     }
-
-    const response = await axios.post(`${API}/auth/login`, { email, password });
-    const { access_token, business } = response.data;
-    localStorage.setItem('menu.ia_token', access_token);
-    setToken(access_token);
-    setUser(business);
-    setTrialLocked(null);
-    return business;
   };
 
   const register = async (data) => {

@@ -388,7 +388,33 @@ export default function LandingPage() {
     }
   };
 
-  const handleWhatsAppOrder = () => {
+  const handleWhatsAppOrder = async () => {
+    const apiBase = (import.meta.env && (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL)) || '/api';
+    const orderUrl = apiBase.endsWith('/api') ? `${apiBase}/orders/demo-restaurante` : `${apiBase}/api/orders/demo-restaurante`;
+    try {
+      await fetch(orderUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cliente_nombre: 'Pedido Web (WhatsApp)',
+          cliente_telefono: '3000000000',
+          tipo: 'delivery',
+          metodo_entrega: 'Domicilio',
+          metodo_pago: 'Efectivo',
+          notas: `Sopa: ${selectedSoup} | Proteína: ${selectedProtein} | Acompañamientos: ${selectedSides.join(' + ')} | Bebida: ${selectedDrink}`,
+          items: [
+            {
+              nombre: `Almuerzo del Día (${selectedProtein})`,
+              cantidad: 1,
+              precio: 18500,
+              notas: `Sopa: ${selectedSoup}, Acompañamientos: ${selectedSides.join(' + ')}, Bebida: ${selectedDrink}`,
+            },
+          ],
+        }),
+      });
+    } catch (err) {
+      console.warn('No se pudo registrar orden previa en cocina:', err);
+    }
     const text = `¡Hola Fogón & Mesa! Quiero pedir el Almuerzo del Día ($18.500):%0A• Sopa: ${selectedSoup}%0A• Proteína: ${selectedProtein}%0A• Acompañamientos: ${selectedSides.join(' + ')}%0A• Bebida: ${selectedDrink}`;
     window.open(`https://wa.me/573017810256?text=${text}`, '_blank', 'noopener,noreferrer');
   };
