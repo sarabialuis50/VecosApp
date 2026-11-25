@@ -29,10 +29,13 @@ CHANNEL_WHATSAPP = "whatsapp"
 CHANNEL_WEB = "web"
 MAX_TOOL_ROUNDS = 5
 
-# Initialize Supabase
-supabase_url = os.environ.get("SUPABASE_URL")
-supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") # Use Service Role Key for backend ops
-supabase: SupabaseClient = create_client(supabase_url, supabase_key)
+# Initialize Supabase (Optional / Standalone fallback)
+supabase_url = os.environ.get("SUPABASE_URL") or "https://placeholder.supabase.co"
+supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "placeholder_key"
+try:
+    supabase: SupabaseClient = create_client(supabase_url, supabase_key)
+except Exception as e:
+    supabase = None
 
 logger.info(f"ENV CHECK: TWILIO_ACCOUNT_SID_MENU_IA={'SET' if os.environ.get('TWILIO_ACCOUNT_SID_MENU_IA') else 'MISSING'}")
 logger.info(f"ENV CHECK: TWILIO_AUTH_TOKEN_MENU_IA={'SET' if os.environ.get('TWILIO_AUTH_TOKEN_MENU_IA') else 'MISSING'}")

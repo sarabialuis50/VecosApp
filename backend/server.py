@@ -69,10 +69,13 @@ from models_client import Cliente, ClienteCreate, ClienteUpdate
 from models_client import Address, AddressCreate, AddressUpdate
 from models_client import OTPRequest, OTPVerify, ClientTokenResponse, PINLogin, UpdatePINRequest, ResetPINRequest, RecoveryInfo
 
-# Supabase connection
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(url, key)
+# Supabase connection (Optional / Standalone fallback)
+url: str = os.environ.get("SUPABASE_URL") or "https://placeholder.supabase.co"
+key: str = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") or "placeholder_key"
+try:
+    supabase: Client = create_client(url, key)
+except Exception as e:
+    supabase = None
 
 import mercadopago
 
