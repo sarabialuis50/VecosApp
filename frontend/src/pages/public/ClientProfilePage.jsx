@@ -22,6 +22,32 @@ const API_BASE = RAW_API ? (RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api
 const DEFAULT_DEMO_ADDRESSES = [
     { id: 'addr-1', nombre: 'Oficina', direccion: 'Calle 84 # 45 - 22, Piso 3', es_principal: true },
 ];
+
+const DEFAULT_NOTIFICATIONS = [
+    {
+        id: 'notif-wheel',
+        title: '¡Giro diario en la Ruleta disponible!',
+        message: 'Tienes 1 tiro gratis hoy para ganar almuerzos, postres o bebidas gratis.',
+        actionLabel: 'Girar ahora',
+        actionType: 'wheel',
+        theme: 'orange',
+        read: false
+    },
+    {
+        id: 'notif-order',
+        title: 'Estado de Pedido',
+        message: 'Tu último pedido fue entregado con éxito. ¡Gracias por preferir Fogón & Mesa!',
+        theme: 'green',
+        read: false
+    },
+    {
+        id: 'notif-chef',
+        title: 'Recomendación del Chef',
+        message: 'Hoy tenemos Churrasco a la Brasa y Cazuela de Frijoles fresca en el menú.',
+        theme: 'blue',
+        read: false
+    }
+];
 import {
     Dialog,
     DialogContent,
@@ -77,6 +103,41 @@ export default function ClientProfilePage() {
     const [showSecurityModal, setShowSecurityModal] = useState(false);
     const [showFavoritesModal, setShowFavoritesModal] = useState(false);
     const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+    const [notifications, setNotifications] = useState(() => {
+        try {
+            const saved = localStorage.getItem('client_notifications');
+            if (saved !== null) return JSON.parse(saved);
+        } catch (e) {
+            console.warn('Error loading notifications', e);
+        }
+        return DEFAULT_NOTIFICATIONS;
+    });
+
+    const unreadNotificationsCount = notifications.filter(n => !n.read).length;
+
+    const handleOpenNotifications = () => {
+        setShowNotificationsModal(true);
+        if (unreadNotificationsCount > 0) {
+            const updated = notifications.map(n => ({ ...n, read: true }));
+            setNotifications(updated);
+            try {
+                localStorage.setItem('client_notifications', JSON.stringify(updated));
+            } catch (e) {
+                console.warn('Error saving notifications', e);
+            }
+        }
+    };
+
+    const handleDeleteNotification = (id) => {
+        const updated = notifications.filter(n => n.id !== id);
+        setNotifications(updated);
+        try {
+            localStorage.setItem('client_notifications', JSON.stringify(updated));
+        } catch (e) {
+            console.warn('Error saving notifications', e);
+        }
+        toast.success("Notificación eliminada");
+    };
     const [addressForm, setAddressForm] = useState({
         nombre: '',
         direccion: '',
@@ -1178,7 +1239,7 @@ export default function ClientProfilePage() {
                     </button>
 
                     <button
-                        onClick={() => setShowNotificationsModal(true)}
+                        onClick={handleOpenNotifications}
                         className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-all text-left"
                     >
                         <div className="flex items-center gap-3">
@@ -1188,9 +1249,11 @@ export default function ClientProfilePage() {
                             <span className="text-sm font-bold text-[#181615]">Notificaciones</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center">
-                                3
-                            </span>
+                            {unreadNotificationsCount > 0 && (
+                                <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center">
+                                    {unreadNotificationsCount}
+                                </span>
+                            )}
                             <ChevronRight className="w-4 h-4 text-gray-400" />
                         </div>
                     </button>
@@ -1610,31 +1673,59 @@ export default function ClientProfilePage() {
                                 Notificaciones
                             </DialogTitle>
                         </DialogHeader>
-                        <div className="space-y-3 pt-2">
-                            <div className="p-3 rounded-xl bg-orange-50/60 border border-orange-100 flex items-start gap-3">
-                                <div className="w-2 h-2 rounded-full bg-[#C86414] mt-1.5 shrink-0" />
-                                <div>
-                                    <p className="text-xs font-bold text-[#181615]">¡Giro diario en la Ruleta disponible!</p>
-                                    <p className="text-[11px] text-gray-500 mt-0.5">Tienes 1 tiro gratis hoy para ganar almuerzos, postres o bebidas gratis.</p>
-                                    <button onClick={() => { setShowNotificationsModal(false); setShowWheelModal(true); }} className="text-[11px] font-bold text-[#C86414] mt-1 underline">
-                                        Girar ahora
-                                    </button>
+                        <div className="space-y-3 pt-2 max-h-[60vh] overflow-y-auto">
+                            {notifications.length === 0 ? (
+                                <div className="py-10 text-center flex flex-col items-center gap-2 text-gray-400">
+                                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center">
+                                        <Bell className="w-5 h-5 text-gray-300" />
+                                    </div>
+                                    <p className="text-sm font-bold text-gray-500">No tienes notificaciones</p>
+                                    <p className="text-xs text-gray-400">Te avisaremos cuando haya novedades o promociones.</p>
                                 </div>
-                            </div>
-                            <div className="p-3 rounded-xl bg-green-50/60 border border-green-100 flex items-start gap-3">
-                                <div className="w-2 h-2 rounded-full bg-green-600 mt-1.5 shrink-0" />
-                                <div>
-                                    <p className="text-xs font-bold text-[#181615]">Estado de Pedido</p>
-                                    <p className="text-[11px] text-gray-500 mt-0.5">Tu último pedido fue entregado con éxito. ¡Gracias por preferir Fogón & Mesa!</p>
-                                </div>
-                            </div>
-                            <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-100 flex items-start gap-3">
-                                <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 shrink-0" />
-                                <div>
-                                    <p className="text-xs font-bold text-[#181615]">Recomendación del Chef</p>
-                                    <p className="text-[11px] text-gray-500 mt-0.5">Hoy tenemos Churrasco a la Brasa y Cazuela de Frijoles fresca en el menú.</p>
-                                </div>
-                            </div>
+                            ) : (
+                                notifications.map((notif) => {
+                                    const themeClasses =
+                                        notif.theme === 'orange'
+                                            ? { box: 'bg-orange-50/60 border-orange-100', dot: 'bg-[#C86414]' }
+                                            : notif.theme === 'green'
+                                            ? { box: 'bg-green-50/60 border-green-100', dot: 'bg-green-600' }
+                                            : { box: 'bg-blue-50/60 border-blue-100', dot: 'bg-blue-600' };
+
+                                    return (
+                                        <div
+                                            key={notif.id}
+                                            className={`p-3 rounded-xl border flex items-start gap-3 ${themeClasses.box}`}
+                                        >
+                                            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${themeClasses.dot}`} />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-bold text-[#181615]">{notif.title}</p>
+                                                <p className="text-[11px] text-gray-500 mt-0.5">{notif.message}</p>
+                                                {notif.actionLabel && notif.actionType === 'wheel' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setShowNotificationsModal(false);
+                                                            setShowWheelModal(true);
+                                                        }}
+                                                        className="text-[11px] font-bold text-[#C86414] mt-1 underline cursor-pointer"
+                                                    >
+                                                        {notif.actionLabel}
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteNotification(notif.id)}
+                                                className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-white/80 transition-colors shrink-0 cursor-pointer"
+                                                title="Eliminar notificación"
+                                                aria-label="Eliminar notificación"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
                     </DialogContent>
                 </Dialog>
