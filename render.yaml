@@ -6,6 +6,7 @@ services:
   - type: web
     name: fogon-mesa-backend
     runtime: python
+    plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
@@ -52,6 +53,7 @@ services:
   - type: web
     name: fogon-mesa-whatsapp-bridge
     runtime: node
+    plan: free
     rootDir: whatsapp-bridge
     buildCommand: npm install
     startCommand: npm start
