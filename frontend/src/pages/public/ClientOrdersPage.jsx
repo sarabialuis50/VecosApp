@@ -36,9 +36,21 @@ export default function ClientOrdersPage() {
         fetchOrders();
     }, [token, slug]);
 
+    const markOrdersAsSeen = (ordersList) => {
+        try {
+            const saved = localStorage.getItem('client_seen_order_ids');
+            const prevIds = saved ? JSON.parse(saved) : [];
+            const newIds = (ordersList || []).map((o) => o.id).filter(Boolean);
+            const merged = Array.from(new Set([...prevIds, ...newIds]));
+            localStorage.setItem('client_seen_order_ids', JSON.stringify(merged));
+        } catch (e) {
+            console.warn('Error marking orders as seen', e);
+        }
+    };
+
     const fetchOrders = async () => {
         if (token === 'universal-client-token') {
-            setOrders([
+            const demoOrders = [
                 {
                     id: 'PED-1042',
                     estado: 'entregado',
@@ -53,7 +65,9 @@ export default function ClientOrdersPage() {
                     created_at: new Date(Date.now() - 86400000).toISOString(),
                     items: [{ nombre: 'Almuerzo Ejecutivo: Pechuga al Romero', cantidad: 1, precio_unitario: 18500 }],
                 },
-            ]);
+            ];
+            setOrders(demoOrders);
+            markOrdersAsSeen(demoOrders);
             setLoading(false);
             return;
         }
@@ -68,6 +82,7 @@ export default function ClientOrdersPage() {
             // Assuming /client/orders returns all orders for the authenticated user
             const res = await api.get('/client/orders');
             setOrders(res.data);
+            markOrdersAsSeen(res.data);
         } catch (error) {
             console.error(error);
             if (error.response?.status === 401) {

@@ -152,6 +152,32 @@ export default function ClientProfilePage() {
         return saved ? JSON.parse(saved) : [];
     });
 
+    // Seen orders state (controls red badge on Pedidos icon)
+    const [seenOrderIds, setSeenOrderIds] = useState(() => {
+        try {
+            const saved = localStorage.getItem('client_seen_order_ids');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const unseenOrdersCount = orders.filter(
+        (o) => !hiddenOrderIds.includes(o.id) && !seenOrderIds.includes(o.id)
+    ).length;
+
+    const handleOpenOrders = () => {
+        const currentIds = orders.map((o) => o.id).filter(Boolean);
+        const mergedSeen = Array.from(new Set([...seenOrderIds, ...currentIds]));
+        setSeenOrderIds(mergedSeen);
+        try {
+            localStorage.setItem('client_seen_order_ids', JSON.stringify(mergedSeen));
+        } catch (e) {
+            console.warn('Error saving seen orders', e);
+        }
+        navigate(`/${slug}/mi-cuenta/pedidos`);
+    };
+
     const goToMenu = () => {
         if (slug === 'demo-restaurante') {
             navigate('/demo-restaurante');
@@ -1129,7 +1155,7 @@ export default function ClientProfilePage() {
                             <span>Mis Pedidos</span>
                         </div>
                         <button
-                            onClick={() => navigate(`/${slug}/mi-cuenta/pedidos`)}
+                            onClick={handleOpenOrders}
                             className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5"
                         >
                             Ver todos <ChevronRight className="w-3.5 h-3.5" />
@@ -1138,7 +1164,7 @@ export default function ClientProfilePage() {
 
                     <div className="grid grid-cols-3 gap-2">
                         <div
-                            onClick={() => navigate(`/${slug}/mi-cuenta/pedidos`)}
+                            onClick={handleOpenOrders}
                             className="flex flex-col items-center py-2.5 px-1 rounded-xl bg-orange-50/60 cursor-pointer hover:bg-orange-100/60 transition-all"
                         >
                             <ShoppingCart className="w-5 h-5 text-[#C86414] mb-1" />
@@ -1147,7 +1173,7 @@ export default function ClientProfilePage() {
                         </div>
 
                         <div
-                            onClick={() => navigate(`/${slug}/mi-cuenta/pedidos`)}
+                            onClick={handleOpenOrders}
                             className="flex flex-col items-center py-2.5 px-1 rounded-xl bg-orange-50/60 cursor-pointer hover:bg-orange-100/60 transition-all"
                         >
                             <Bike className="w-5 h-5 text-[#C86414] mb-1" />
@@ -1156,7 +1182,7 @@ export default function ClientProfilePage() {
                         </div>
 
                         <div
-                            onClick={() => navigate(`/${slug}/mi-cuenta/pedidos`)}
+                            onClick={handleOpenOrders}
                             className="flex flex-col items-center py-2.5 px-1 rounded-xl bg-green-50/70 cursor-pointer hover:bg-green-100/70 transition-all"
                         >
                             <CheckCircle2 className="w-5 h-5 text-green-600 mb-1" />
@@ -1317,14 +1343,16 @@ export default function ClientProfilePage() {
                     </button>
 
                     <button
-                        onClick={() => navigate(`/${slug}/mi-cuenta/pedidos`)}
+                        onClick={handleOpenOrders}
                         className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors relative"
                     >
                         <div className="relative">
                             <ShoppingCart className="w-5 h-5" />
-                            <span className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
-                                1
-                            </span>
+                            {unseenOrdersCount > 0 && (
+                                <span className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
+                                    {unseenOrdersCount}
+                                </span>
+                            )}
                         </div>
                         <span className="text-[10px] font-bold">Pedidos</span>
                     </button>
