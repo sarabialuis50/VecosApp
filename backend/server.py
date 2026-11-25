@@ -67,7 +67,7 @@ from models import (
 )
 from models_client import Cliente, ClienteCreate, ClienteUpdate
 from models_client import Address, AddressCreate, AddressUpdate
-from models_client import OTPRequest, OTPVerify, ClientTokenResponse, PINLogin, UpdatePINRequest, ResetPINRequest, RecoveryInfo
+from models_client import OTPRequest, OTPVerify, ClientTokenResponse, PINLogin, UpdatePINRequest, ResetPINRequest, RecoveryInfo, ChangePhoneRequestOTP, ChangePhoneVerify
 
 # Supabase connection (Optional / Standalone fallback)
 url: str = os.environ.get("SUPABASE_URL") or "https://placeholder.supabase.co"
@@ -5262,6 +5262,144 @@ async def update_client_profile(data: ClienteUpdate, client: Cliente = Depends(g
         del client_res['pin']
         
     return client_res
+
+@api_router.post("/client/change-phone/request-otp")
+async def request_change_phone_otp(data: ChangePhoneRequestOTP, client: Cliente = Depends(get_current_client)):
+    new_phone = "".join(filter(str.isdigit, data.nuevo_telefono or ""))
+    current_phone = "".join(filter(str.isdigit, client.telefono or ""))
+
+    if len(new_phone) < 10:
+        raise HTTPException(status_code=400, detail="Ingresa un número de celular válido (mínimo 10 dígitos)")
+
+    if new_phone == current_phone or (len(new_phone) >= 10 and len(current_phone) >= 10 and new_phone[-10:] == current_phone[-10:]):
+        raise HTTPException(status_code=400, detail="El nuevo número debe ser diferente al número actual")
+
+    # Verify new phone is not already registered to another client
+    search_phone = new_phone[-10:]
+    existing = supabase.table('clientes').select('id, telefono').or_(
+        f"telefono.eq.{new_phone},telefono.ilike.%{search_phone}"
+    ).execute()
+    for row in (existing.data or []):
+        if row.get('id') != client.id:
+            raise HTTPException(status_code=409, detail="Este número de celular ya está registrado en otra cuenta")
+
+    import random
+    otp = str(random.randint(100000, 999999))
+    expires = datetime.now(timezone.utc) + timedelta(minutes=10)
+
+    try:
+        with open("otp_log.txt", "a") as f:
+            f.write(f"{datetime.now().isoformat()} - CHANGE_PHONE - {new_phone} - {otp}\n")
+    except Exception:
+        pass
+
+    try:
+        supabase.table('auth_otps').insert({
+            "telefono": new_phone,
+            "otp_code": otp,
+            "expires_at": expires.isoformat()
+        }).execute()
+
+        business_name_to_use = "Fogón & Mesa"
+        if data.negocio_slug:
+            try:
+                biz_res = supabase.table('negocios').select('nombre').eq('slug', data.negocio_slug).execute()
+                if biz_res.data and biz_res.data[0].get('nombre'):
+                    business_name_to_use = biz_res.data[0]['nombre']
+            except Exception as e:
+                logger.warning(f"Could not lookup business name for slug {data.negocio_slug}: {e}")
+
+        send_whatsapp_template(
+            to_number=new_phone,
+            template_key="codigo_verificacion",
+            otp_code=otp,
+            negocio_nombre=business_name_to_use
+        )
+        return {"message": "Código de verificación enviado por WhatsApp al nuevo número"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending change-phone OTP: {e}")
+        logger.info(f"DEV CHANGE-PHONE OTP for {new_phone}: {otp}")
+        if os.environ.get('DEBUG') == 'True':
+            return {"message": "Código enviado (DEV MODE)", "otp_debug": otp}
+        raise HTTPException(status_code=500, detail="Error al enviar código de verificación por WhatsApp")
+
+
+@api_router.post("/client/change-phone/verify", response_model=ClientTokenResponse)
+async def verify_change_phone_otp(data: ChangePhoneVerify, client: Cliente = Depends(get_current_client)):
+    new_phone = "".join(filter(str.isdigit, data.nuevo_telefono or ""))
+    old_phone = client.telefono
+
+    if len(new_phone) < 10:
+        raise HTTPException(status_code=400, detail="Número de celular inválido")
+
+    # Validate OTP
+    res = supabase.table('auth_otps').select('*')\
+        .eq('telefono', new_phone)\
+        .eq('otp_code', data.otp.strip())\
+        .eq('used', False)\
+        .gt('expires_at', datetime.now(timezone.utc).isoformat())\
+        .order('created_at', desc=True)\
+        .limit(1)\
+        .execute()
+
+    if not res.data:
+        raise HTTPException(status_code=400, detail="Código inválido o expirado")
+
+    # Double-check phone uniqueness
+    search_phone = new_phone[-10:]
+    existing = supabase.table('clientes').select('id').or_(
+        f"telefono.eq.{new_phone},telefono.ilike.%{search_phone}"
+    ).execute()
+    for row in (existing.data or []):
+        if row.get('id') != client.id:
+            raise HTTPException(status_code=409, detail="Este número ya está asociado a otra cuenta")
+
+    # Mark OTP as used
+    otp_id = res.data[0]['id']
+    supabase.table('auth_otps').update({'used': True}).eq('id', otp_id).execute()
+
+    # Update main client record
+    update_res = supabase.table('clientes').update({
+        'telefono': new_phone,
+        'updated_at': datetime.now(timezone.utc).isoformat()
+    }).eq('id', client.id).execute()
+
+    if not update_res.data:
+        raise HTTPException(status_code=500, detail="Error actualizando el número de celular")
+
+    updated_client = update_res.data[0]
+
+    # Migrate linked records (orders & loyalty) to preserve history and points
+    if old_phone and old_phone != new_phone:
+        try:
+            supabase.table('pedidos').update({'cliente_telefono': new_phone}).eq('cliente_telefono', old_phone).execute()
+        except Exception as e:
+            logger.warning(f"Could not migrate pedidos phone from {old_phone} to {new_phone}: {e}")
+        try:
+            supabase.table('clientes_fidelizacion').update({'telefono': new_phone}).eq('telefono', old_phone).execute()
+        except Exception as e:
+            logger.warning(f"Could not migrate clientes_fidelizacion phone from {old_phone} to {new_phone}: {e}")
+        try:
+            supabase.table('puntos_clientes').update({'telefono': new_phone}).eq('telefono', old_phone).execute()
+        except Exception as e:
+            logger.warning(f"Could not migrate puntos_clientes phone from {old_phone} to {new_phone}: {e}")
+
+    # Issue fresh JWT token with the new phone number
+    access_token_expires = timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    expire = datetime.now(timezone.utc) + access_token_expires
+    to_encode = {"sub": new_phone, "role": "client", "exp": expire}
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+    for sensitive in ('pin', 'security_answer', 'password_hash'):
+        updated_client.pop(sensitive, None)
+
+    return {
+        "access_token": encoded_jwt,
+        "token_type": "bearer",
+        "cliente": updated_client
+    }
 
 @api_router.post("/client/update-pin")
 async def update_client_pin(data: UpdatePINRequest, client: Cliente = Depends(get_current_client)):

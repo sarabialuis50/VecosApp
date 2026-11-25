@@ -3,12 +3,19 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
-    ArrowLeft, Camera, User, Mail, Phone, Lock, Loader2
+    ArrowLeft, Camera, User, Mail, Phone, Lock, Loader2, ShieldCheck, MessageCircle, CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from 'sonner';
 
 const RAW_API = (import.meta.env && (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL)) || '';
@@ -24,7 +31,15 @@ export default function ClientEditProfilePage() {
     const [initialData, setInitialData] = useState(null);
 
     // Auth
-    const [token] = useState(localStorage.getItem('client_token'));
+    const [token, setToken] = useState(localStorage.getItem('client_token'));
+
+    // Change Phone Modal State
+    const [phoneModalOpen, setPhoneModalOpen] = useState(false);
+    const [phoneStep, setPhoneStep] = useState('input'); // 'input' | 'otp'
+    const [newPhone, setNewPhone] = useState('');
+    const [phoneOtp, setPhoneOtp] = useState('');
+    const [demoOtpCode, setDemoOtpCode] = useState('');
+    const [phoneSubmitting, setPhoneSubmitting] = useState(false);
 
     const [formData, setFormData] = useState({
         nombre: "",
@@ -179,6 +194,112 @@ export default function ClientEditProfilePage() {
         }
     };
 
+    const handleOpenPhoneModal = () => {
+        setNewPhone('');
+        setPhoneOtp('');
+        setDemoOtpCode('');
+        setPhoneStep('input');
+        setPhoneModalOpen(true);
+    };
+
+    const handleRequestPhoneChangeOtp = async (e) => {
+        e.preventDefault();
+        const digits = newPhone.replace(/\D/g, '');
+        const currentDigits = (formData.telefono || '').replace(/\D/g, '');
+
+        if (digits.length < 10) {
+            toast.error("Ingresa un número de celular válido (mínimo 10 dígitos)");
+            return;
+        }
+        if (digits === currentDigits || (digits.length >= 10 && currentDigits.length >= 10 && digits.slice(-10) === currentDigits.slice(-10))) {
+            toast.error("El nuevo número debe ser diferente al actual");
+            return;
+        }
+
+        setPhoneSubmitting(true);
+        try {
+            if (token === 'universal-client-token') {
+                const simulatedCode = String(Math.floor(100000 + Math.random() * 900000));
+                setDemoOtpCode(simulatedCode);
+                setPhoneStep('otp');
+                toast.success(`Código de prueba generado: ${simulatedCode}`, {
+                    description: "En producción este código llega por WhatsApp al nuevo número."
+                });
+                return;
+            }
+
+            const res = await axios.post(
+                `${API_BASE}/client/change-phone/request-otp`,
+                { nuevo_telefono: newPhone, negocio_slug: slug },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (res.data?.otp_debug) {
+                setDemoOtpCode(res.data.otp_debug);
+            }
+            setPhoneStep('otp');
+            toast.success("Código enviado por WhatsApp al nuevo número");
+        } catch (error) {
+            const msg = error.response?.data?.detail || "Error al enviar el código por WhatsApp";
+            toast.error(msg);
+        } finally {
+            setPhoneSubmitting(false);
+        }
+    };
+
+    const handleVerifyPhoneChangeOtp = async (e) => {
+        e.preventDefault();
+        const cleanOtp = phoneOtp.trim();
+        if (cleanOtp.length !== 6) {
+            toast.error("Ingresa el código de 6 dígitos");
+            return;
+        }
+
+        setPhoneSubmitting(true);
+        try {
+            if (token === 'universal-client-token') {
+                if (demoOtpCode && cleanOtp !== demoOtpCode) {
+                    toast.error("Código incorrecto. Verifica el código enviado.");
+                    setPhoneSubmitting(false);
+                    return;
+                }
+                const formattedPhone = newPhone.trim();
+                const updatedProfile = { ...formData, telefono: formattedPhone };
+                setFormData(updatedProfile);
+                setInitialData(updatedProfile);
+                localStorage.setItem('universal_client_profile', JSON.stringify(updatedProfile));
+                setPhoneModalOpen(false);
+                toast.success("¡Número de celular actualizado!", {
+                    description: "Tus puntos, pedidos y direcciones se conservan intactos."
+                });
+                return;
+            }
+
+            const res = await axios.post(
+                `${API_BASE}/client/change-phone/verify`,
+                { nuevo_telefono: newPhone, otp: cleanOtp },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            const { access_token, cliente } = res.data;
+            if (access_token) {
+                localStorage.setItem('client_token', access_token);
+                setToken(access_token);
+            }
+            const updatedPhone = cliente?.telefono || newPhone.trim();
+            setFormData(prev => ({ ...prev, telefono: updatedPhone }));
+            setInitialData(prev => prev ? { ...prev, telefono: updatedPhone } : prev);
+            setPhoneModalOpen(false);
+            toast.success("¡Número de celular actualizado!", {
+                description: "Tus puntos, pedidos y direcciones fueron transferidos al nuevo número."
+            });
+        } catch (error) {
+            const msg = error.response?.data?.detail || "Código inválido o expirado";
+            toast.error(msg);
+        } finally {
+            setPhoneSubmitting(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -268,16 +389,28 @@ export default function ClientEditProfilePage() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="font-bold text-gray-700">Número de Teléfono</Label>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="font-bold text-gray-700">Número de Teléfono</Label>
+                                        <button
+                                            type="button"
+                                            onClick={handleOpenPhoneModal}
+                                            className="text-xs font-bold text-[#C86414] hover:text-[#181615] flex items-center gap-1 transition-colors cursor-pointer"
+                                        >
+                                            <ShieldCheck className="w-3.5 h-3.5" />
+                                            Cambiar número
+                                        </button>
+                                    </div>
                                     <div className="relative">
                                         <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                                         <Input
                                             value={formData.telefono}
                                             disabled
-                                            className="h-12 pl-10 rounded-xl bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed"
+                                            className="h-12 pl-10 rounded-xl bg-gray-50 border-gray-200 text-gray-600 font-medium cursor-not-allowed"
                                         />
                                     </div>
-                                    <p className="text-xs text-gray-400">El teléfono no se puede cambiar.</p>
+                                    <p className="text-xs text-gray-400">
+                                        Verificado por WhatsApp. Al cambiarlo conservas tus puntos y pedidos.
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -308,6 +441,124 @@ export default function ClientEditProfilePage() {
 
                 </form>
             </main>
+
+            {/* Change Phone Verification Modal */}
+            <Dialog open={phoneModalOpen} onOpenChange={setPhoneModalOpen}>
+                <DialogContent className="sm:max-w-md rounded-3xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black text-[#181615] flex items-center gap-2">
+                            <span className="w-9 h-9 rounded-full bg-orange-50 text-[#C86414] flex items-center justify-center">
+                                <MessageCircle className="w-5 h-5" />
+                            </span>
+                            Cambiar número de celular
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-gray-500 pt-1">
+                            {phoneStep === 'input'
+                                ? "Te enviaremos un código de verificación por WhatsApp a tu nuevo número. Tus puntos, direcciones y pedidos se conservarán."
+                                : `Ingresa el código de 6 dígitos que enviamos por WhatsApp al número ${newPhone}.`}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {phoneStep === 'input' ? (
+                        <form onSubmit={handleRequestPhoneChangeOtp} className="space-y-4 mt-2">
+                            <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 text-xs text-gray-500 flex items-center justify-between">
+                                <span>Número actual:</span>
+                                <span className="font-bold text-[#181615]">{formData.telefono || 'Sin registrar'}</span>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="font-bold text-gray-700">Nuevo número de WhatsApp</Label>
+                                <div className="relative">
+                                    <Phone className="w-4 h-4 text-[#C86414] absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <Input
+                                        type="tel"
+                                        value={newPhone}
+                                        onChange={(e) => setNewPhone(e.target.value)}
+                                        placeholder="Ej: +57 310 555 1234"
+                                        className="h-12 pl-10 rounded-xl bg-white border-gray-200 focus:border-[#C86414] font-semibold"
+                                        autoFocus
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 pt-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setPhoneModalOpen(false)}
+                                    className="flex-1 h-11 rounded-xl font-bold"
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={phoneSubmitting}
+                                    className="flex-1 h-11 rounded-xl bg-[#C86414] hover:bg-[#181615] text-white font-bold transition-colors"
+                                >
+                                    {phoneSubmitting ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        "Enviar código"
+                                    )}
+                                </Button>
+                            </div>
+                        </form>
+                    ) : (
+                        <form onSubmit={handleVerifyPhoneChangeOtp} className="space-y-4 mt-2">
+                            {demoOtpCode && (
+                                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center justify-between">
+                                    <span>Código de verificación (modo prueba):</span>
+                                    <span className="font-black text-sm tracking-widest">{demoOtpCode}</span>
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <Label className="font-bold text-gray-700">Código de 6 dígitos</Label>
+                                <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={6}
+                                    value={phoneOtp}
+                                    onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    placeholder="000000"
+                                    className="h-14 text-center text-2xl font-black tracking-[0.5em] rounded-xl bg-white border-gray-200 focus:border-[#C86414]"
+                                    autoFocus
+                                    required
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-3 pt-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setPhoneStep('input');
+                                        setPhoneOtp('');
+                                    }}
+                                    className="flex-1 h-11 rounded-xl font-bold"
+                                >
+                                    Volver
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={phoneSubmitting || phoneOtp.length !== 6}
+                                    className="flex-1 h-11 rounded-xl bg-[#C86414] hover:bg-[#181615] text-white font-bold transition-colors"
+                                >
+                                    {phoneSubmitting ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <span className="flex items-center gap-1.5">
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            Verificar y cambiar
+                                        </span>
+                                    )}
+                                </Button>
+                            </div>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -72,6 +72,7 @@ export default function ClientProfilePage() {
 
     // Modal States
     const [showAddressModal, setShowAddressModal] = useState(false);
+    const [selectedAddressId, setSelectedAddressId] = useState(null);
     const [showWheelModal, setShowWheelModal] = useState(false);
     const [showSecurityModal, setShowSecurityModal] = useState(false);
     const [showFavoritesModal, setShowFavoritesModal] = useState(false);
@@ -97,6 +98,13 @@ export default function ClientProfilePage() {
             navigate(`/${slug}/menu`);
         }
     };
+
+    useEffect(() => {
+        if (showAddressModal && addresses.length > 0) {
+            const currentPrimary = addresses.find(a => a.es_principal) || addresses[0];
+            setSelectedAddressId(currentPrimary?.id || null);
+        }
+    }, [showAddressModal, addresses]);
 
     useEffect(() => {
         fetchBusiness();
@@ -461,6 +469,77 @@ export default function ClientProfilePage() {
         } catch {
             localStorage.setItem('universal_client_addresses', JSON.stringify(updated));
             toast.success("Dirección eliminada");
+        }
+    }
+
+    async function handleDirectAvatarChange(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("La imagen no debe superar los 5MB");
+            return;
+        }
+
+        const readAsDataUrl = () => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+        const toastId = toast.loading("Actualizando foto de perfil...");
+
+        const saveAvatarLocally = async () => {
+            const dataUrl = await readAsDataUrl();
+            setUser(prev => {
+                const updated = { ...prev, avatar_url: dataUrl };
+                const saved = localStorage.getItem('universal_client_profile');
+                const parsed = saved ? JSON.parse(saved) : {};
+                localStorage.setItem('universal_client_profile', JSON.stringify({
+                    ...parsed,
+                    nombre: updated.nombre,
+                    email: updated.email,
+                    telefono: updated.telefono,
+                    avatar_url: dataUrl
+                }));
+                return updated;
+            });
+            toast.success("Foto de perfil actualizada", { id: toastId });
+        };
+
+        if (token === 'universal-client-token') {
+            try {
+                await saveAvatarLocally();
+            } catch {
+                toast.error("No se pudo cargar la imagen", { id: toastId });
+            }
+            e.target.value = '';
+            return;
+        }
+
+        try {
+            const uploadData = new FormData();
+            uploadData.append('file', file);
+            let url = `${API_BASE}/client/upload-avatar`;
+            if (business?.id) url += `?negocio_id=${business.id}`;
+            const res = await axios.post(url, uploadData, {
+                headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` }
+            });
+            const newUrl = res.data.url;
+            await axios.put(`${API_BASE}/client/me`, { ...user, avatar_url: newUrl }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setUser(prev => ({ ...prev, avatar_url: newUrl }));
+            toast.success("Foto de perfil actualizada", { id: toastId });
+        } catch {
+            try {
+                await saveAvatarLocally();
+            } catch {
+                toast.error("Error al subir la imagen", { id: toastId });
+            }
+        } finally {
+            e.target.value = '';
         }
     }
 
@@ -921,10 +1000,18 @@ export default function ClientProfilePage() {
                                 />
                             </div>
                         </div>
+                        <input
+                            id="profile-avatar-upload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleDirectAvatarChange}
+                        />
                         <button
-                            onClick={() => navigate(`/${slug}/mi-cuenta/editar`)}
-                            className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-[#C86414] hover:bg-[#181615] text-white flex items-center justify-center shadow-lg border-2 border-white transition-all active:scale-90"
-                            title="Editar Perfil"
+                            type="button"
+                            onClick={() => document.getElementById('profile-avatar-upload')?.click()}
+                            className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-[#C86414] hover:bg-[#181615] text-white flex items-center justify-center shadow-lg border-2 border-white transition-all active:scale-90 cursor-pointer"
+                            title="Cambiar foto de perfil"
                         >
                             <Camera className="w-4 h-4" />
                         </button>
@@ -934,18 +1021,12 @@ export default function ClientProfilePage() {
                         {user.nombre || 'Luis Sarabia'}
                     </h2>
 
-                    <div className="flex flex-col items-center gap-0.5 mt-1 text-gray-500">
-                        <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
-                            <Mail className="w-3.5 h-3.5 text-gray-400" />
-                            {user.email || 'luis.sarabia@gmail.com'}
-                        </span>
-                        {user.telefono && (
-                            <span className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
-                                <Phone className="w-3 h-3 text-[#C86414]" />
-                                {user.telefono}
-                            </span>
-                        )}
-                    </div>
+                    {(user.telefono || '+57 300 123 4567') && (
+                        <div className="flex items-center justify-center gap-1.5 mt-1 text-xs font-semibold text-gray-500">
+                            <Phone className="w-3.5 h-3.5 text-[#C86414]" />
+                            <span>{user.telefono || '+57 300 123 4567'}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* 3. Loyalty VIP Card (Points, Level, Redeem) */}
@@ -1205,50 +1286,83 @@ export default function ClientProfilePage() {
 
                 {/* Modal 2: Direcciones */}
                 <Dialog open={showAddressModal} onOpenChange={setShowAddressModal}>
-                    <DialogContent className="rounded-[2rem] max-w-md">
+                    <DialogContent className="rounded-[2rem] max-w-md max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-black text-[#181615]">Mis Direcciones</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 pt-2">
+                            <p className="text-xs font-medium text-gray-500">
+                                Selecciona la dirección que deseas mostrar como principal en tu perfil:
+                            </p>
+
                             {addresses.length > 0 ? (
-                                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                                    {addresses.map((addr) => (
-                                        <div key={addr.id} className="p-3 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between gap-2">
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-xs text-[#181615] truncate">{addr.nombre}</span>
-                                                    {addr.es_principal ? (
-                                                        <Badge className="text-[9px] bg-emerald-100 text-emerald-800 border-none">Principal</Badge>
-                                                    ) : (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleSetPrimaryAddress(addr.id)}
-                                                            className="text-[10px] font-bold text-[#C86414] hover:underline"
-                                                        >
-                                                            Hacer principal
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                <p className="text-[11px] text-gray-500 mt-0.5 truncate">{addr.direccion}</p>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteAddress(addr.id)}
-                                                className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
-                                                title="Eliminar dirección"
+                                <div className="space-y-2.5 max-h-52 overflow-y-auto pr-1">
+                                    {addresses.map((addr) => {
+                                        const isSelected = (selectedAddressId || primaryAddress?.id) === addr.id;
+                                        return (
+                                            <div
+                                                key={addr.id}
+                                                onClick={() => setSelectedAddressId(addr.id)}
+                                                className={`p-3 rounded-xl border-2 flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                                                    isSelected
+                                                        ? 'border-[#C86414] bg-orange-50/50 shadow-sm'
+                                                        : 'border-gray-100 bg-gray-50 hover:border-gray-300'
+                                                }`}
                                             >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    ))}
+                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                                        isSelected ? 'border-[#C86414] bg-[#C86414]' : 'border-gray-300 bg-white'
+                                                    }`}>
+                                                        {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-xs text-[#181615] truncate">{addr.nombre}</span>
+                                                            {addr.es_principal && (
+                                                                <Badge className="text-[9px] bg-emerald-100 text-emerald-800 border-none">Actual</Badge>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[11px] text-gray-500 mt-0.5 truncate">{addr.direccion}</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteAddress(addr.id);
+                                                    }}
+                                                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                                                    title="Eliminar dirección"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <p className="text-xs text-gray-400 text-center py-2">No tienes direcciones guardadas aún.</p>
                             )}
 
-                            <form onSubmit={handleSaveAddress} className="space-y-4 pt-3 border-t border-gray-100">
+                            {addresses.length > 0 && (
+                                <Button
+                                    type="button"
+                                    onClick={async () => {
+                                        const targetId = selectedAddressId || primaryAddress?.id;
+                                        if (targetId) {
+                                            await handleSetPrimaryAddress(targetId);
+                                            setShowAddressModal(false);
+                                        }
+                                    }}
+                                    className="w-full rounded-xl h-11 bg-[#C86414] hover:bg-[#181615] text-white font-bold shadow-sm transition-colors"
+                                >
+                                    Usar dirección seleccionada
+                                </Button>
+                            )}
+
+                            <form onSubmit={handleSaveAddress} className="space-y-3 pt-4 border-t border-gray-100">
                                 <h4 className="font-bold text-sm text-gray-800">Agregar Nueva Dirección</h4>
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     <Label className="font-bold text-xs">Nombre (Ej: Casa, Oficina)</Label>
                                     <Input
                                         placeholder="Mi Casa"
@@ -1258,7 +1372,7 @@ export default function ClientProfilePage() {
                                         required
                                     />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     <Label className="font-bold text-xs">Dirección Completa</Label>
                                     <div className="relative">
                                         <Input
@@ -1288,13 +1402,13 @@ export default function ClientProfilePage() {
                                         onChange={e => setAddressForm({ ...addressForm, es_principal: e.target.checked })}
                                         className="rounded border-gray-300 accent-[#C86414]"
                                     />
-                                    Establecer como dirección principal
+                                    Establecer como dirección principal al agregar
                                 </label>
-                                <div className="flex gap-2 pt-2">
+                                <div className="flex gap-2 pt-1">
                                     <Button
                                         type="button"
                                         variant="ghost"
-                                        className="flex-1 rounded-xl h-11 font-bold"
+                                        className="flex-1 rounded-xl h-10 font-bold"
                                         onClick={() => setShowAddressModal(false)}
                                     >
                                         Cerrar
@@ -1302,9 +1416,9 @@ export default function ClientProfilePage() {
                                     <Button
                                         type="submit"
                                         disabled={savingAddress}
-                                        className="flex-1 rounded-xl h-11 bg-[#C86414] hover:bg-[#181615] text-white font-bold"
+                                        className="flex-1 rounded-xl h-10 bg-[#181615] hover:bg-[#C86414] text-white font-bold transition-colors"
                                     >
-                                        {savingAddress ? <Loader2 className="w-4 h-4 animate-spin" /> : "Guardar"}
+                                        {savingAddress ? <Loader2 className="w-4 h-4 animate-spin" /> : "+ Agregar"}
                                     </Button>
                                 </div>
                             </form>

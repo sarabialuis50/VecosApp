@@ -103,3 +103,11 @@ class ClientTokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     cliente: Cliente
+
+class ChangePhoneRequestOTP(BaseModel):
+    nuevo_telefono: str
+    negocio_slug: Optional[str] = None
+
+class ChangePhoneVerify(BaseModel):
+    nuevo_telefono: str
+    otp: str
