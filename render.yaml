@@ -1,0 +1,62 @@
+# Render Blueprint — Despliegue completo de Fogón & Mesa (Backend + Frontend + WhatsApp Bridge)
+# En Render: New -> Blueprint -> selecciona este repositorio y completa las variables sync: false.
+
+services:
+  # 1. Backend FastAPI (DeepSeek motor principal + OpenAI agente WhatsApp)
+  - type: web
+    name: fogon-mesa-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        value: https://fogon-mesa-frontend.onrender.com
+
+  # 2. Frontend React + Vite (Static Site)
+  - type: web
+    name: fogon-mesa-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: build
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://fogon-mesa-backend.onrender.com/api
+      - key: VITE_BACKEND_URL
+        value: https://fogon-mesa-backend.onrender.com/api
+      - key: REACT_APP_BACKEND_URL
+        value: https://fogon-mesa-backend.onrender.com/api
+      - key: VITE_FRONTEND_URL
+        value: https://fogon-mesa-frontend.onrender.com
+
+  # 3. Puente WhatsApp por código QR (Baileys — sin Meta API ni Twilio)
+  - type: web
+    name: fogon-mesa-whatsapp-bridge
+    runtime: node
+    rootDir: whatsapp-bridge
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: BACKEND_BRIDGE_URL
+        value: https://fogon-mesa-backend.onrender.com/api/whatsapp/bridge

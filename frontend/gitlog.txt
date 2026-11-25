@@ -1,0 +1,163 @@
+commit 4917f3dcf9a329e52de58b373b57accc0dac74eb
+Author: Luis Miguel Sarabia Polo <luis.sarabia@zentria.com.co>
+Date:   Sat Feb 21 19:23:44 2026 -0500
+
+    feat: sync designs for main menu, demo menu and pricing page. Improved horizontal scrolling, badge positioning, and interactive hover effects
+
+diff --git a/frontend/src/pages/PreciosPage.jsx b/frontend/src/pages/PreciosPage.jsx
+index 88216e5..8c9e44b 100644
+--- a/frontend/src/pages/PreciosPage.jsx
++++ b/frontend/src/pages/PreciosPage.jsx
+@@ -184,7 +184,12 @@ export default function PreciosPage() {
+ 
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-32">
+                         {plans.map((plan) => (
+-                            <div key={plan.id} className={`relative p-8 bg-white rounded-3xl border-2 ${plan.popular ? 'border-[#22C55E] shadow-xl shadow-green-100' : 'border-gray-100'} flex flex-col`}>
++                            <motion.div
++                                key={plan.id}
++                                whileHover={{ scale: 1.05 }}
++                                transition={{ type: "spring", stiffness: 300 }}
++                                className={`relative p-8 bg-white rounded-3xl border-2 transition-all duration-300 hover:border-[#22C55E] hover:shadow-2xl hover:shadow-green-100 ${plan.popular ? 'border-[#22C55E] shadow-xl shadow-green-100' : 'border-gray-100'} flex flex-col cursor-default`}
++                            >
+                                 {plan.badge && (
+                                     <div className={`absolute -top-4 left-1/2 transform -translate-x-1/2 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg ${plan.id === 'impulso' ? 'bg-white border-2 border-[#22C55E] text-[#22C55E]' :
+                                         plan.id === 'elite' ? 'bg-[#22B8CF] text-white' :
+@@ -209,11 +214,13 @@ export default function PreciosPage() {
+                                 <Button
+                                     onClick={() => handleSelectPlan(plan.id)}
+                                     disabled={loadingPlan !== null}
+-                                    className={`h-12 rounded-xl font-bold ${plan.popular ? 'bg-[#4ADE80]' : 'bg-white border-2 border-[#4ADE80] text-[#22C55E] hover:bg-green-50'}`}
++                                    className={`h-12 rounded-xl font-bold transition-all ${plan.popular
++                                        ? 'bg-[#4ADE80] text-[#111814] hover:bg-green-600'
++                                        : 'bg-white border-2 border-[#4ADE80] text-[#22C55E] hover:bg-[#4ADE80] hover:text-[#111814]'}`}
+                                 >
+                                     {loadingPlan === plan.id ? <Loader2 className="animate-spin" /> : `Activar ${plan.name}`}
+                                 </Button>
+-                            </div>
++                            </motion.div>
+                         ))}
+                     </div>
+ 
+@@ -230,7 +237,7 @@ export default function PreciosPage() {
+                                     key={pack.id}
+                                     whileHover={{ scale: 1.05 }}
+                                     transition={{ type: "spring", stiffness: 300 }}
+-                                    className={`relative p-8 rounded-[2.5rem] border-2 transition-all flex flex-col ${pack.popular ? 'border-[#22C55E] bg-white shadow-2xl scale-105 z-10' : 'border-gray-100 bg-white'}`}
++                                    className={`relative p-8 rounded-[2.5rem] border-2 transition-all duration-300 flex flex-col hover:border-[#22C55E] hover:shadow-2xl hover:shadow-green-50 ${pack.popular ? 'border-[#22C55E] bg-white shadow-2xl scale-105 z-10' : 'border-gray-100 bg-white'}`}
+                                 >
+                                     {pack.popular && (
+                                         <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-[#4ADE80] text-[#111814] px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap">
+@@ -239,7 +246,7 @@ export default function PreciosPage() {
+                                     )}
+                                     {pack.id === 10000 && (
+                                         <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-[#22B8CF] text-white px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap">
+-                                            Empresarial
++                                            Mayor alcance
+                                         </div>
+                                     )}
+                                     <h3 className="text-sm font-black text-black uppercase tracking-widest mb-4">{pack.name}</h3>
+
+commit b47306918aa6a86b6c24b9ec156a9f2a0f3f1bbb
+Author: Luis Miguel Sarabia Polo <luis.sarabia@zentria.com.co>
+Date:   Thu Feb 19 15:44:34 2026 -0500
+
+    feat: fix business profile display in production and update theme colors to soft green
+    
+    Summary of changes:
+    - Fixed Business Profile and Menu Publico API calls to be consistent with AuthContext and prevent double /api prefix.
+    - Normalized slug handling in backend (lowercase, strip, rstrip slash) to improve URL matching.
+    - Made public data fetching more resilient by separating business and product requests.
+    - Updated theme colors to soft green (#4ADE80) and adjusted button text to dark for better accessibility.
+    - Optimized map container height in public profile for desktop screens.
+
+diff --git a/frontend/src/pages/PreciosPage.jsx b/frontend/src/pages/PreciosPage.jsx
+index 746d684..88216e5 100644
+--- a/frontend/src/pages/PreciosPage.jsx
++++ b/frontend/src/pages/PreciosPage.jsx
+@@ -159,8 +159,8 @@ export default function PreciosPage() {
+                         <div className="flex items-center gap-4">
+                             {!user && (
+                                 <>
+-                                    <Link to="/login" className="text-sm font-bold text-gray-600 hover:bg-[#22C55E] hover:text-white px-4 py-2 rounded-xl transition-colors">Iniciar sesión</Link>
+-                                    <Button onClick={() => navigate('/register')} className="bg-[#22C55E] hover:bg-green-600">Registrarse</Button>
++                                    <Link to="/login" className="text-sm font-bold text-gray-600 hover:bg-[#4ADE80] hover:text-[#111814] px-4 py-2 rounded-xl transition-colors">Iniciar sesión</Link>
++                                    <Button onClick={() => navigate('/register')} className="bg-[#4ADE80] hover:bg-green-600">Registrarse</Button>
+                                 </>
+                             )}
+                             {user && (
+@@ -178,7 +178,7 @@ export default function PreciosPage() {
+                     </h1>
+                     <div className="flex items-center justify-center gap-4 mb-10">
+                         <span className={`text-sm font-bold ${!isAnnual ? 'text-[#0F172A]' : 'text-gray-400'}`}>Mensual</span>
+-                        <Switch checked={isAnnual} onCheckedChange={setIsAnnual} className="data-[state=checked]:bg-[#22C55E]" />
++                        <Switch checked={isAnnual} onCheckedChange={setIsAnnual} className="data-[state=checked]:bg-[#4ADE80]" />
+                         <span className={`text-sm font-bold ${isAnnual ? 'text-[#0F172A]' : 'text-gray-400'}`}>Anual (-20%)</span>
+                     </div>
+ 
+@@ -188,7 +188,7 @@ export default function PreciosPage() {
+                                 {plan.badge && (
+                                     <div className={`absolute -top-4 left-1/2 transform -translate-x-1/2 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg ${plan.id === 'impulso' ? 'bg-white border-2 border-[#22C55E] text-[#22C55E]' :
+                                         plan.id === 'elite' ? 'bg-[#22B8CF] text-white' :
+-                                            'bg-[#22C55E] text-white'
++                                            'bg-[#4ADE80] text-[#111814]'
+                                         }`}>
+                                         {plan.badge}
+                                     </div>
+@@ -209,7 +209,7 @@ export default function PreciosPage() {
+                                 <Button
+                                     onClick={() => handleSelectPlan(plan.id)}
+                                     disabled={loadingPlan !== null}
+-                                    className={`h-12 rounded-xl font-bold ${plan.popular ? 'bg-[#22C55E]' : 'bg-white border-2 border-[#22C55E] text-[#22C55E] hover:bg-green-50'}`}
++                                    className={`h-12 rounded-xl font-bold ${plan.popular ? 'bg-[#4ADE80]' : 'bg-white border-2 border-[#4ADE80] text-[#22C55E] hover:bg-green-50'}`}
+                                 >
+                                     {loadingPlan === plan.id ? <Loader2 className="animate-spin" /> : `Activar ${plan.name}`}
+                                 </Button>
+@@ -218,7 +218,7 @@ export default function PreciosPage() {
+                     </div>
+ 
+                     <div className="max-w-7xl mx-auto border-t pt-24 text-center">
+-                        <Badge className="bg-[#22C55E]/10 text-[#22C55E] border-none px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest mb-4 transition-all hover:bg-[#22C55E] hover:text-white cursor-default">
++                        <Badge className="bg-[#4ADE80]/10 text-[#22C55E] border-none px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest mb-4 transition-all hover:bg-[#4ADE80] hover:text-[#111814] cursor-default">
+                             RECARGAS PREPAGO
+                         </Badge>
+                         <h2 className="text-3xl sm:text-5xl font-black text-[#0F172A] mb-4 uppercase tracking-tight">Packs de Campañas <span className="text-[#22C55E]">WhatsApp</span></h2>
+@@ -233,7 +233,7 @@ export default function PreciosPage() {
+                                     className={`relative p-8 rounded-[2.5rem] border-2 transition-all flex flex-col ${pack.popular ? 'border-[#22C55E] bg-white shadow-2xl scale-105 z-10' : 'border-gray-100 bg-white'}`}
+                                 >
+                                     {pack.popular && (
+-                                        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-[#22C55E] text-white px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap">
++                                        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-[#4ADE80] text-[#111814] px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap">
+                                             Mejor Valor
+                                         </div>
+                                     )}
+@@ -256,8 +256,8 @@ export default function PreciosPage() {
+                                         onClick={() => handleSelectPack(pack.id)}
+                                         disabled={loadingPlan !== null}
+                                         className={`h-12 rounded-xl font-black transition-all ${pack.popular
+-                                            ? 'bg-[#22C55E] text-white hover:bg-green-600'
+-                                            : 'bg-white border-2 border-[#22C55E] text-[#22C55E] hover:bg-[#22C55E] hover:text-white'
++                                            ? 'bg-[#4ADE80] text-[#111814] hover:bg-green-600'
++                                            : 'bg-white border-2 border-[#4ADE80] text-[#22C55E] hover:bg-[#4ADE80] hover:text-[#111814]'
+                                             }`}
+                                     >
+                                         {loadingPlan === `pack-${pack.id}` ? <Loader2 className="animate-spin" /> : "Comprar Pack"}
+
+commit e7ecb319cc44e9c7f2565a830f78f9367efc3c14
+Author: Luis Miguel Sarabia Polo <luis.sarabia@zentria.com.co>
+Date:   Wed Feb 18 17:43:12 2026 -0500
+
+    feat: separate whatsapp message counters, update pricing plans and implement message counting in webhook
+
+diff --git a/frontend/src/pages/PreciosPage.jsx b/frontend/src/pages/PreciosPage.jsx
+index 6d1b5c1..746d684 100644
+--- a/frontend/src/pages/PreciosPage.jsx
++++ b/frontend/src/pages/PreciosPage.jsx
+@@ -159,7 +159,7 @@ export default function PreciosPage() {
+                         <div className="flex items-center gap-4">
+                             {!user && (
+                                 <>
+-                                    <Link to="/login" className="text-sm font-bold text-gray-500">Log in</Link>
++                                    <Link to="/login" className="text-sm font-bold text-gray-600 hover:bg-[#22C55E] hover:text-white px-4 py-2 rounded-xl transition-colors">Iniciar sesión</Link>
+                                     <Button onClick={() => navigate('/register')} className="bg-[#22C55E] hover:bg-green-600">Registrarse</Button>
+                                 </>
+                             )}

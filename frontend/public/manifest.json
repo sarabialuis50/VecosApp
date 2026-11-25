@@ -1,0 +1,30 @@
+{
+  "short_name": "Menu.IA",
+  "name": "Menu.IA - Gestión Inteligente",
+  "description": "Sistema de gestión y fidelización para restaurantes con IA",
+  "icons": [
+    {
+      "src": "/logos/logo-icon-white.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logos/logo-icon-white.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#22C55E",
+  "background_color": "#FAFAF9",
+  "categories": [
+    "food",
+    "business",
+    "productivity"
+  ],
+  "lang": "es"
+}

@@ -1,0 +1,20 @@
+{
+    "items": [
+        {
+            "producto_id": null,
+            "nombre": "Test Product",
+            "cantidad": 1,
+            "precio_unitario": 1000.0,
+            "notas": ""
+        }
+    ],
+    "cliente_nombre": "Test User",
+    "cliente_telefono": "+573000000000",
+    "tipo": "mesa",
+    "metodo_pago": "Efectivo",
+    "metodo_entrega": "Mesa",
+    "direccion": null,
+    "distancia": null,
+    "costo_envio": 0,
+    "notas": "Test note"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "vecosapp-whatsapp-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Puente local de WhatsApp por código QR (Baileys) conectado al agente OpenAI del backend.",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^6.7.16",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4"
+  }
+}

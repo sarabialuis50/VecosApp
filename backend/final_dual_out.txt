@@ -1,0 +1,6 @@
+
+--- Probando REPARTIDOR ---
+SID: MM32179ae86c548b3118a4f1d9fa957595 | Status: queued
+
+--- Probando CLIENTE ---
+SID: MM50fa77316005dd5f736421ca047d762d | Status: queued

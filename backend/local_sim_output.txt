@@ -1,0 +1,6 @@
+﻿Enviando prueba simulada a LOCAL: http://localhost:8001/api/whatsapp/webhook
+Status Code: 200
+Respuesta JSON: {
+  "status": "processed",
+  "response": "\u00a1Hola! \u00bfC\u00f3mo te llamas? Estoy aqu\u00ed para ayudarte con tu pedido y brindarte una atenci\u00f3n personalizada."
+}

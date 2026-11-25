@@ -1,0 +1,6 @@
+﻿Enviando prueba simulada a: https://menuia-production.up.railway.app/api/whatsapp/webhook
+Status Code: 200
+Respuesta JSON: {
+  "status": "processed",
+  "response": "Lo siento, tuve un problema procesando tu mensaje. \u00bfPodr\u00edas intentarlo de nuevo?"
+}

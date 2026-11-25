@@ -1,0 +1,67 @@
+2124: '        # 1. Identificar el negocio\n'
+2125: "        to_number_raw = form_data.get('To', '')\n"
+2126: "        to_number = to_number_raw.replace('whatsapp:', '')\n"
+2127: '        \n'
+2128: '        from whatsapp_agent import GLOBAL_TWILIO_NUMBER\n'
+2129: '        \n'
+2130: '        # Si el mensaje llega al número oficial de la plataforma\n'
+2131: "        # Limpiamos el número para comparar (quitando 'whatsapp:' y '+')\n"
+2132: "        clean_to = to_number.replace('+', '')\n"
+2133: "        clean_official = GLOBAL_TWILIO_NUMBER.replace('whatsapp:', '').replace('+', '')\n"
+2134: '        \n'
+2135: '        is_official_number = (clean_to == clean_official)\n'
+2136: '        \n'
+2137: '        print(f"DEBUG: to_number={to_number}, official={GLOBAL_TWILIO_NUMBER}, is_official={is_official_number}")\n'
+2138: '        \n'
+2139: '        business_data = None\n'
+2140: '        if is_official_number:\n'
+2141: '            print(f"Mensaje recibido en el número oficial SaaS: {to_number}")\n'
+2142: '            \n'
+2143: '            # Buscamos en el historial, probando el número real y versiones con/sin prefijo web_\n'
+2144: '            # Intentamos: +57..., 57..., 301..., web_57..., web_301...\n'
+2145: "            raw_phone = sender_phone.replace('+', '')\n"
+2146: "            phone_no_country = raw_phone[2:] if raw_phone.startswith('57') else raw_phone\n"
+2147: '            \n'
+2148: '            possible_phones = [\n'
+2149: '                sender_phone, \n'
+2150: '                raw_phone, \n'
+2151: '                phone_no_country,\n'
+2152: '                f"web_{raw_phone}", \n'
+2153: '                f"web_{phone_no_country}"\n'
+2154: '            ]\n'
+2155: '            \n'
+2156: "            conv_res = supabase.table('agent_conversations') \\\n"
+2157: "                .select('negocio_id') \\\n"
+2158: "                .in_('phone_number', possible_phones) \\\n"
+2159: "                .order('last_message_at', desc=True) \\\n"
+2160: '                .limit(1) \\\n'
+2161: '                .execute()\n'
+2162: '            \n'
+2163: '            if conv_res.data:\n'
+2164: "                neg_id_found = conv_res.data[0]['negocio_id']\n"
+2165: "                biz_res = supabase.table('negocios').select('*').eq('id', neg_id_found).execute()\n"
+2166: '                if biz_res.data:\n'
+2167: '                    business_data = biz_res.data[0]\n'
+2168: '                    logger.info(f"Usuario {sender_phone} vinculado a negocio {business_data.get(\'slug\')} por historial")\n'
+2169: '            \n'
+2170: '            # Si es número oficial y NO hay historial, entramos en modo PLATFORM\n'
+2171: '            if not business_data:\n'
+2172: '                logger.info(f"Nuevo usuario en número oficial: {sender_phone}. Entrando en modo PLATFORM.")\n'
+2173: '                negocio_id = "f92dc309-3b2b-4ddd-b8c6-723de6da38f3"\n'
+2174: '        \n'
+2175: '        # Si no es el número oficial o no se encontró historial, buscar por número configurado\n'
+2176: '        if not business_data and not (is_official_number and not business_data):\n'
+2177: "            biz_res = supabase.table('negocios').select('*').eq('whatsapp', to_number).execute()\n"
+2178: '            if biz_res.data:\n'
+2179: '                business_data = biz_res.data[0]\n'
+2180: "                negocio_id = business_data['id']\n"
+2181: '\n'
+2182: '        PLATFORM_BIZ_ID = "f92dc309-3b2b-4ddd-b8c6-723de6da38f3"\n'
+2183: '        if not business_data and not (is_official_number and negocio_id == PLATFORM_BIZ_ID):\n'
+2184: '             logger.error(f"No se pudo encontrar un negocio para el número: {to_number}")\n'
+2185: '             return {"status": "error", "reason": "no_business_linked"}\n'
+2186: '        \n'
+2187: '        if business_data:\n'
+2188: "            negocio_id = business_data['id']\n"
+2189: "            biz_plan = business_data.get('plan', 'trial')\n"
+2190: "            wa_count = business_data.get('wa_messages_count', 0)\n"

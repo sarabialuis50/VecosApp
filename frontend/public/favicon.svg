@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background Circle -->
+  <circle cx="50" cy="50" r="48" fill="white" />
+  
+  <!-- Gift Box -->
+  <rect x="25" y="45" width="50" height="35" rx="5" fill="none" stroke="#22C55E" stroke-width="6" />
+  <rect x="20" y="38" width="60" height="10" rx="2" fill="#22C55E" />
+  
+  <!-- Lightning Bolt (Ribbon-Integrated) -->
+  <path d="M50 15 
+           C 65 15, 75 25, 65 35 
+           L 50 38
+           C 35 35, 25 25, 35 15 
+           Z" fill="none" stroke="#22C55E" stroke-width="5" stroke-linecap="round" />
+  
+  <!-- Central Lightning Bolt Body -->
+  <path d="M55 35 L40 60 L50 60 L45 85" fill="none" stroke="#22C55E" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

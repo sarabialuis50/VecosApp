@@ -1,0 +1,24 @@
+
+--- Enviando a REPARTIDOR (Simulado) ---
+Variables: {
+  "1": "Carlos Repartidor",
+  "2": "Don Jediondo",
+  "3": "Luis Cliente",
+  "4": "3017810256",
+  "5": "Carrera 57 # 72-107",
+  "6": "104A88FC",
+  "7": "https://menuia.co/reparto/don-jediondo/104a88fc-9098-4164-b4aa-0d1c933727f6"
+}
+SID: MM6a24087800ac0b82a75c323bea4baee5 | Status: queued
+
+--- Enviando a CLIENTE (Simulado) ---
+Variables: {
+  "1": "Luis Cliente",
+  "2": "Don Jediondo",
+  "3": "Carlos Repartidor",
+  "4": "3109876543",
+  "5": "Carrera 57 # 72-107",
+  "6": "104A88FC",
+  "7": "https://menuia.co/don-jediondo/mis-pedidos?order=104a88fc-9098-4164-b4aa-0d1c933727f6"
+}
+SID: MM310c9b6e603868ff6158fa2bdd4447c1 | Status: queued

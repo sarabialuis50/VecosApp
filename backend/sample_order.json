@@ -1,0 +1,41 @@
+{
+  "id": "2e8490c6-d40a-4773-9271-dff9fd7bd390",
+  "negocio_id": "5f9a1fca-8327-45b4-92b9-b26974ed068f",
+  "mesa_id": null,
+  "mesa_numero": null,
+  "numero_secuencial": 1,
+  "tipo_pedido": "mesa",
+  "cliente_nombre": "Juan P\u00e9rez",
+  "cliente_telefono": "+573001112233",
+  "cliente_whatsapp": null,
+  "items": [
+    {
+      "nombre": "Hamburguesa Cl\u00e1sica",
+      "precio": 25000,
+      "cantidad": 2
+    },
+    {
+      "nombre": "Coca-Cola",
+      "precio": 5000,
+      "cantidad": 1
+    }
+  ],
+  "total": 55000,
+  "estado": "entregado",
+  "notas": null,
+  "created_at": "2026-02-09T19:50:18.089396+00:00",
+  "updated_at": "2026-02-09T22:50:18.089396+00:00",
+  "tipo": "mesa",
+  "metodo_pago": "Efectivo",
+  "direccion": null,
+  "distancia": null,
+  "costo_envio": 0,
+  "metodo_entrega": null,
+  "repartidor_id": null,
+  "repartidor_lat": null,
+  "repartidor_lng": null,
+  "business_lat": null,
+  "business_lng": null,
+  "cliente_lat": null,
+  "cliente_lng": null
+}
