@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Loader2, Minimize2, Mic, Square, Play, Sparkles, UtensilsCrossed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import axios from 'axios';
 
 const API_URL = (import.meta.env && (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL)) || '/api';
@@ -79,7 +80,10 @@ export default function LandingAgent({ hidden = false }) {
     const [isRecording, setIsRecording] = useState(false);
     const scrollRef = useRef(null);
     const mediaRecorderRef = useRef(null);
+    const recognitionRef = useRef(null);
+    const transcriptRef = useRef('');
     const audioChunksRef = useRef([]);
+    const voicesRef = useRef([]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -87,105 +91,250 @@ export default function LandingAgent({ hidden = false }) {
         }
     }, [history, isLoading, isOpen]);
 
+    // Preload speech synthesis voices (required on iOS Safari & Android Chrome)
+    useEffect(() => {
+        if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+        const loadVoices = () => {
+            try {
+                const list = window.speechSynthesis.getVoices();
+                if (list && list.length > 0) voicesRef.current = list;
+            } catch {}
+        };
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        return () => {
+            if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null;
+        };
+    }, []);
+
     const utteranceRef = useRef(null);
 
-    const speak = (text, msgId = null) => {
-        if (!text || typeof window === 'undefined' || !window.speechSynthesis) return;
+    const pickSpanishVoice = () => {
+        const voices = voicesRef.current.length
+            ? voicesRef.current
+            : (window.speechSynthesis?.getVoices?.() || []);
+        if (!voices.length) return null;
+        const preferredLangs = ['es-co', 'es-mx', 'es-us', 'es-419', 'es-es'];
+        for (const code of preferredLangs) {
+            const match = voices.find((v) => v.lang?.toLowerCase() === code);
+            if (match) return match;
+        }
+        return voices.find((v) => v.lang?.toLowerCase().startsWith('es')) || null;
+    };
 
+    const speak = (text, msgId = null) => {
+        if (!text || typeof window === 'undefined') return;
+        if (!('speechSynthesis' in window) || typeof window.SpeechSynthesisUtterance === 'undefined') {
+            toast.error('Tu navegador no soporta lectura en voz alta.');
+            return;
+        }
+
+        const synth = window.speechSynthesis;
+
+        // Toggle off if already speaking this message
         if (speakingMsgId === msgId && msgId !== null) {
-            window.speechSynthesis.cancel();
+            try { synth.cancel(); } catch {}
             setSpeakingMsgId(null);
             return;
         }
 
-        window.speechSynthesis.cancel();
-        setSpeakingMsgId(msgId);
-
         const sanitizedText = text
             .replace(/\*\*/g, '')
-            .replace(/[\u{1F300}-\u{1F9FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '');
+            .replace(/[•]/g, ', ')
+            .replace(/\n+/g, '. ')
+            .replace(/[\u{1F300}-\u{1FAFF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '')
+            .replace(/\s+/g, ' ')
+            .trim();
 
-        const chunks = sanitizedText.split(/([.!?]+|\n)/).reduce((acc, part, i) => {
-            if (i % 2 === 0) acc.push(part);
-            else acc[acc.length - 1] += part;
-            return acc;
-        }, []).filter(c => c.trim().length > 0);
+        if (!sanitizedText) return;
 
-        let currentChunk = 0;
+        // Only cancel if something is actively speaking/pending (avoids iOS Safari silent bug)
+        if (synth.speaking || synth.pending) {
+            try { synth.cancel(); } catch {}
+        }
 
-        const speakNextChunk = () => {
-            if (currentChunk >= chunks.length) {
+        const utterance = new window.SpeechSynthesisUtterance(sanitizedText);
+        const spanishVoice = pickSpanishVoice();
+        if (spanishVoice) {
+            utterance.voice = spanishVoice;
+            utterance.lang = spanishVoice.lang;
+        } else {
+            utterance.lang = 'es-CO';
+        }
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        utteranceRef.current = utterance;
+
+        setSpeakingMsgId(msgId);
+
+        utterance.onend = () => {
+            if (utteranceRef.current === utterance) {
                 setSpeakingMsgId(null);
-                return;
             }
-
-            const textToSpeak = chunks[currentChunk].trim();
-            if (!textToSpeak) {
-                currentChunk++;
-                speakNextChunk();
-                return;
-            }
-
-            const utterance = new SpeechSynthesisUtterance(textToSpeak);
-            utterance.lang = 'es-ES';
-            utterance.rate = 1.02;
-            utteranceRef.current = utterance;
-
-            utterance.onend = () => {
-                currentChunk++;
-                setTimeout(speakNextChunk, 50);
-            };
-
-            utterance.onerror = () => {
-                setSpeakingMsgId(null);
-            };
-
-            window.speechSynthesis.speak(utterance);
         };
 
-        speakNextChunk();
+        utterance.onerror = (ev) => {
+            // 'interrupted' / 'canceled' are normal when user stops or switches message
+            if (ev?.error && ev.error !== 'interrupted' && ev.error !== 'canceled') {
+                console.warn('SpeechSynthesis error:', ev.error);
+            }
+            if (utteranceRef.current === utterance) {
+                setSpeakingMsgId(null);
+            }
+        };
+
+        try {
+            // Speak directly inside user gesture (critical for iOS Safari & Chrome Mobile)
+            synth.speak(utterance);
+            if (synth.paused) {
+                synth.resume();
+            }
+        } catch (err) {
+            console.error('Error playing TTS:', err);
+            setSpeakingMsgId(null);
+            toast.error('No se pudo reproducir el audio en este dispositivo.');
+        }
+    };
+
+    const getSupportedAudioMime = () => {
+        if (typeof window === 'undefined' || typeof window.MediaRecorder === 'undefined') {
+            return { mimeType: '', ext: 'webm' };
+        }
+        const candidates = [
+            { mimeType: 'audio/mp4', ext: 'm4a' },
+            { mimeType: 'audio/webm;codecs=opus', ext: 'webm' },
+            { mimeType: 'audio/webm', ext: 'webm' },
+            { mimeType: 'audio/ogg;codecs=opus', ext: 'ogg' },
+        ];
+        for (const c of candidates) {
+            if (window.MediaRecorder.isTypeSupported?.(c.mimeType)) {
+                return c;
+            }
+        }
+        return { mimeType: '', ext: 'webm' };
     };
 
     const startRecording = async () => {
+        if (typeof window === 'undefined') return;
+
+        // 1. Primary mobile-friendly path: Native Web Speech Recognition (Android Chrome, iOS Safari, Desktop)
+        const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognitionAPI) {
+            try {
+                const recognition = new SpeechRecognitionAPI();
+                recognition.lang = 'es-CO';
+                recognition.continuous = false;
+                recognition.interimResults = true;
+                recognition.maxAlternatives = 1;
+
+                transcriptRef.current = '';
+                recognitionRef.current = recognition;
+
+                recognition.onstart = () => {
+                    setIsRecording(true);
+                };
+
+                recognition.onresult = (event) => {
+                    let combined = '';
+                    for (let i = 0; i < event.results.length; i++) {
+                        combined += event.results[i][0].transcript;
+                    }
+                    transcriptRef.current = combined.trim();
+                    setMessage(transcriptRef.current);
+                };
+
+                recognition.onerror = (event) => {
+                    setIsRecording(false);
+                    recognitionRef.current = null;
+                    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                        toast.error('Permiso de micrófono denegado. Habilítalo en tu navegador.');
+                    } else if (event.error === 'no-speech') {
+                        toast.info('No se escuchó voz. Intenta hablar más cerca del micrófono.');
+                    } else if (event.error !== 'aborted') {
+                        console.warn('SpeechRecognition error:', event.error);
+                        toast.error('No se pudo capturar el audio. Intenta de nuevo.');
+                    }
+                };
+
+                recognition.onend = () => {
+                    setIsRecording(false);
+                    recognitionRef.current = null;
+                    const spokenText = transcriptRef.current.trim();
+                    transcriptRef.current = '';
+                    if (spokenText) {
+                        sendUserQuery(spokenText);
+                    }
+                };
+
+                recognition.start();
+                return;
+            } catch (err) {
+                console.warn('SpeechRecognition fallback to MediaRecorder:', err);
+            }
+        }
+
+        // 2. Fallback path: MediaRecorder with mobile MIME-type negotiation (iOS mp4 / Android webm)
+        if (!navigator.mediaDevices?.getUserMedia || typeof window.MediaRecorder === 'undefined') {
+            toast.error('Tu navegador móvil requiere HTTPS o no soporta notas de voz.');
+            return;
+        }
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream);
+            const { mimeType, ext } = getSupportedAudioMime();
+            const mediaRecorder = mimeType
+                ? new window.MediaRecorder(stream, { mimeType })
+                : new window.MediaRecorder(stream);
+
             mediaRecorderRef.current = mediaRecorder;
             audioChunksRef.current = [];
 
             mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
+                if (event.data && event.data.size > 0) {
                     audioChunksRef.current.push(event.data);
                 }
             };
 
             mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                await handleSendAudio(audioBlob);
-                stream.getTracks().forEach(track => track.stop());
+                const finalType = mediaRecorder.mimeType || mimeType || 'audio/webm';
+                const audioBlob = new Blob(audioChunksRef.current, { type: finalType });
+                stream.getTracks().forEach((track) => track.stop());
+                if (audioBlob.size > 0) {
+                    await handleSendAudio(audioBlob, ext);
+                }
             };
 
             mediaRecorder.start();
             setIsRecording(true);
         } catch (error) {
             console.error('Error accessing microphone:', error);
-            alert('No se pudo acceder al micrófono');
+            if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
+                toast.error('Permiso de micrófono denegado. Actívalo en la configuración del navegador.');
+            } else {
+                toast.error('No se pudo acceder al micrófono en este dispositivo.');
+            }
         }
     };
 
     const stopRecording = () => {
+        if (recognitionRef.current) {
+            try { recognitionRef.current.stop(); } catch {}
+            setIsRecording(false);
+            return;
+        }
         if (mediaRecorderRef.current && isRecording) {
-            mediaRecorderRef.current.stop();
+            try { mediaRecorderRef.current.stop(); } catch {}
             setIsRecording(false);
         }
     };
 
-    const handleSendAudio = async (blob) => {
+    const handleSendAudio = async (blob, ext = 'webm') => {
         setHistory(prev => [...prev, { role: 'user', content: '🎤 Mensaje de voz enviado' }]);
         setIsLoading(true);
 
         const formData = new FormData();
-        formData.append('audio', blob, 'recording.webm');
+        formData.append('audio', blob, `recording.${ext}`);
 
         try {
             const endpoint = API_URL.endsWith('/api') ? `${API_URL}/public/landing-audio` : `${API_URL}/api/public/landing-audio`;
@@ -195,12 +344,10 @@ export default function LandingAgent({ hidden = false }) {
                 : getFogonExpertResponse('recomendado hoy');
             const newMsg = { role: 'model', content: replyText, id: Date.now() };
             setHistory(prev => [...prev, newMsg]);
-            speak(newMsg.content, newMsg.id);
         } catch (error) {
             const fallbackReply = getFogonExpertResponse('recomendado hoy');
             const newMsg = { role: 'model', content: fallbackReply, id: Date.now() };
             setHistory(prev => [...prev, newMsg]);
-            speak(newMsg.content, newMsg.id);
         } finally {
             setIsLoading(false);
         }

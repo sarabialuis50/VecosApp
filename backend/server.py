@@ -4610,7 +4610,19 @@ async def chat_audio_with_consultant(negocio_id: str, audio: UploadFile = File(.
         openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
         import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
+        orig_name = (audio.filename or "").lower()
+        content_type = (audio.content_type or "").lower()
+        if orig_name.endswith(".m4a") or "mp4" in content_type or "m4a" in content_type or "aac" in content_type:
+            suffix = ".m4a"
+        elif orig_name.endswith(".mp4"):
+            suffix = ".mp4"
+        elif orig_name.endswith(".ogg") or "ogg" in content_type:
+            suffix = ".ogg"
+        elif orig_name.endswith(".wav") or "wav" in content_type:
+            suffix = ".wav"
+        else:
+            suffix = ".webm"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             tmp.write(audio_content)
             tmp_path = tmp.name
 
@@ -4784,7 +4796,19 @@ async def public_landing_audio(audio: UploadFile = File(...)):
         openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
         import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
+        orig_name = (audio.filename or "").lower()
+        content_type = (audio.content_type or "").lower()
+        if orig_name.endswith(".m4a") or "mp4" in content_type or "m4a" in content_type or "aac" in content_type:
+            suffix = ".m4a"
+        elif orig_name.endswith(".mp4"):
+            suffix = ".mp4"
+        elif orig_name.endswith(".ogg") or "ogg" in content_type:
+            suffix = ".ogg"
+        elif orig_name.endswith(".wav") or "wav" in content_type:
+            suffix = ".wav"
+        else:
+            suffix = ".webm"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             tmp.write(audio_content)
             tmp_path = tmp.name
 
@@ -5921,7 +5945,19 @@ async def web_chat_audio_agent(slug: str, audio: UploadFile = File(...), phone: 
         openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
         import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
+        orig_name = (audio.filename or "").lower()
+        content_type = (audio.content_type or "").lower()
+        if orig_name.endswith(".m4a") or "mp4" in content_type or "m4a" in content_type or "aac" in content_type:
+            suffix = ".m4a"
+        elif orig_name.endswith(".mp4"):
+            suffix = ".mp4"
+        elif orig_name.endswith(".ogg") or "ogg" in content_type:
+            suffix = ".ogg"
+        elif orig_name.endswith(".wav") or "wav" in content_type:
+            suffix = ".wav"
+        else:
+            suffix = ".webm"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             tmp.write(audio_content)
             tmp_path = tmp.name
 
