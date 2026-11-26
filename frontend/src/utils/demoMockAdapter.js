@@ -474,19 +474,41 @@ export async function demoMockAdapter(config) {
     const list = loadMenuIngredientsLocal();
     if (method === 'post') {
       const nameTrim = String(body.name || '').trim();
+      const menuCats = Array.isArray(body.menu_categories)
+        ? body.menu_categories
+        : body.menu_category
+          ? [String(body.menu_category)]
+          : [];
       const exists = list.some((i) => i.name.toLowerCase() === nameTrim.toLowerCase());
       if (exists) {
-        data = { error: 'Ya existe un ingrediente con ese nombre', ingredients: list };
+        data = { error: `Ya existe el ingrediente "${nameTrim}"`, ingredients: list };
       } else {
         const newIng = {
           id: `ing-${Date.now()}`,
           name: nameTrim || 'Nuevo ingrediente',
           category: body.category || 'acompanante',
+          menu_categories: menuCats,
           is_available: body.is_available !== false,
           is_active: true,
         };
         const updated = [...list, newIng];
         saveMenuIngredientsLocal(updated);
+
+        // Asociar automáticamente a todos los platos de las categorías marcadas
+        if (menuCats.length > 0) {
+          loadDemoProductsFromStorage();
+          demoStore.products = demoStore.products.map((p) => {
+            if (!menuCats.includes(p.categoria)) return p;
+            const current = Array.isArray(p.menu_item_ingredients) ? p.menu_item_ingredients : [];
+            if (current.some((l) => String(l.ingredient_id) === String(newIng.id))) return p;
+            return {
+              ...p,
+              menu_item_ingredients: [...current, { ingredient_id: newIng.id, is_required: false }],
+            };
+          });
+          try { localStorage.setItem('fogon_mesa_custom_products', JSON.stringify(demoStore.products)); } catch (e) {}
+        }
+
         data = newIng;
       }
     } else {

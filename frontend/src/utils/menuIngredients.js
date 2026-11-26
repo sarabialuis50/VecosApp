@@ -2,7 +2,7 @@
 
 export const MENU_INGREDIENTS_STORAGE_KEY = 'fogon_mesa_menu_ingredients';
 export const VECOS_MENU_VERSION_KEY = 'vecos_menu_version';
-export const VECOS_MENU_VERSION = 'vecos_v6';
+export const VECOS_MENU_VERSION = 'vecos_v7';
 
 export const INGREDIENT_CATEGORIES = [
   { id: 'arroz', label: 'Arroz', emoji: '🍚', defaultRequired: false },
@@ -15,27 +15,8 @@ export const INGREDIENT_CATEGORIES = [
   { id: 'proteina', label: 'Proteína (Control Stock)', emoji: '🥩', defaultRequired: true },
 ];
 
-export const DEFAULT_MENU_INGREDIENTS = [
-  // Acompañantes del Día (Ejecutivos & Preparados del Día)
-  { id: 'ing-arroz-blanco', name: 'Arroz blanco', category: 'arroz', is_available: true, is_active: true },
-  { id: 'ing-ensalada-repollo', name: 'Ensalada de repollo blanco y morado', category: 'ensalada', is_available: true, is_active: true },
-  { id: 'ing-frijol-palomito', name: 'Frijol palomito', category: 'grano', is_available: true, is_active: true },
-  { id: 'ing-consome-res', name: 'Consomé de hueso de res', category: 'sopa', is_available: true, is_active: true },
-  { id: 'ing-patacones', name: 'Patacones', category: 'acompanante', is_available: true, is_active: true },
-  { id: 'ing-tajadas-maduras', name: 'Tajadas maduras', category: 'acompanante', is_available: true, is_active: true },
-
-  // Acompañantes de Asados & Vaqueritos
-  { id: 'ing-sopa-dia', name: 'Sopa del día', category: 'sopa', is_available: true, is_active: true },
-  { id: 'ing-ensalada-dia', name: 'Ensalada del día', category: 'ensalada', is_available: true, is_active: true },
-  { id: 'ing-madurito-queso', name: 'Madurito con queso', category: 'acompanante', is_available: true, is_active: true },
-  { id: 'ing-salsa-casa', name: 'Salsa de la casa', category: 'salsa', is_available: true, is_active: true },
-  { id: 'ing-papas-fritas', name: 'Papas fritas', category: 'acompanante', is_available: true, is_active: true },
-  { id: 'ing-papas-francesas', name: 'Papas francesas', category: 'acompanante', is_available: true, is_active: true },
-  { id: 'ing-yuca-cocida', name: 'Yuca cocida', category: 'acompanante', is_available: true, is_active: true },
-  { id: 'ing-croquetas-yuca', name: 'Croquetas de yuca', category: 'acompanante', is_available: true, is_active: true },
-  { id: 'ing-arepa', name: 'Arepa asada', category: 'acompanante', is_available: true, is_active: true },
-  { id: 'ing-gaseosa-postobon', name: 'Gaseosa Postobón', category: 'bebida', is_available: true, is_active: true },
-];
+// Inicia en blanco para que cada categoría del menú tenga únicamente los ingredientes que cree el admin
+export const DEFAULT_MENU_INGREDIENTS = [];
 
 export function ensureVecosMenuMigration() {
   try {
@@ -56,7 +37,7 @@ export function loadMenuIngredientsLocal() {
     const raw = localStorage.getItem(MENU_INGREDIENTS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {
     console.warn('Error loading menu ingredients from localStorage', e);
@@ -70,6 +51,13 @@ export function saveMenuIngredientsLocal(list) {
   } catch (e) {
     console.warn('Error saving menu ingredients to localStorage', e);
   }
+}
+
+export function getIngredientMenuCategories(ing) {
+  if (!ing) return [];
+  if (Array.isArray(ing.menu_categories)) return ing.menu_categories;
+  if (ing.menu_category) return [ing.menu_category];
+  return [];
 }
 
 export function getIngredientCategoryMeta(categoryId) {
