@@ -1474,7 +1474,7 @@ export default function DemoRestaurante() {
             </Dialog>
 
             {/* Botón Flotante Ruleta del Día (Estilo Temu) */}
-            {wheelActive && (
+            {wheelActive && !isWheelOpen && (
                 <motion.button
                     type="button"
                     onClick={() => setIsWheelOpen(true)}
@@ -1501,7 +1501,7 @@ export default function DemoRestaurante() {
             />
 
             {/* Agente Experto Flotante de Fogón & Mesa */}
-            <LandingAgent />
+            <LandingAgent hidden={isWheelOpen} />
         </div>
     );
 }

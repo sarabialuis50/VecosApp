@@ -52,8 +52,20 @@ function getFogonExpertResponse(rawText) {
     return `En **Fogón & Mesa** preparamos cada día almuerzos caseros al carbón y cazuelas de cocción lenta.\n\n• **Ejecutivos del Día:** desde **$18.500** (incluyen sopa, proteína, acompañamientos y bebida).\n• **Arma tu Almuerzo:** completo a tu gusto por **$18.900**.\n• **Especialidades:** Cazuela de Frijoles (**$24.000**), Ajiaco Santafereño (**$23.000**), Punta de Anca (**$32.000**) y Costillas BBQ de Guayaba (**$28.000**).\n\n¿Quieres conocer los ingredientes de algún plato en especial o deseas una recomendación?`;
 }
 
-export default function LandingAgent() {
+export default function LandingAgent({ hidden = false }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [wheelOpen, setWheelOpen] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const handleWheelToggle = (e) => {
+            const isWheelVisible = Boolean(e?.detail?.open);
+            setWheelOpen(isWheelVisible);
+            if (isWheelVisible) setIsOpen(false);
+        };
+        window.addEventListener('wheel-modal-toggle', handleWheelToggle);
+        return () => window.removeEventListener('wheel-modal-toggle', handleWheelToggle);
+    }, []);
     const [message, setMessage] = useState('');
     const [history, setHistory] = useState([
         {
@@ -231,11 +243,13 @@ export default function LandingAgent() {
 
     // Stop speaking on close
     useEffect(() => {
-        if (!isOpen && typeof window !== 'undefined' && window.speechSynthesis) {
+        if ((!isOpen || hidden || wheelOpen) && typeof window !== 'undefined' && window.speechSynthesis) {
             window.speechSynthesis.cancel();
             setSpeakingMsgId(null);
         }
-    }, [isOpen]);
+    }, [isOpen, hidden, wheelOpen]);
+
+    if (hidden || wheelOpen) return null;
 
     return (
         <div className="fixed bottom-6 right-6 z-[100] font-sans">

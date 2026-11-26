@@ -112,6 +112,15 @@ export default function RuletaPremiosModal({
   const [winResult, setWinResult] = useState(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
+  // Notify floating widgets (e.g. LandingAgent) when the wheel modal opens/closes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('wheel-modal-toggle', { detail: { open: Boolean(open) } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('wheel-modal-toggle', { detail: { open: false } }));
+    };
+  }, [open]);
+
   // Sync config & authenticated client phone automatically whenever modal opens
   useEffect(() => {
     if (!open) return;
