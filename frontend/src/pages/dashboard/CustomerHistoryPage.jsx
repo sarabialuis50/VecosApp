@@ -25,7 +25,7 @@ import { format, isWithinInterval, parse, startOfDay, endOfDay } from "date-fns"
 import { es } from "date-fns/locale";
 
 export default function CustomerHistoryPage() {
-    const { slug, customerId } = useParams();
+    const { slug = 'vecos', customerId } = useParams();
     const navigate = useNavigate();
 
     const [searchTerm, setSearchTerm] = useState('');

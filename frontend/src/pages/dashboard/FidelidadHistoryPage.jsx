@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 export default function FidelidadHistoryPage() {
-    const { slug } = useParams();
+    const { slug = 'vecos' } = useParams();
     const { api } = useAuth();
     const [loading, setLoading] = useState(true);
     const [transactions, setTransactions] = useState([]);

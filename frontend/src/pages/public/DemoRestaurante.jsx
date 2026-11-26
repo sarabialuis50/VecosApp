@@ -829,6 +829,24 @@ export default function DemoRestaurante() {
         }
     };
 
+    const computeProductUnitPrice = (product, modifiers = []) => {
+        if (!product) return 0;
+        const sizeNames = new Set(
+            (product.tamanos || []).flatMap((g) => (g.opciones || []).map((o) => o.nombre))
+        );
+        const selectedSize = modifiers.find((m) => m.isSize || sizeNames.has(m.nombre));
+        const extrasTotal = modifiers
+            .filter((m) => !(m.isSize || sizeNames.has(m.nombre)))
+            .reduce((acc, m) => acc + (Number(m.precio || 0) * (m.cantidad || 1)), 0);
+
+        // Si el cliente selecciona un tamaño con precio final, ese valor REEMPLAZA al precio de la tarjeta
+        const basePrice = selectedSize && Number(selectedSize.precio) > 0
+            ? Number(selectedSize.precio)
+            : Number(product.precio || 0);
+
+        return basePrice + extrasTotal;
+    };
+
     const addToCartAndConfirm = () => {
         if (!selectedProduct) return;
 
@@ -848,7 +866,7 @@ export default function DemoRestaurante() {
             return;
         }
 
-        const finalUnitPrice = selectedProduct.precio + selectedModifiers.reduce((acc, m) => acc + (m.precio * (m.cantidad || 1)), 0);
+        const finalUnitPrice = computeProductUnitPrice(selectedProduct, selectedModifiers);
 
         const selectedIngNames = Object.values(selectedIngredients).flat().filter(Boolean);
 
@@ -887,11 +905,14 @@ export default function DemoRestaurante() {
             toast.info(`"${product.nombre}" está agotado por hoy`);
             return;
         }
-        // Ningún ingrediente es obligatorio para el cliente: inicia vacío para que elija solo lo que desea (ej. sin sopa)
+        // Pre-seleccionar el primer tamaño si el plato tiene tamaños configurados
+        const defaultSizes = (product.tamanos || [])
+            .map((g) => (g.opciones && g.opciones.length > 0 ? { ...g.opciones[0], isSize: true } : null))
+            .filter(Boolean);
         setSelectedIngredients({});
         setSelectedProduct(product);
         setQty(1);
-        setSelectedModifiers([]);
+        setSelectedModifiers(defaultSizes);
         setProductNotes('');
     };
 
@@ -1743,7 +1764,7 @@ export default function DemoRestaurante() {
 
                                             <div className="flex items-center gap-4">
                                                 <span className="text-3xl font-black text-[#C86414]">
-                                                    {formatCurrency(selectedProduct.precio)}
+                                                    {formatCurrency(computeProductUnitPrice(selectedProduct, selectedModifiers))}
                                                 </span>
                                                 {selectedProduct.precio_original > 0 && (
                                                     <span className="text-lg font-bold text-gray-300 line-through">
@@ -1922,16 +1943,18 @@ export default function DemoRestaurante() {
                                                                     <button
                                                                         key={`${categoryKey}-${groupIdx}-${optIdx}`}
                                                                         onClick={() => {
+                                                                            const optPayload = categoryKey === 'tamanos' ? { ...option, isSize: true } : option;
                                                                             if (isSelected) {
+                                                                                if (categoryKey === 'tamanos' && group.obligatorio) return;
                                                                                 setSelectedModifiers(prev => prev.filter(m => m.nombre !== option.nombre));
                                                                             } else {
                                                                                 if (group.seleccion_maxima === 1) {
                                                                                     setSelectedModifiers(prev => [
                                                                                         ...prev.filter(m => !group.opciones.some(opt => opt.nombre === m.nombre)),
-                                                                                        option
+                                                                                        optPayload
                                                                                     ]);
                                                                                 } else if (selectedModifiers.filter(m => group.opciones.some(opt => opt.nombre === m.nombre)).length < group.seleccion_maxima) {
-                                                                                    setSelectedModifiers(prev => [...prev, option]);
+                                                                                    setSelectedModifiers(prev => [...prev, optPayload]);
                                                                                 }
                                                                             }
                                                                         }}
@@ -1942,7 +1965,7 @@ export default function DemoRestaurante() {
                                                                         </span>
                                                                         {option.precio > 0 && (
                                                                             <span className={`text-xs font-black ${isSelected ? 'text-[#C86414]' : 'text-gray-400'}`}>
-                                                                                + {formatCurrency(option.precio)}
+                                                                                {categoryKey === 'tamanos' ? formatCurrency(option.precio) : `+ ${formatCurrency(option.precio)}`}
                                                                             </span>
                                                                         )}
                                                                     </button>
@@ -1980,7 +2003,7 @@ export default function DemoRestaurante() {
                                         >
                                             <div className="flex flex-col items-start leading-none">
                                                 <span className="text-[10px] uppercase tracking-widest opacity-60">Agregar</span>
-                                                <span>{formatCurrency((selectedProduct.precio + selectedModifiers.reduce((acc, m) => acc + (m.precio * (m.cantidad || 1)), 0)) * qty)}</span>
+                                                <span>{formatCurrency(computeProductUnitPrice(selectedProduct, selectedModifiers) * qty)}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-base">Confirmar</span>

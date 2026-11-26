@@ -453,7 +453,7 @@ function AdjustStockModal({ open, onClose, ingredient, sedeId, slug, api, onSave
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function InventarioPage() {
-  const { slug } = useParams();
+  const { slug = 'vecos' } = useParams();
   const { user, api } = useAuth();
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);

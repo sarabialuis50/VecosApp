@@ -75,7 +75,7 @@ export const DashboardLayout = ({ children }) => {
     return !superAdminOnlyPaths.includes(item.path);
   });
 
-  const basePath = `/dashboard/${user?.slug}`;
+  const basePath = '/dashboard';
 
   return (
     <div className="min-h-screen bg-[#f6f8f7] font-sans">
@@ -167,9 +167,9 @@ export const DashboardLayout = ({ children }) => {
           <nav className="flex-1 px-3 py-4 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
             <div className="flex flex-col gap-1">
               {visibleNavItems.map((item) => {
-                const fullPath = `${basePath}${item.path}`;
+                const fullPath = item.path === '' ? '/dashboard' : item.path;
                 const isActive = location.pathname === fullPath ||
-                  (item.path === '' && location.pathname === basePath);
+                  (item.path === '' && location.pathname === '/dashboard');
 
                 return (
                   <Link
@@ -227,7 +227,7 @@ export const DashboardLayout = ({ children }) => {
       {/* Mobile Bottom Navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#0F172A] border-t border-slate-800 z-50 flex items-center justify-around px-2 shadow-[0_-4px_20px_rgba(0,0,0,0.2)]">
         {visibleMobileItems.map((item) => {
-          const fullPath = `${basePath}${item.path}`;
+          const fullPath = item.path === '' ? '/dashboard' : item.path;
           const isActive = location.pathname === fullPath;
 
           return (

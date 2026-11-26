@@ -1,4 +1,4 @@
-ï»¿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
@@ -40,7 +40,7 @@ const InsightCard = ({ title, icon: Icon, children, color = "text-purple-600", d
 );
 
 export default function InsightsPage() {
-    const { slug } = useParams();
+    const { slug = 'vecos' } = useParams();
     const { user, api } = useAuth();
     const [insights, setInsights] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -82,7 +82,7 @@ export default function InsightsPage() {
                         <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600" />
                         <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 text-purple-600 animate-pulse" />
                     </div>
-                    <p className="text-gray-500 font-medium animate-pulse">Burger Full AI estÃ¡ analizando tu negocio...</p>
+                    <p className="text-gray-500 font-medium animate-pulse">Burger Full AI está analizando tu negocio...</p>
                 </div>
             </DashboardLayout>
         );
@@ -108,9 +108,9 @@ export default function InsightsPage() {
                     <div>
                         <h1 className="font-heading text-2xl font-bold text-gray-900 flex items-center gap-2">
                             <Sparkles className="w-6 h-6 text-purple-600" />
-                            Consultor IA Â· Insights
+                            Consultor IA · Insights
                         </h1>
-                        <p className="text-gray-500">AnÃ¡lisis inteligente de tu restaurante potenciado por DeepSeek</p>
+                        <p className="text-gray-500">Análisis inteligente de tu restaurante potenciado por DeepSeek</p>
                     </div>
                     <Button onClick={fetchInsights} variant="outline" size="sm" className="gap-2">
                         <RefreshCw className="w-4 h-4" />
@@ -118,9 +118,9 @@ export default function InsightsPage() {
                     </Button>
                 </div>
 
-                {/* Resumen del DÃ­a */}
+                {/* Resumen del Día */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <InsightCard title="Resumen del DÃ­a" icon={TrendingUp} color="text-green-600" delay={0.1}>
+                    <InsightCard title="Resumen del Día" icon={TrendingUp} color="text-green-600" delay={0.1}>
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-600">Ventas estimadas</span>
@@ -148,7 +148,7 @@ export default function InsightsPage() {
                                 </li>
                             ))}
                             {(!insights.top_platos || insights.top_platos.length === 0) && (
-                                <p className="text-gray-400 text-sm">No hay suficientes datos aÃºn.</p>
+                                <p className="text-gray-400 text-sm">No hay suficientes datos aún.</p>
                             )}
                         </ul>
                     </InsightCard>
@@ -187,8 +187,8 @@ export default function InsightsPage() {
                                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2">
                                     <Sparkles className="w-6 h-6 text-green-600" />
                                 </div>
-                                <p className="text-green-700 font-medium">Â¡Todo opera con normalidad!</p>
-                                <p className="text-green-600 text-sm">No hay alertas crÃ­ticas en este momento.</p>
+                                <p className="text-green-700 font-medium">¡Todo opera con normalidad!</p>
+                                <p className="text-green-600 text-sm">No hay alertas críticas en este momento.</p>
                             </div>
                         )}
                     </InsightCard>
@@ -204,7 +204,7 @@ export default function InsightsPage() {
                                 </li>
                             ))}
                             {(!insights.acciones_sugeridas || insights.acciones_sugeridas.length === 0) && (
-                                <p className="text-gray-400 text-sm">La IA estÃ¡ recopilando mÃ¡s datos para sugerencias.</p>
+                                <p className="text-gray-400 text-sm">La IA está recopilando más datos para sugerencias.</p>
                             )}
                         </ul>
                     </InsightCard>

@@ -42,7 +42,7 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
 export default function MiPerfilPage() {
-    const { slug } = useParams();
+    const { slug = 'vecos' } = useParams();
     const { user, setUser, api } = useAuth();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);

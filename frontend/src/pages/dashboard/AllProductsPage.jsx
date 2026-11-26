@@ -30,7 +30,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 
 export default function AllProductsPage() {
-    const { slug } = useParams();
+    const { slug = 'vecos' } = useParams();
     const { api } = useAuth();
     const navigate = useNavigate();
 

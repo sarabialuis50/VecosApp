@@ -155,7 +155,7 @@ const formatPrice = (val) => {
 };
 
 const ConfiguracionPage = () => {
-    const { slug } = useParams();
+    const { slug = 'vecos' } = useParams();
     const { user, api } = useAuth();
     const navigate = useNavigate();
     const { pathname } = useLocation();

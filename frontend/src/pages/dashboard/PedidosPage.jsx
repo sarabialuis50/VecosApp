@@ -77,7 +77,7 @@ import { es } from 'date-fns/locale';
 import { playOrderSound, notifyNewOrder, unlockAudioAndNotifications } from '@/utils/sound';
 
 export default function PedidosPage() {
-    const { slug } = useParams();
+    const { slug = 'vecos' } = useParams();
     const { api, user } = useAuth();
 
     const [orders, setOrders] = useState([]);

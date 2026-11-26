@@ -250,7 +250,7 @@ function SedeOverrideModal({ open, onClose, product, activeSede, onSave }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function CatalogoMaestroPage() {
-  const { slug } = useParams();
+  const { slug = 'vecos' } = useParams();
   const { api, isSuperAdmin } = useAuth();
 
   // Active sede state — always shown, defaults to the slug in URL

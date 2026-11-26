@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import RuletaAdminSection from '@/components/RuletaAdminSection';
 
 export default function FidelidadPage() {
-  const { slug } = useParams();
+  const { slug = 'vecos' } = useParams();
   const { api } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

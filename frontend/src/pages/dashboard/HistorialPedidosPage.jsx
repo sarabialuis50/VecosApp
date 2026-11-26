@@ -1,4 +1,4 @@
-Ôªøimport { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { Card } from '@/components/ui/card';
@@ -60,7 +60,7 @@ import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-f
 import * as XLSX from 'xlsx';
 
 export default function HistorialPedidosPage() {
-    const { slug } = useParams();
+    const { slug = 'vecos' } = useParams();
     const navigate = useNavigate();
     const { api } = useAuth();
 
@@ -338,7 +338,7 @@ export default function HistorialPedidosPage() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50/20 border-b border-gray-100">
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-left">Cliente / M√©todo</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-left">Cliente / MÈtodo</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-left">Items</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-left">Fecha/Hora</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-left">ID Pedido</th>
@@ -476,7 +476,7 @@ export default function HistorialPedidosPage() {
                 <DialogContent className="max-w-2xl rounded-[2rem] border-none p-0 overflow-hidden bg-[#F8F9FA] shadow-2xl">
                     <DialogHeader className="hidden">
                         <DialogTitle>Detalles del Pedido</DialogTitle>
-                        <DialogDescription>Vista detallada de la informaci√≥n del pedido y del cliente.</DialogDescription>
+                        <DialogDescription>Vista detallada de la informaciÛn del pedido y del cliente.</DialogDescription>
                     </DialogHeader>
                     <div className="flex items-center gap-4 p-6 bg-white border-b border-gray-100">
                         <Button variant="ghost" size="icon" onClick={() => setShowViewModal(false)} className="rounded-full">
@@ -515,7 +515,7 @@ export default function HistorialPedidosPage() {
                                 </div>
                                 <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-50 space-y-3">
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-400 font-bold">Direcci√≥n:</span>
+                                        <span className="text-gray-400 font-bold">DirecciÛn:</span>
                                         <span className="text-gray-900 font-black">{selectedOrder?.direccion || 'N/A'}</span>
                                     </div>
                                 </div>
@@ -581,7 +581,7 @@ export default function HistorialPedidosPage() {
                 <DialogContent className="max-w-xl rounded-[2rem] border-none p-0 overflow-hidden bg-[#F8F9FA] shadow-2xl">
                     <DialogHeader className="hidden">
                         <DialogTitle>Seguimiento a Pedido</DialogTitle>
-                        <DialogDescription>Actualizaci√≥n del estado del flujo del pedido.</DialogDescription>
+                        <DialogDescription>ActualizaciÛn del estado del flujo del pedido.</DialogDescription>
                     </DialogHeader>
                     <div className="flex items-center gap-4 p-6 bg-white border-b border-gray-100">
                         <Button variant="ghost" size="icon" onClick={() => setShowTrackingModal(false)} className="rounded-full">
@@ -654,10 +654,10 @@ export default function HistorialPedidosPage() {
                             <Trash2 className="w-10 h-10 text-red-500 animate-bounce" />
                         </div>
                         <AlertDialogTitle className="text-2xl font-black text-gray-900 mb-2">
-                            ¬øBorrar pedido?
+                            øBorrar pedido?
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-sm font-medium text-gray-500 leading-relaxed">
-                            Esta acci√≥n no se puede deshacer. Se perder√° toda la informaci√≥n del pedido de forma permanente.
+                            Esta acciÛn no se puede deshacer. Se perder· toda la informaciÛn del pedido de forma permanente.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex flex-col gap-3 mt-8 sm:flex-col">
@@ -665,7 +665,7 @@ export default function HistorialPedidosPage() {
                             onClick={handleDeleteOrder}
                             className="w-full h-14 rounded-2xl bg-red-600 text-white font-black text-xs tracking-widest hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-red-200"
                         >
-                            S√ç, BORRAR PEDIDO
+                            SÕ, BORRAR PEDIDO
                         </AlertDialogAction>
                         <AlertDialogCancel className="w-full h-14 rounded-2xl border-2 border-gray-100 font-black text-xs tracking-widest hover:bg-gray-50 transition-all">
                             CANCELAR

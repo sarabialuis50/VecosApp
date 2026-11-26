@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { playOrderSound, notifyNewOrder, unlockAudioAndNotifications } from '@/utils/sound';
 
 export default function CocinaPage() {
-  const { slug } = useParams();
+  const { slug = 'vecos' } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { api, user, isSuperAdmin } = useAuth();

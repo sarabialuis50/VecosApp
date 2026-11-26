@@ -51,7 +51,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useEffect } from 'react';
 
 export default function AllCustomersPage() {
-    const { slug } = useParams();
+    const { slug = 'vecos' } = useParams();
     const { api } = useAuth();
     const navigate = useNavigate();
 

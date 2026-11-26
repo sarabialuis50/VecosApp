@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 export default function EditCustomerPage() {
-    const { slug, customerId } = useParams();
+    const { slug = 'vecos', customerId } = useParams();
     const navigate = useNavigate();
 
     // Form states

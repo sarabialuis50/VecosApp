@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,7 +41,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 const BRAND_GREEN = "#22C55E";
 
 export default function CustomerDetailsPage() {
-    const { slug, customerId } = useParams();
+    const { slug = 'vecos', customerId } = useParams();
     const navigate = useNavigate();
 
     const { api } = useAuth();
@@ -79,7 +79,7 @@ export default function CustomerDetailsPage() {
             setHistory(historyRes.data || []);
         } catch (error) {
             console.error('Error fetching data:', error);
-            toast.error('Error al cargar la información del cliente');
+            toast.error('Error al cargar la informaci�n del cliente');
         } finally {
             setLoading(false);
         }
@@ -91,28 +91,28 @@ export default function CustomerDetailsPage() {
         let amount = 0;
 
         if (!config) {
-            toast.error('Cargando configuración... Por favor espera.');
+            toast.error('Cargando configuraci�n... Por favor espera.');
             return;
         }
 
         if (creditMode === 'compra') {
             const val = parseFloat(purchaseAmount);
             if (isNaN(val) || val <= 0) {
-                toast.error('Ingresa un monto de compra válido');
+                toast.error('Ingresa un monto de compra v�lido');
                 return;
             }
             points = Math.floor(val / config.pesos_por_punto);
             amount = val;
-            description = `Acreditación por compra de $${val.toLocaleString()}`;
+            description = `Acreditaci�n por compra de $${val.toLocaleString()}`;
         } else {
             const val = parseInt(manualPoints);
             if (isNaN(val) || val <= 0) {
-                toast.error('Ingresa una cantidad de puntos válida');
+                toast.error('Ingresa una cantidad de puntos v�lida');
                 return;
             }
             points = val;
             amount = val * config.pesos_por_punto;
-            description = `Acreditación manual de ${points} puntos`;
+            description = `Acreditaci�n manual de ${points} puntos`;
         }
 
         if (points <= 0) {
@@ -129,7 +129,7 @@ export default function CustomerDetailsPage() {
                 monto: amount
             });
 
-            toast.success('¡Puntos acreditados exitosamente!');
+            toast.success('�Puntos acreditados exitosamente!');
             setIsAwardModalOpen(false);
             setPurchaseAmount('');
             setManualPoints('');
@@ -168,7 +168,7 @@ export default function CustomerDetailsPage() {
         totalPoints: customerData?.puntos_totales || 0,
         visits: customerData?.cantidad_pedidos || 0,
         avgSpending: customerData?.total_compras ? `$${(customerData.total_compras / (customerData.cantidad_pedidos || 1)).toLocaleString()}k` : '$0',
-        avgFrequency: '14 DÍAS', // Simulated
+        avgFrequency: '14 D�AS', // Simulated
         avatar: (customerData?.nombre || 'C').charAt(0).toUpperCase(),
         level: getLevel(customerData?.puntos_totales || 0)
     };
@@ -184,7 +184,7 @@ export default function CustomerDetailsPage() {
                         className="flex items-center gap-2 text-gray-400 hover:text-[#22C55E] transition-all group"
                     >
                         <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-                        <span className="text-xs font-black uppercase tracking-[0.2em]">Base de Clientes / Análisis Táctico</span>
+                        <span className="text-xs font-black uppercase tracking-[0.2em]">Base de Clientes / An�lisis T�ctico</span>
                     </button>
                 </div>
 
@@ -249,7 +249,7 @@ export default function CustomerDetailsPage() {
                                     PERFIL DEL CLIENTE
                                 </h3>
                                 <p className="text-[10px] md:text-sm font-bold text-[#22C55E] uppercase tracking-[0.2em] md:tracking-[0.25em] bg-green-50 px-3 md:px-4 py-1 rounded-full inline-block">
-                                    Desempeño y estadísticas generales
+                                    Desempe�o y estad�sticas generales
                                 </p>
                             </div>
                         </div>
@@ -257,8 +257,8 @@ export default function CustomerDetailsPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                             {[
                                 { label: 'PUNTOS ACTUALES', value: customer.points, icon: Activity, color: 'text-green-600', sub: 'Puntos Disponibles', bg: 'bg-white', border: 'border-green-100' },
-                                { label: 'PUNTOS TOTALES', value: customer.totalPoints.toLocaleString(), icon: Award, color: 'text-yellow-600', sub: 'Histórico Acumulado', bg: 'bg-white', border: 'border-yellow-100' },
-                                { label: 'COMPRAS TOTALES', value: customerData?.total_compras ? `$${customerData.total_compras.toLocaleString()}` : '$0', icon: DollarSign, color: 'text-blue-600', sub: 'Gasto histórico', bg: 'bg-white', border: 'border-blue-100' },
+                                { label: 'PUNTOS TOTALES', value: customer.totalPoints.toLocaleString(), icon: Award, color: 'text-yellow-600', sub: 'Hist�rico Acumulado', bg: 'bg-white', border: 'border-yellow-100' },
+                                { label: 'COMPRAS TOTALES', value: customerData?.total_compras ? `$${customerData.total_compras.toLocaleString()}` : '$0', icon: DollarSign, color: 'text-blue-600', sub: 'Gasto hist�rico', bg: 'bg-white', border: 'border-blue-100' },
                                 { label: 'PEDIDOS REALIZADOS', value: customer.visits, icon: Clock, color: 'text-orange-600', sub: 'Frecuencia de compra', bg: 'bg-white', border: 'border-orange-100' }
                             ].map((kpi, idx) => (
                                 <motion.div
@@ -299,7 +299,7 @@ export default function CustomerDetailsPage() {
                                     </div>
                                     <div className="space-y-0.5">
                                         <h4 className="text-[10px] md:text-[11px] font-black text-green-800 uppercase tracking-widest leading-none">Contexto Sugerido</h4>
-                                        <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Análisis IA</p>
+                                        <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-tighter">An�lisis IA</p>
                                     </div>
                                 </div>
                                 <p className="text-base md:text-lg font-bold italic text-gray-800 leading-relaxed max-w-5xl text-center md:text-left">
@@ -317,7 +317,7 @@ export default function CustomerDetailsPage() {
                                     </div>
                                     <div className="space-y-0.5 md:space-y-1">
                                         <h3 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight uppercase">HISTORIAL RECIENTE</h3>
-                                        <p className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest">Últimas transacciones registradas</p>
+                                        <p className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest">�ltimas transacciones registradas</p>
                                     </div>
                                 </div>
                                 <Button
@@ -346,7 +346,7 @@ export default function CustomerDetailsPage() {
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <div className="space-y-0.5">
-                                                        <p className="text-xs font-black text-gray-900 uppercase tracking-tight">{item.tipo === 'ganado' ? 'Acreditación' : 'Redención'}</p>
+                                                        <p className="text-xs font-black text-gray-900 uppercase tracking-tight">{item.tipo === 'ganado' ? 'Acreditaci�n' : 'Redenci�n'}</p>
                                                         <p className="text-[9px] font-bold text-[#22C55E]/60 uppercase">{item.descripcion}</p>
                                                     </div>
                                                 </td>
@@ -484,7 +484,7 @@ export default function CustomerDetailsPage() {
                                             <div className="flex items-center gap-2 ml-4">
                                                 <div className="w-1 h-1 rounded-full bg-[#4ADE80] animate-pulse" />
                                                 <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">
-                                                    Se sumarán directamente al saldo actual
+                                                    Se sumar�n directamente al saldo actual
                                                 </p>
                                             </div>
                                         </div>

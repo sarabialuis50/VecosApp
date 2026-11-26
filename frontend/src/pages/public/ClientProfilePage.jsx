@@ -59,7 +59,7 @@ import {
 } from "@/components/ui/dialog";
 
 export default function ClientProfilePage() {
-    const { slug } = useParams();
+    const { slug = 'vecos' } = useParams();
     const navigate = useNavigate();
 
     // Auth State
@@ -179,15 +179,11 @@ export default function ClientProfilePage() {
         } catch (e) {
             console.warn('Error saving seen orders', e);
         }
-        navigate(`/${slug}/mi-cuenta/pedidos`);
+        navigate('/mi-cuenta/pedidos');
     };
 
     const goToMenu = () => {
-        if (slug === 'demo-restaurante') {
-            navigate('/demo-restaurante');
-        } else {
-            navigate(`/${slug}/menu`);
-        }
+        navigate('/menu');
     };
 
     const refreshCoupons = () => {
@@ -1271,7 +1267,7 @@ export default function ClientProfilePage() {
                 {/* 6. Action Menu List (Grouped with Dividers) */}
                 <div className="mx-4 mt-5 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100 mb-8">
                     <button
-                        onClick={() => navigate(`/${slug}/mi-cuenta/editar`)}
+                        onClick={() => navigate('/mi-cuenta/editar')}
                         className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-all text-left"
                     >
                         <div className="flex items-center gap-3">

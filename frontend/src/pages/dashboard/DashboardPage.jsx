@@ -55,7 +55,7 @@ const OrderStatusBadge = ({ status }) => {
 };
 
 export default function DashboardPage() {
-  const { slug } = useParams();
+  const { slug = 'vecos' } = useParams();
   const navigate = useNavigate();
   const { user, api } = useAuth();
   const [analytics, setAnalytics] = useState(null);

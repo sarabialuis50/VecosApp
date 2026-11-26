@@ -81,7 +81,7 @@ const AuthRoute = ({ children }) => {
   }
 
   if (user) {
-    return <Navigate to={`/dashboard/${user.slug}`} replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -100,39 +100,72 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<AuthRoute><ForgotPasswordPage /></AuthRoute>} />
       <Route path="/reset-password" element={<AuthRoute><ResetPasswordPage /></AuthRoute>} />
 
-      {/* Dashboard Routes (Protected) */}
-      <Route path="/dashboard/:slug" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/clientes" element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/clientes/todos" element={<ProtectedRoute><AllCustomersPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/clientes/:customerId" element={<ProtectedRoute><CustomerDetailsPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/clientes/:customerId/editar" element={<ProtectedRoute><EditCustomerPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/clientes/:customerId/historial" element={<ProtectedRoute><CustomerHistoryPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/catalogo" element={<ProtectedRoute><CatalogoPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/catalogo/todos" element={<ProtectedRoute><AllProductsPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/mesas" element={<ProtectedRoute><MesasPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/pedidos" element={<ProtectedRoute><PedidosPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/pedidos/historial" element={<ProtectedRoute><HistorialPedidosPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/cocina" element={<ProtectedRoute><CocinaPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/cocina/domicilios" element={<ProtectedRoute><CocinaPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/cocina/salon" element={<ProtectedRoute><CocinaPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/empleados" element={<ProtectedRoute><EmpleadosPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/fidelidad" element={<ProtectedRoute><FidelidadPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/fidelidad/historial" element={<ProtectedRoute><FidelidadHistoryPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/consultor" element={<ProtectedRoute><GeminiConsultantPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/marketing" element={<ProtectedRoute><WhatsappHubPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/perfil" element={<ProtectedRoute><MiPerfilPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/configuracion" element={<ProtectedRoute><ConfiguracionPage /></ProtectedRoute>} />
-      <Route path="/dashboard/:slug/catalogo-maestro" element={<Navigate to="../inventario" replace />} />
-      <Route path="/dashboard/:slug/inventario" element={<ProtectedRoute><InventarioPage /></ProtectedRoute>} />
+      {/* Public Customer Menu (Clean single-business URLs) */}
+      <Route path="/menu" element={<DemoRestaurante />} />
+      <Route path="/mi-cuenta" element={<CartProvider><ClientProfilePage /></CartProvider>} />
+      <Route path="/mi-cuenta/editar" element={<CartProvider><ClientEditProfilePage /></CartProvider>} />
+      <Route path="/mi-cuenta/pedidos" element={<CartProvider><ClientOrdersPage /></CartProvider>} />
+      <Route path="/mis-pedidos" element={<CartProvider><MisPedidos /></CartProvider>} />
+
+      {/* Admin Dashboard Routes (Clean single-business URLs) */}
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route path="/pedidos" element={<ProtectedRoute><PedidosPage /></ProtectedRoute>} />
+      <Route path="/pedidos/historial" element={<ProtectedRoute><HistorialPedidosPage /></ProtectedRoute>} />
+      <Route path="/catalogo" element={<ProtectedRoute><CatalogoPage /></ProtectedRoute>} />
+      <Route path="/catalogo/todos" element={<ProtectedRoute><AllProductsPage /></ProtectedRoute>} />
+      <Route path="/mesas" element={<ProtectedRoute><MesasPage /></ProtectedRoute>} />
+      <Route path="/cocina" element={<ProtectedRoute><CocinaPage /></ProtectedRoute>} />
+      <Route path="/cocina/domicilios" element={<ProtectedRoute><CocinaPage /></ProtectedRoute>} />
+      <Route path="/cocina/salon" element={<ProtectedRoute><CocinaPage /></ProtectedRoute>} />
+      <Route path="/clientes" element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
+      <Route path="/clientes/todos" element={<ProtectedRoute><AllCustomersPage /></ProtectedRoute>} />
+      <Route path="/clientes/:customerId" element={<ProtectedRoute><CustomerDetailsPage /></ProtectedRoute>} />
+      <Route path="/clientes/:customerId/editar" element={<ProtectedRoute><EditCustomerPage /></ProtectedRoute>} />
+      <Route path="/clientes/:customerId/historial" element={<ProtectedRoute><CustomerHistoryPage /></ProtectedRoute>} />
+      <Route path="/empleados" element={<ProtectedRoute><EmpleadosPage /></ProtectedRoute>} />
+      <Route path="/fidelidad" element={<ProtectedRoute><FidelidadPage /></ProtectedRoute>} />
+      <Route path="/fidelidad/historial" element={<ProtectedRoute><FidelidadHistoryPage /></ProtectedRoute>} />
+      <Route path="/consultor" element={<ProtectedRoute><GeminiConsultantPage /></ProtectedRoute>} />
+      <Route path="/marketing" element={<ProtectedRoute><WhatsappHubPage /></ProtectedRoute>} />
+      <Route path="/perfil" element={<ProtectedRoute><MiPerfilPage /></ProtectedRoute>} />
+      <Route path="/configuracion" element={<ProtectedRoute><ConfiguracionPage /></ProtectedRoute>} />
+      <Route path="/inventario" element={<ProtectedRoute><InventarioPage /></ProtectedRoute>} />
+
+      {/* Redirecciones automáticas desde rutas antiguas con /demo-restaurante */}
+      <Route path="/demo" element={<Navigate to="/menu" replace />} />
+      <Route path="/demo-restaurante" element={<Navigate to="/menu" replace />} />
+      <Route path="/demo-restaurante/menu" element={<Navigate to="/menu" replace />} />
+      <Route path="/demo-restaurante/mi-cuenta" element={<Navigate to="/mi-cuenta" replace />} />
+      <Route path="/demo-negocio" element={<Navigate to="/menu" replace />} />
+      <Route path="/dashboard/:slug" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/dashboard/:slug/pedidos" element={<Navigate to="/pedidos" replace />} />
+      <Route path="/dashboard/:slug/pedidos/historial" element={<Navigate to="/pedidos/historial" replace />} />
+      <Route path="/dashboard/:slug/catalogo" element={<Navigate to="/catalogo" replace />} />
+      <Route path="/dashboard/:slug/catalogo/todos" element={<Navigate to="/catalogo/todos" replace />} />
+      <Route path="/dashboard/:slug/mesas" element={<Navigate to="/mesas" replace />} />
+      <Route path="/dashboard/:slug/cocina" element={<Navigate to="/cocina" replace />} />
+      <Route path="/dashboard/:slug/cocina/domicilios" element={<Navigate to="/cocina/domicilios" replace />} />
+      <Route path="/dashboard/:slug/cocina/salon" element={<Navigate to="/cocina/salon" replace />} />
+      <Route path="/dashboard/:slug/clientes" element={<Navigate to="/clientes" replace />} />
+      <Route path="/dashboard/:slug/clientes/todos" element={<Navigate to="/clientes/todos" replace />} />
+      <Route path="/dashboard/:slug/empleados" element={<Navigate to="/empleados" replace />} />
+      <Route path="/dashboard/:slug/fidelidad" element={<Navigate to="/fidelidad" replace />} />
+      <Route path="/dashboard/:slug/fidelidad/historial" element={<Navigate to="/fidelidad/historial" replace />} />
+      <Route path="/dashboard/:slug/consultor" element={<Navigate to="/consultor" replace />} />
+      <Route path="/dashboard/:slug/marketing" element={<Navigate to="/marketing" replace />} />
+      <Route path="/dashboard/:slug/perfil" element={<Navigate to="/perfil" replace />} />
+      <Route path="/dashboard/:slug/configuracion" element={<Navigate to="/configuracion" replace />} />
+      <Route path="/dashboard/:slug/inventario" element={<Navigate to="/inventario" replace />} />
+      <Route path="/dashboard/:slug/catalogo-maestro" element={<Navigate to="/inventario" replace />} />
 
       {/* Waiter App */}
+      <Route path="/mesero" element={<MeseroApp />} />
       <Route path="/mesero/:slug" element={<MeseroApp />} />
 
       {/* Delivery App */}
       <Route path="/reparto/:slug/:orderId" element={<DespachoPage />} />
 
-      {/* Public Menu Routes — CartProvider wraps all public pages so the cart persists across navigation */}
-      <Route path="/demo-restaurante/menu" element={<Navigate to="/demo-restaurante" replace />} />
+      {/* Fallback legacy slug routes */}
       <Route path="/:slug" element={<CartProvider><BusinessHomePage /></CartProvider>} />
       <Route path="/:slug/menu" element={<CartProvider><MenuPublico /></CartProvider>} />
       <Route path="/:slug/mesa/:mesa" element={<CartProvider><MenuPublico /></CartProvider>} />
@@ -140,11 +173,6 @@ function AppRoutes() {
       <Route path="/:slug/mi-cuenta" element={<CartProvider><ClientProfilePage /></CartProvider>} />
       <Route path="/:slug/mi-cuenta/editar" element={<CartProvider><ClientEditProfilePage /></CartProvider>} />
       <Route path="/:slug/mi-cuenta/pedidos" element={<CartProvider><ClientOrdersPage /></CartProvider>} />
-
-      {/* Demo routes */}
-      <Route path="/demo" element={<Navigate to="/demo-restaurante" replace />} />
-      <Route path="/demo-restaurante" element={<DemoRestaurante />} />
-      <Route path="/demo-negocio" element={<DemoRestaurante />} />
 
       {/* Legal Routes */}
       <Route path="/legal/autorizacion-datos" element={<LegalPage />} />

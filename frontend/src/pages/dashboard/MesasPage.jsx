@@ -35,7 +35,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 
 export default function MesasPage() {
-  const { slug } = useParams();
+  const { slug = 'vecos' } = useParams();
   const { api } = useAuth();
   const [tables, setTables] = useState([]);
   const [employees, setEmployees] = useState([]); // Added employees state

@@ -25,7 +25,7 @@ export default function LoginPage() {
     try {
       const business = await login(formData.email, formData.password);
       toast.success('¡Bienvenido de vuelta!');
-      navigate(`/dashboard/${business.slug}`);
+      navigate('/dashboard');
     } catch (error) {
       const message = error.response?.data?.detail || 'Error al iniciar sesión';
       toast.error(message);

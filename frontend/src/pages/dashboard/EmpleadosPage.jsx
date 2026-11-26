@@ -45,7 +45,7 @@ const roleConfig = {
 };
 
 export default function EmpleadosPage() {
-  const { slug } = useParams();
+  const { slug = 'vecos' } = useParams();
   const { api } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [tables, setTables] = useState([]); // Added tables state

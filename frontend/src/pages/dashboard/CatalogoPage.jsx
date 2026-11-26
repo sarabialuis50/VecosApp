@@ -90,7 +90,7 @@ const emptyFormData = {
 };
 
 export default function CatalogoPage() {
-  const { slug } = useParams();
+  const { slug = 'vecos' } = useParams();
   const { api } = useAuth();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -691,7 +691,7 @@ export default function CatalogoPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(`/${slug}/menu`, '_blank')}
+              onClick={() => window.open('/menu', '_blank')}
               className="h-9 px-3 rounded-xl border border-gray-200 text-gray-700 font-bold text-[11px] uppercase tracking-wider hover:bg-gray-50 gap-1.5 shadow-none"
             >
               <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
@@ -1239,9 +1239,10 @@ export default function CatalogoPage() {
                     {
                       id: 'tamanos',
                       label: 'Tamaños',
-                      desc: 'Define las tallas o porciones disponibles (Ej: Normal, Grande, Doble).',
+                      desc: 'Define las tallas o porciones y escribe el precio final de cada una (Ej: 150 gr → $17.000, 300 gr → $22.000). Reemplaza el precio base.',
                       icon: Maximize,
-                      hasPrice: true
+                      hasPrice: true,
+                      isFinalPrice: true
                     },
                     {
                       id: 'modificadores',
@@ -1390,7 +1391,9 @@ export default function CatalogoPage() {
                                     />
                                     {section.hasPrice && (
                                       <div className="w-32 relative">
-                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400">+$</span>
+                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400">
+                                          {section.isFinalPrice ? '$' : '+$'}
+                                        </span>
                                         <Input
                                           type="text"
                                           value={opt.precio > 0 ? formatPriceInput(opt.precio) : ''}
@@ -1401,7 +1404,7 @@ export default function CatalogoPage() {
                                             setFormData({ ...formData, [section.id]: newList });
                                           }}
                                           className="h-9 rounded-xl bg-white border-gray-200 text-xs pl-7 font-bold"
-                                          placeholder="0"
+                                          placeholder={section.isFinalPrice ? 'Precio final' : '0'}
                                         />
                                       </div>
                                     )}

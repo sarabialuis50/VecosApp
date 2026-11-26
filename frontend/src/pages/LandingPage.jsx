@@ -367,7 +367,7 @@ export default function LandingPage() {
       const business = await login(adminEmail, adminPassword);
       toast.success('¡Bienvenido al panel administrativo!');
       setIsAuthModalOpen(false);
-      navigate(`/dashboard/${business.slug}`);
+      navigate('/dashboard');
     } catch (error) {
       const message = error.response?.data?.detail || 'Credenciales incorrectas';
       toast.error(message);
@@ -483,7 +483,7 @@ export default function LandingPage() {
             {/* Desktop & Mobile Right Icons: Unified Login/Profile + Cart (matching interactive menu) */}
             <div className="flex items-center gap-3">
               <button
-                onClick={() => navigate('/demo-restaurante')}
+                onClick={() => navigate('/menu')}
                 className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/25 hover:bg-[#C86414] hover:border-[#C86414] text-[#FBF9F5] text-xs font-bold transition-all group"
               >
                 <UtensilsCrossed className="w-3.5 h-3.5 text-[#F59E0B] group-hover:text-white transition-colors" />
@@ -562,7 +562,7 @@ export default function LandingPage() {
             </button>
             <div className="pt-3 border-t border-white/10">
               <button
-                onClick={() => navigate('/demo-restaurante')}
+                onClick={() => navigate('/menu')}
                 className="w-full py-3 rounded-xl bg-[#C86414] text-white font-bold text-sm flex items-center justify-center gap-2"
               >
                 <UtensilsCrossed className="w-4 h-4" />
@@ -608,7 +608,7 @@ export default function LandingPage() {
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => navigate('/demo-restaurante')}
+                  onClick={() => navigate('/menu')}
                   className="sm:w-[230px] inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-full border border-white/25 hover:border-[#C86414] bg-white/5 hover:bg-[#C86414] text-[#FBF9F5] font-semibold text-base transition-all group"
                 >
                   <UtensilsCrossed className="w-4 h-4 text-[#F59E0B] group-hover:text-white transition-colors" />
@@ -1061,7 +1061,7 @@ export default function LandingPage() {
 
         <div className="text-center mt-10">
           <button
-            onClick={() => navigate('/demo-restaurante')}
+            onClick={() => navigate('/menu')}
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#C86414] hover:bg-[#181615] text-white font-bold text-sm shadow-lg shadow-[#C86414]/25 transition-all hover:-translate-y-0.5"
           >
             Explorar Menú Completo
@@ -1140,7 +1140,7 @@ export default function LandingPage() {
                 Pedir por WhatsApp
               </a>
               <button
-                onClick={() => navigate('/demo-restaurante')}
+                onClick={() => navigate('/menu')}
                 className="w-full py-3.5 px-6 rounded-full bg-[#C86414] hover:bg-[#DF741D] text-white font-bold text-sm flex items-center justify-center gap-2 transition-all"
               >
                 <ShoppingBag className="w-4 h-4" />
@@ -1244,7 +1244,7 @@ export default function LandingPage() {
                   onClick={() => {
                     localStorage.setItem('client_token', 'universal-client-token');
                     setIsAuthModalOpen(false);
-                    navigate(`/${BUSINESS_SLUG}/mi-cuenta`);
+                    navigate('/mi-cuenta');
                   }}
                   className="w-full h-12 rounded-full bg-[#C86414] hover:bg-[#DF741D] text-white font-bold text-sm"
                 >
@@ -1256,7 +1256,7 @@ export default function LandingPage() {
                   type="button"
                   onClick={() => {
                     setIsAuthModalOpen(false);
-                    navigate(`/${BUSINESS_SLUG}/mi-cuenta`);
+                    navigate('/mi-cuenta');
                   }}
                   className="w-full py-2 text-xs font-semibold text-[#665E57] hover:text-[#1F1C1A]"
                 >
@@ -1284,7 +1284,7 @@ export default function LandingPage() {
                 <Button
                   onClick={() => {
                     setIsAuthModalOpen(false);
-                    navigate(`/dashboard/${user.slug}`);
+                    navigate('/dashboard');
                   }}
                   className="w-full h-12 rounded-full bg-[#2F5D46] hover:bg-[#3A7256] text-white font-bold text-sm"
                 >

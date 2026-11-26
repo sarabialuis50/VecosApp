@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 
 export default function GeminiConsultantPage() {
     const { user, api } = useAuth();
-    const { slug } = useParams();
+    const { slug = 'vecos' } = useParams();
     const [businessId, setBusinessId] = useState(null);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
