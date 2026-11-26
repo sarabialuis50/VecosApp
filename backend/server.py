@@ -4533,6 +4533,110 @@ async def generate_product_image_endpoint(req: ProductImageRequest, business: Bu
             f.write(tb)
         raise HTTPException(status_code=500, detail=f"Error en la generación de imagen: {str(e)}")
 
+GENERATED_IMAGES_DIR = Path(__file__).parent / "generated_images"
+GENERATED_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+
+@api_router.get("/generated-images/{filename}")
+async def serve_generated_image(filename: str):
+    import re
+    from fastapi.responses import FileResponse
+    safe_name = os.path.basename(filename)
+    if not re.match(r"^[a-zA-Z0-9._-]+$", safe_name):
+        raise HTTPException(status_code=400, detail="Nombre de archivo inválido")
+    file_path = GENERATED_IMAGES_DIR / safe_name
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+    return FileResponse(str(file_path), media_type="image/png")
+
+@api_router.post("/ai/demo-generate-product-image")
+async def demo_generate_product_image_endpoint(req: ProductImageRequest):
+    try:
+        prompt_refinement = f"""
+        Actúa como un experto en fotografía publicitaria de alimentos.
+        Genera un prompt detallado para generar una imagen profesional del siguiente producto:
+        "{req.nombre}" - {req.descripcion if req.descripcion else 'Un plato delicioso'}
+
+        El prompt debe:
+        1. Ser en inglés.
+        2. Describir la iluminación profesional de estudio.
+        3. Describir el fondo desenfocado (bokeh) de mesa de restaurante elegante.
+        4. Enfocarse en la frescura, colores vivos y textura apetitosa del plato.
+        5. NO incluir ningún texto, logos o marca de agua.
+        """
+
+        enhanced_prompt = None
+        try:
+            enhanced_prompt, _ = ai_engine.complete_text(
+                system="You are a commercial food photography prompt writer. Reply only with the image prompt in English.",
+                user=prompt_refinement,
+                provider=ai_engine.PROVIDER_DEEPSEEK,
+            )
+        except Exception:
+            enhanced_prompt = None
+
+        if not enhanced_prompt:
+            enhanced_prompt = f"Professional commercial food photography of {req.nombre}, {req.descripcion or 'delicious Latin American restaurant dish'}, appetizing presentation, warm studio lighting, shallow depth of field bokeh, high detail, no text, no watermark."
+
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=503, detail="OPENAI_API_KEY no configurada")
+
+        openai_client = OpenAI(api_key=api_key)
+        img_gen_res = openai_client.images.generate(
+            model="gpt-image-1-mini",
+            prompt=enhanced_prompt,
+            size="1024x1024",
+            quality="low",
+            n=1,
+        )
+
+        dalle_url = img_gen_res.data[0].url
+        b64_data = img_gen_res.data[0].b64_json
+
+        image_bytes = None
+        if b64_data:
+            import base64
+            image_bytes = base64.b64decode(b64_data)
+        elif dalle_url:
+            import httpx
+            async with httpx.AsyncClient() as http_client:
+                img_res = await http_client.get(dalle_url, timeout=30.0)
+                if img_res.status_code != 200:
+                    raise HTTPException(status_code=500, detail="Fallo al obtener la imagen de la IA")
+                image_bytes = img_res.content
+
+        if not image_bytes:
+            raise HTTPException(status_code=500, detail="No se pudo obtener el contenido de la imagen de la IA")
+
+        file_ext = "png"
+        unique_name = f"ai-{uuid.uuid4()}.{file_ext}"
+        storage_path = f"demo/{unique_name}"
+
+        # Try Supabase Storage first; fallback to local generated_images folder
+        try:
+            supabase.storage.from_('menupro').upload(
+                path=storage_path,
+                file=image_bytes,
+                file_options={"content-type": f"image/{file_ext}"}
+            )
+            public_url = supabase.storage.from_('menupro').get_public_url(storage_path)
+            if public_url:
+                return {"url": public_url}
+        except Exception as storage_err:
+            logger.warning(f"Supabase upload failed for demo AI image, saving locally: {storage_err}")
+
+        local_path = GENERATED_IMAGES_DIR / unique_name
+        with open(local_path, "wb") as f:
+            f.write(image_bytes)
+
+        return {"url": f"/api/generated-images/{unique_name}"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating demo AI image: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Error en la generación de imagen: {str(e)}")
+
 class ProductDescriptionRequest(BaseModel):
     nombre: str
 

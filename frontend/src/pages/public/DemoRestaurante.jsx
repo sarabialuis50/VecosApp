@@ -24,8 +24,10 @@ import {
     ChevronRight,
     Heart,
     Clock,
-    Ticket
+    Ticket,
+    AlertCircle
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
     Dialog,
     DialogContent,
@@ -44,6 +46,21 @@ import {
     markCouponAsUsed,
     PENDING_COUPON_KEY,
 } from '@/utils/wheelDefaults';
+import { repairProductImages } from '@/utils/demoMockAdapter';
+
+// Normalización fonética para búsquedas tolerantes en español (acentos, s/z/c, b/v, ll/y)
+const normalizeSearchText = (text) => {
+    if (!text) return '';
+    return String(text)
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/z/g, 's')
+        .replace(/c([ei])/g, 's$1')
+        .replace(/v/g, 'b')
+        .replace(/ll/g, 'y')
+        .trim();
+};
 
 // Mock Data for the Demo
 const DEMO_BUSINESS = {
@@ -586,9 +603,30 @@ export default function DemoRestaurante() {
         telefono: '',
         metodo: 'WhatsApp'
     });
+    const [checkoutErrors, setCheckoutErrors] = useState({});
     const [couponCodeInput, setCouponCodeInput] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [availableCoupons, setAvailableCoupons] = useState([]);
+
+    // Pre-cargar datos del cliente si existen en el perfil local
+    useEffect(() => {
+        try {
+            const savedProfile = localStorage.getItem('universal_client_profile');
+            const parsed = savedProfile ? JSON.parse(savedProfile) : null;
+            const savedAddresses = localStorage.getItem('universal_client_addresses');
+            const parsedAddrs = savedAddresses ? JSON.parse(savedAddresses) : null;
+            const primaryAddr = Array.isArray(parsedAddrs) ? (parsedAddrs.find(a => a.es_principal)?.direccion || parsedAddrs[0]?.direccion) : '';
+
+            setCheckoutData(prev => ({
+                ...prev,
+                nombre: prev.nombre || parsed?.nombre || '',
+                telefono: prev.telefono || parsed?.telefono || '',
+                direccion: prev.direccion || primaryAddr || ''
+            }));
+        } catch (e) {
+            console.warn('Error reading stored client profile for checkout', e);
+        }
+    }, []);
 
     const formatCurrency = (value) => {
         if (value === undefined || value === null || isNaN(value) || Number(value) === 0) return '$ 0';
@@ -666,22 +704,44 @@ export default function DemoRestaurante() {
         toast.info('Cupón removido del pedido');
     };
 
-    const cleanQuery = searchQuery.trim().toLowerCase();
-
-    const currentMenuProducts = (() => {
+    const loadClientMenuProducts = () => {
         try {
             const saved = localStorage.getItem('fogon_mesa_custom_products');
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    return repairProductImages(parsed);
+                }
+            }
         } catch (e) {}
-        return DEMO_PRODUCTS;
-    })();
+        return repairProductImages(DEMO_PRODUCTS);
+    };
+
+    const [menuProducts, setMenuProducts] = useState(loadClientMenuProducts);
+
+    useEffect(() => {
+        const syncMenu = () => {
+            setMenuProducts(loadClientMenuProducts());
+        };
+        window.addEventListener('storage', syncMenu);
+        window.addEventListener('focus', syncMenu);
+        return () => {
+            window.removeEventListener('storage', syncMenu);
+            window.removeEventListener('focus', syncMenu);
+        };
+    }, []);
+
+    const currentMenuProducts = menuProducts.filter((p) => p.disponible !== false);
+
+    const cleanQuery = searchQuery.trim().toLowerCase();
+    const phoneticQuery = normalizeSearchText(searchQuery);
 
     const filteredProducts = currentMenuProducts.filter(p => {
         const matchesSearch = cleanQuery === '' ||
-            (p.nombre && p.nombre.toLowerCase().includes(cleanQuery)) ||
-            (p.descripcion && p.descripcion.toLowerCase().includes(cleanQuery)) ||
-            (p.categoria && p.categoria.toLowerCase().includes(cleanQuery)) ||
-            (p.etiqueta && p.etiqueta.toLowerCase().includes(cleanQuery));
+            (p.nombre && (p.nombre.toLowerCase().includes(cleanQuery) || normalizeSearchText(p.nombre).includes(phoneticQuery))) ||
+            (p.descripcion && (p.descripcion.toLowerCase().includes(cleanQuery) || normalizeSearchText(p.descripcion).includes(phoneticQuery))) ||
+            (p.categoria && (p.categoria.toLowerCase().includes(cleanQuery) || normalizeSearchText(p.categoria).includes(phoneticQuery))) ||
+            (p.etiqueta && (p.etiqueta.toLowerCase().includes(cleanQuery) || normalizeSearchText(p.etiqueta).includes(phoneticQuery)));
 
         if (!matchesSearch) return false;
 
@@ -700,11 +760,53 @@ export default function DemoRestaurante() {
     const handleConfirmOrder = () => {
         if (step === 'cart') {
             setStep('checkout');
+            setCheckoutErrors({});
         } else if (step === 'checkout') {
-            if (!checkoutData.nombre || !checkoutData.direccion || !checkoutData.telefono) {
-                toast.error('Por favor completa todos los campos');
+            const newErrors = {};
+            const missingLabels = [];
+
+            if (!checkoutData.nombre || !checkoutData.nombre.trim()) {
+                newErrors.nombre = 'Falta tu nombre';
+                missingLabels.push('tu nombre');
+            }
+            if (!checkoutData.direccion || !checkoutData.direccion.trim()) {
+                newErrors.direccion = 'Falta la dirección de entrega';
+                missingLabels.push('la dirección de entrega');
+            }
+            if (!checkoutData.telefono || !checkoutData.telefono.trim()) {
+                newErrors.telefono = 'Falta el número de WhatsApp / teléfono';
+                missingLabels.push('el WhatsApp / teléfono');
+            }
+
+            if (Object.keys(newErrors).length > 0) {
+                setCheckoutErrors(newErrors);
+
+                if (missingLabels.length === 1) {
+                    toast.error(`⚠️ Falta completar ${missingLabels[0]}`, {
+                        description: 'Por favor ingresa este dato para poder confirmar y enviar tu pedido.',
+                        duration: 4000
+                    });
+                } else {
+                    toast.error(`⚠️ Faltan datos obligatorios`, {
+                        description: `Por favor completa: ${missingLabels.join(', ')}.`,
+                        duration: 5000
+                    });
+                }
+
+                // Desplazar y enfocar el primer campo faltante
+                const firstKey = Object.keys(newErrors)[0];
+                setTimeout(() => {
+                    const el = document.getElementById(`checkout-input-${firstKey}`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.focus();
+                    }
+                }, 50);
                 return;
             }
+
+            setCheckoutErrors({});
+
             if (appliedCoupon?.coupon?.codigo_cupon) {
                 markCouponAsUsed(appliedCoupon.coupon.codigo_cupon);
             }
@@ -745,7 +847,7 @@ export default function DemoRestaurante() {
             nombre: selectedProduct.nombre,
             precio: finalUnitPrice,
             quantity: qty,
-            imagen: selectedProduct.imagen,
+            imagen: selectedProduct.imagen || selectedProduct.imagen_url || '/images/hero-almuerzo.jpg',
             notas: productNotes,
             modificadores_visual: selectedModifiers.map(m => (m.cantidad && m.cantidad > 1) ? `${m.cantidad}x ${m.nombre}` : m.nombre)
         };
@@ -784,15 +886,19 @@ export default function DemoRestaurante() {
             <div className="flex flex-col shrink-0">
                 <div className="relative w-32 h-32 md:w-48 md:h-48 overflow-hidden m-2 md:m-3 rounded-2xl md:rounded-[2rem]">
                     <img
-                        src={product.imagen || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80"}
+                        src={product.imagen || product.imagen_url || "/images/hero-almuerzo.jpg"}
                         alt={product.nombre}
+                        onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = "/images/hero-almuerzo.jpg";
+                        }}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
 
                     {/* Badge Etiqueta - Fixed position (Left) */}
                     <div className="absolute top-2 left-2 md:top-3 md:left-3 z-20">
                         {product.etiqueta && (
-                            <div className="bg-[#C86414] text-white text-[7px] md:text-[8px] font-black uppercase tracking-widest px-1.5 md:px-2 py-0.5 md:py-1 rounded-lg shadow-md border border-white/10 flex items-center gap-1 ring-1 ring-white/20">
+                            <div className="bg-[#C86414] group-hover:bg-[#16A34A] transition-colors duration-300 text-white text-[7px] md:text-[8px] font-black uppercase tracking-widest px-1.5 md:px-2 py-0.5 md:py-1 rounded-lg shadow-md border border-white/10 flex items-center gap-1 ring-1 ring-white/20">
                                 <div className="size-1 rounded-full bg-white animate-pulse" />
                                 {product.etiqueta}
                             </div>
@@ -806,7 +912,7 @@ export default function DemoRestaurante() {
                 {/* Prep Time - Positioned in the white space below image */}
                 {product.prep_time_minutes > 0 && (
                     <div className="flex justify-center -mt-1 mb-2 md:mb-4">
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 md:px-3 md:py-1 rounded-xl bg-[#181615] text-[#F59E0B] text-[8px] md:text-[10px] font-black border border-white/30 shadow-sm transition-all duration-300 group-hover:bg-[#C86414] group-hover:text-white group-hover:border-[#C86414]">
+                        <div className="inline-flex items-center gap-1 px-2.5 py-0.5 md:px-3 md:py-1 rounded-xl bg-[#2563EB] text-white text-[8px] md:text-[10px] font-black border border-blue-300/40 shadow-md shadow-blue-600/25 transition-all duration-300 group-hover:bg-[#C86414] group-hover:text-white group-hover:border-[#C86414]">
                             <Clock className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 stroke-[3]" />
                             {product.prep_time_minutes} MIN
                         </div>
@@ -816,15 +922,15 @@ export default function DemoRestaurante() {
             <div className="p-3 md:p-6 flex flex-col flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1 md:mb-4">
                     <div className="flex flex-wrap items-center gap-1.5">
-                        <div className="inline-flex items-center px-1.5 py-0.5 md:px-3 md:py-1.5 rounded-full bg-[#C86414]/10 text-[7px] md:text-[10px] font-black text-[#C86414] uppercase tracking-wider">
+                        <div className="inline-flex items-center px-2 py-0.5 md:px-3 md:py-1 rounded-full bg-[#C86414]/15 border border-white/80 text-[7px] md:text-[10px] font-black text-[#F59E0B] uppercase tracking-wider shadow-sm">
                             {product.categoria}
                         </div>
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                        {product.oferta_porcentaje && (
-                            <div className="bg-[#ff4b4b] text-white text-[8px] md:text-[11px] font-black px-1 py-0.5 md:px-2 md:py-1 rounded-lg shadow-sm">
-                                -{product.oferta_porcentaje}%
+                        {product.oferta_porcentaje > 0 && (
+                            <div className="bg-[#E51919] text-white text-[8px] md:text-[11px] font-black px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-lg shadow-md shadow-red-600/30 border border-transparent group-hover:border-white transition-all duration-300 inline-flex items-center gap-1 whitespace-nowrap">
+                                🔥 -{product.oferta_porcentaje}%
                             </div>
                         )}
                     </div>
@@ -1187,7 +1293,7 @@ export default function DemoRestaurante() {
                 {isCartOpen && (
                     <>
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={resetAll} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]" />
-                        <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white z-[70] shadow-2xl flex flex-col">
+                        <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white text-[#181615] z-[70] shadow-2xl flex flex-col">
 
                             <div className="p-6 border-b flex items-center justify-between">
                                 <div>
@@ -1222,10 +1328,10 @@ export default function DemoRestaurante() {
                                                     )}
                                                     <p className="text-[#C86414] font-black text-sm">{formatCurrency(item.precio)}</p>
                                                     <div className="mt-2 flex items-center justify-between">
-                                                        <div className="flex items-center gap-3 bg-white rounded-full p-1 border shadow-sm">
-                                                            <button onClick={() => updateQuantity(item.id, -1)} className="p-1 hover:text-[#C86414]"><Minus className="w-4 h-4" /></button>
-                                                            <span className="font-black text-xs w-4 text-center">{item.quantity}</span>
-                                                            <button onClick={() => updateQuantity(item.id, 1)} className="p-1 hover:text-[#C86414]"><Plus className="w-4 h-4" /></button>
+                                                        <div className="flex items-center gap-3 bg-white rounded-full p-1 border border-gray-200 shadow-sm text-[#181615]">
+                                                            <button type="button" onClick={() => updateQuantity(item.id, -1)} className="p-1 text-[#181615] hover:text-[#C86414] transition-colors"><Minus className="w-4 h-4" /></button>
+                                                            <span className="font-black text-xs w-5 text-center text-[#181615]">{item.quantity}</span>
+                                                            <button type="button" onClick={() => updateQuantity(item.id, 1)} className="p-1 text-[#181615] hover:text-[#C86414] transition-colors"><Plus className="w-4 h-4" /></button>
                                                         </div>
                                                         <button onClick={() => removeFromCart(item.id)} className="text-gray-400 hover:text-red-500 text-[10px] font-black uppercase tracking-wider">Eliminar</button>
                                                     </div>
@@ -1243,17 +1349,130 @@ export default function DemoRestaurante() {
                                         </div>
 
                                         <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-black text-gray-400 uppercase tracking-wider flex items-center gap-2"><User className="w-3 h-3" /> Tu Nombre</label>
-                                                <input type="text" value={checkoutData.nombre} onChange={(e) => setCheckoutData({ ...checkoutData, nombre: e.target.value })} placeholder="Ej: Luis Sarabia" className="w-full h-12 bg-gray-50 border-gray-100 rounded-xl px-4 text-sm font-bold focus:border-[#C86414] focus:ring-0 outline-none transition-all" />
+                                            {/* Nombre */}
+                                            <div className="space-y-1.5">
+                                                <label
+                                                    htmlFor="checkout-input-nombre"
+                                                    className={`text-xs font-black uppercase tracking-wider flex items-center justify-between transition-colors ${
+                                                        checkoutErrors.nombre ? 'text-red-600' : 'text-gray-500'
+                                                    }`}
+                                                >
+                                                    <span className="flex items-center gap-2">
+                                                        <User className="w-3.5 h-3.5" /> Tu Nombre <span className="text-red-500">*</span>
+                                                    </span>
+                                                    {checkoutErrors.nombre && (
+                                                        <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                                                            <AlertCircle className="w-3 h-3" /> Requerido
+                                                        </span>
+                                                    )}
+                                                </label>
+                                                <input
+                                                    id="checkout-input-nombre"
+                                                    type="text"
+                                                    value={checkoutData.nombre}
+                                                    onChange={(e) => {
+                                                        setCheckoutData({ ...checkoutData, nombre: e.target.value });
+                                                        if (checkoutErrors.nombre) {
+                                                            setCheckoutErrors(prev => ({ ...prev, nombre: undefined }));
+                                                        }
+                                                    }}
+                                                    placeholder="Ej: Luis Sarabia"
+                                                    className={`w-full h-12 rounded-xl px-4 text-sm font-bold outline-none transition-all ${
+                                                        checkoutErrors.nombre
+                                                            ? 'bg-red-50/60 border-2 border-red-500 text-red-950 placeholder-red-300 ring-2 ring-red-200'
+                                                            : 'bg-gray-50 border border-gray-200 focus:border-[#C86414] focus:bg-white text-gray-900'
+                                                    }`}
+                                                />
+                                                {checkoutErrors.nombre && (
+                                                    <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1 pl-1">
+                                                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                        {checkoutErrors.nombre}
+                                                    </p>
+                                                )}
                                             </div>
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-black text-gray-400 uppercase tracking-wider flex items-center gap-2"><MapPin className="w-3 h-3" /> Dirección</label>
-                                                <input type="text" value={checkoutData.direccion} onChange={(e) => setCheckoutData({ ...checkoutData, direccion: e.target.value })} placeholder="Ej: Calle 10 # 5-20" className="w-full h-12 bg-gray-50 border-gray-100 rounded-xl px-4 text-sm font-bold focus:border-[#C86414] focus:ring-0 outline-none transition-all" />
+
+                                            {/* Dirección */}
+                                            <div className="space-y-1.5">
+                                                <label
+                                                    htmlFor="checkout-input-direccion"
+                                                    className={`text-xs font-black uppercase tracking-wider flex items-center justify-between transition-colors ${
+                                                        checkoutErrors.direccion ? 'text-red-600' : 'text-gray-500'
+                                                    }`}
+                                                >
+                                                    <span className="flex items-center gap-2">
+                                                        <MapPin className="w-3.5 h-3.5" /> Dirección de Entrega <span className="text-red-500">*</span>
+                                                    </span>
+                                                    {checkoutErrors.direccion && (
+                                                        <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                                                            <AlertCircle className="w-3 h-3" /> Requerido
+                                                        </span>
+                                                    )}
+                                                </label>
+                                                <input
+                                                    id="checkout-input-direccion"
+                                                    type="text"
+                                                    value={checkoutData.direccion}
+                                                    onChange={(e) => {
+                                                        setCheckoutData({ ...checkoutData, direccion: e.target.value });
+                                                        if (checkoutErrors.direccion) {
+                                                            setCheckoutErrors(prev => ({ ...prev, direccion: undefined }));
+                                                        }
+                                                    }}
+                                                    placeholder="Ej: Carrera 1 g # 91-58"
+                                                    className={`w-full h-12 rounded-xl px-4 text-sm font-bold outline-none transition-all ${
+                                                        checkoutErrors.direccion
+                                                            ? 'bg-red-50/60 border-2 border-red-500 text-red-950 placeholder-red-300 ring-2 ring-red-200'
+                                                            : 'bg-gray-50 border border-gray-200 focus:border-[#C86414] focus:bg-white text-gray-900'
+                                                    }`}
+                                                />
+                                                {checkoutErrors.direccion && (
+                                                    <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1 pl-1">
+                                                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                        {checkoutErrors.direccion}
+                                                    </p>
+                                                )}
                                             </div>
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-black text-gray-400 uppercase tracking-wider flex items-center gap-2"><Phone className="w-3 h-3" /> WhatsApp / Teléfono</label>
-                                                <input type="tel" value={checkoutData.telefono} onChange={(e) => setCheckoutData({ ...checkoutData, telefono: e.target.value })} placeholder="Ej: 3001234567" className="w-full h-12 bg-gray-50 border-gray-100 rounded-xl px-4 text-sm font-bold focus:border-[#C86414] focus:ring-0 outline-none transition-all" />
+
+                                            {/* WhatsApp / Teléfono */}
+                                            <div className="space-y-1.5">
+                                                <label
+                                                    htmlFor="checkout-input-telefono"
+                                                    className={`text-xs font-black uppercase tracking-wider flex items-center justify-between transition-colors ${
+                                                        checkoutErrors.telefono ? 'text-red-600' : 'text-gray-500'
+                                                    }`}
+                                                >
+                                                    <span className="flex items-center gap-2">
+                                                        <Phone className="w-3.5 h-3.5" /> WhatsApp / Teléfono <span className="text-red-500">*</span>
+                                                    </span>
+                                                    {checkoutErrors.telefono && (
+                                                        <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                                                            <AlertCircle className="w-3 h-3" /> Requerido
+                                                        </span>
+                                                    )}
+                                                </label>
+                                                <input
+                                                    id="checkout-input-telefono"
+                                                    type="tel"
+                                                    value={checkoutData.telefono}
+                                                    onChange={(e) => {
+                                                        setCheckoutData({ ...checkoutData, telefono: e.target.value });
+                                                        if (checkoutErrors.telefono) {
+                                                            setCheckoutErrors(prev => ({ ...prev, telefono: undefined }));
+                                                        }
+                                                    }}
+                                                    placeholder="Ej: 312 883 3350"
+                                                    className={`w-full h-12 rounded-xl px-4 text-sm font-bold outline-none transition-all ${
+                                                        checkoutErrors.telefono
+                                                            ? 'bg-red-50/60 border-2 border-red-500 text-red-950 placeholder-red-300 ring-2 ring-red-200'
+                                                            : 'bg-gray-50 border border-gray-200 focus:border-[#C86414] focus:bg-white text-gray-900'
+                                                    }`}
+                                                />
+                                                {checkoutErrors.telefono && (
+                                                    <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1 pl-1">
+                                                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                        {checkoutErrors.telefono}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
 
@@ -1379,6 +1598,12 @@ export default function DemoRestaurante() {
                             <div className="p-6 border-t mt-auto">
                                 {step !== 'success' ? (
                                     <>
+                                        {step === 'checkout' && Object.keys(checkoutErrors).some(k => !!checkoutErrors[k]) && (
+                                            <div className="mb-3.5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold flex items-center gap-2">
+                                                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                                                <span>Faltan datos obligatorios. Completa los campos marcados en rojo.</span>
+                                            </div>
+                                        )}
                                         <button
                                             onClick={cart.length === 0 ? resetAll : handleConfirmOrder}
                                             className="w-full h-14 bg-[#C86414] text-white rounded-2xl font-black text-lg shadow-xl shadow-[#C86414]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
@@ -1417,8 +1642,12 @@ export default function DemoRestaurante() {
                             {/* Left Side: Product Image */}
                             <div className="relative w-full md:w-[45%] h-64 md:h-auto overflow-hidden bg-gray-50 flex-shrink-0">
                                 <img
-                                    src={selectedProduct.imagen || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80"}
+                                    src={selectedProduct.imagen || selectedProduct.imagen_url || "/images/hero-almuerzo.jpg"}
                                     alt={selectedProduct.nombre}
+                                    onError={(e) => {
+                                        e.currentTarget.onerror = null;
+                                        e.currentTarget.src = "/images/hero-almuerzo.jpg";
+                                    }}
                                     className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
                                 />
                                 <button
@@ -1662,7 +1891,7 @@ export default function DemoRestaurante() {
             />
 
             {/* Agente Experto Flotante de Fogón & Mesa */}
-            <LandingAgent hidden={isWheelOpen} />
+            <LandingAgent hidden={isWheelOpen || isCartOpen} />
         </div>
     );
 }

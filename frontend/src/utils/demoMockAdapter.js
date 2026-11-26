@@ -363,6 +363,116 @@ function parseBody(data) {
   return data;
 }
 
+const BROKEN_LEGACY_IMAGES = new Set([
+  '/images/churrasco.png',
+  '/images/pechuga.png',
+  '/images/jugo_maracuya.png',
+  '/images/flan_caramelo.png',
+  '/images/cazuela_frijoles.png',
+]);
+
+export function pickFallbackFoodImage(nombre = '') {
+  const nameLower = String(nombre || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (/marisco|camaron|pescado|salmon|ceviche|pulpo|langostin|atun|mojarra|trucha|calamar/.test(nameLower)) {
+    return 'https://images.unsplash.com/photo-1559737558-2f5a35f4523b?w=800&q=80';
+  }
+  if (/pollo|pechuga|alita/.test(nameLower)) {
+    return '/images/plato-pollo.jpg';
+  }
+  if (/sancocho|cazuela|sopa|ajiaco|frijol|caldo|mondongo/.test(nameLower)) {
+    return '/images/plato-cazuela.jpg';
+  }
+  if (/jugo|limonada|bebida|maracuya|gaseosa|agua|te|cafe|batido/.test(nameLower)) {
+    return 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=800&q=80';
+  }
+  if (/flan|postre|dulce|torta|helado|brownie|cheesecake|tres leches/.test(nameLower)) {
+    return 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=800&q=80';
+  }
+  if (/ensalada|bowl|vegano|vegetariano|quinua/.test(nameLower)) {
+    return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&q=80';
+  }
+  if (/hamburguesa|burger/.test(nameLower)) {
+    return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&q=80';
+  }
+  if (/costilla|bbq|cerdo|lomo/.test(nameLower)) {
+    return 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80';
+  }
+  return '/images/hero-almuerzo.jpg';
+}
+
+const LEGACY_TAG_MAP = {
+  'MÁS PEDIDO': 'Más Vendido',
+  'FAVORITO': 'Más Vendido',
+  'ESPECIALIDAD': 'Recomendado',
+  'IMPERDIBLE': 'Recomendado',
+  'CORTE PREMIUM': 'Recomendado',
+  'OFERTA': 'Oferta',
+  'BALANCEADO': 'Nuevo',
+  'FROZEN': 'Nuevo',
+  'LIGERO': '',
+  'FRESCO': '',
+  'SOLO JUE-DOM': '',
+  'FIN DE SEMANA': '',
+  'TRADICIONAL': '',
+  'AL CARBÓN': '',
+  'REFRESCANTE': '',
+  'NATURAL': '',
+  'POSTRE': '',
+  'ARTESANAL': '',
+};
+
+export function repairProductImages(products) {
+  if (!Array.isArray(products)) return products;
+  let changed = false;
+  const repaired = products.map((p) => {
+    let next = p;
+    const rawImg = next.imagen_url || next.imagen || '';
+    if (BROKEN_LEGACY_IMAGES.has(rawImg)) {
+      changed = true;
+      const fixed = pickFallbackFoodImage(next.nombre);
+      next = { ...next, imagen: fixed, imagen_url: fixed };
+    } else if (next.imagen_url && !next.imagen) {
+      changed = true;
+      next = { ...next, imagen: next.imagen_url };
+    } else if (next.imagen && !next.imagen_url) {
+      changed = true;
+      next = { ...next, imagen_url: next.imagen };
+    }
+
+    if (next.etiqueta && Object.prototype.hasOwnProperty.call(LEGACY_TAG_MAP, next.etiqueta)) {
+      changed = true;
+      next = { ...next, etiqueta: LEGACY_TAG_MAP[next.etiqueta] };
+    }
+
+    return next;
+  });
+  if (changed) {
+    try {
+      localStorage.setItem('fogon_mesa_custom_products', JSON.stringify(repaired));
+    } catch (e) {}
+  }
+  return repaired;
+}
+
+function loadDemoProductsFromStorage() {
+  try {
+    const saved = localStorage.getItem('fogon_mesa_custom_products');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        demoStore.products = repairProductImages(parsed);
+        return demoStore.products;
+      }
+    }
+  } catch (e) {}
+  demoStore.products = repairProductImages(demoStore.products);
+  return demoStore.products;
+}
+
 export async function demoMockAdapter(config) {
   const method = (config.method || 'get').toLowerCase();
   const rawUrl = config.url || '';
@@ -488,22 +598,33 @@ export async function demoMockAdapter(config) {
 
   // Products / Menu Items / Categories
   else if (path.match(/^\/(menu-items|products)\/[^/]+$/)) {
+    loadDemoProductsFromStorage();
     if (method === 'post') {
-      const prod = { id: `prod-${Date.now()}`, disponible: true, available: true, ...body };
+      const imgUrl = body.imagen_url || body.imagen || '';
+      const prod = {
+        id: `prod-${Date.now()}`,
+        disponible: true,
+        available: true,
+        ...body,
+        imagen: imgUrl,
+        imagen_url: imgUrl,
+      };
       demoStore.products.push(prod);
       try { localStorage.setItem('fogon_mesa_custom_products', JSON.stringify(demoStore.products)); } catch (e) {}
       data = prod;
     } else {
-      try {
-        const saved = localStorage.getItem('fogon_mesa_custom_products');
-        if (saved) demoStore.products = JSON.parse(saved);
-      } catch (e) {}
       data = demoStore.products;
     }
   } else if (path.match(/^\/(menu-items|products)\/[^/]+\/[^/]+$/)) {
+    loadDemoProductsFromStorage();
     const prodId = path.split('/').pop();
     if (method === 'put' || method === 'patch') {
-      demoStore.products = demoStore.products.map((p) => (p.id === prodId || String(p.id) === String(prodId) ? { ...p, ...body } : p));
+      const imgPatch = body.imagen_url !== undefined || body.imagen !== undefined
+        ? { imagen: body.imagen_url ?? body.imagen, imagen_url: body.imagen_url ?? body.imagen }
+        : {};
+      demoStore.products = demoStore.products.map((p) =>
+        (p.id === prodId || String(p.id) === String(prodId) ? { ...p, ...body, ...imgPatch } : p)
+      );
       try { localStorage.setItem('fogon_mesa_custom_products', JSON.stringify(demoStore.products)); } catch (e) {}
       data = demoStore.products.find((p) => p.id === prodId || String(p.id) === String(prodId)) || { ok: true };
     } else if (method === 'delete') {
@@ -579,13 +700,28 @@ export async function demoMockAdapter(config) {
       description: `${dishName} preparado al momento con ingredientes frescos seleccionados, sazón artesanal de la casa y guarnición tradicional.`
     };
   } else if (path === '/ai/generate-product-image' && method === 'post') {
-    const nameLower = String(body.nombre || '').toLowerCase();
-    let img = '/images/churrasco.png';
-    if (/pollo|pechuga/.test(nameLower)) img = '/images/pechuga.png';
-    else if (/jugo|limonada|bebida|maracuya/.test(nameLower)) img = '/images/jugo_maracuya.png';
-    else if (/flan|postre|dulce/.test(nameLower)) img = '/images/flan_caramelo.png';
-    else if (/sancocho|cazuela|sopa/.test(nameLower)) img = '/images/cazuela_frijoles.png';
-    data = { url: img };
+    let generatedUrl = null;
+    try {
+      const apiBase = (import.meta.env?.VITE_BACKEND_URL || import.meta.env?.REACT_APP_BACKEND_URL || '').replace(/\/+$/, '');
+      const endpoint = apiBase
+        ? (apiBase.endsWith('/api') ? `${apiBase}/ai/demo-generate-product-image` : `${apiBase}/api/ai/demo-generate-product-image`)
+        : '/api/ai/demo-generate-product-image';
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: body.nombre || 'Plato',
+          descripcion: body.descripcion || '',
+        }),
+      });
+      if (resp.ok) {
+        const json = await resp.json();
+        if (json?.url) generatedUrl = json.url;
+      }
+    } catch (err) {
+      console.warn('Backend AI image generation unavailable, using curated fallback:', err);
+    }
+    data = { url: generatedUrl || pickFallbackFoodImage(body.nombre) };
   }
 
   // Loyalty & Customers

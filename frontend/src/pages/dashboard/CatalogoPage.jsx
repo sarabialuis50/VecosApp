@@ -665,11 +665,6 @@ export default function CatalogoPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               <AnimatePresence>
                 {categoryProducts.map((product) => {
-                  const totalCustomGroups =
-                    (product.tamanos?.length || 0) +
-                    (product.modificadores?.length || 0) +
-                    (product.opciones?.length || 0);
-
                   return (
                     <motion.div
                       key={product.id}
@@ -684,10 +679,14 @@ export default function CatalogoPage() {
                       <div>
                         {/* Image Thumbnail */}
                         <div className="relative aspect-[16/10] bg-gray-100 overflow-hidden">
-                          {product.imagen_url ? (
+                          {product.imagen_url || product.imagen ? (
                             <img
-                              src={product.imagen_url}
+                              src={product.imagen_url || product.imagen}
                               alt={product.nombre}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = '/images/hero-almuerzo.jpg';
+                              }}
                               className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                             />
                           ) : (
@@ -706,14 +705,8 @@ export default function CatalogoPage() {
                           </Badge>
 
                           {product.etiqueta && (
-                            <Badge className="absolute top-3 right-3 text-[9px] font-black uppercase tracking-wider bg-[#111824] text-white border-none">
+                            <Badge className="absolute top-3 right-3 text-[9px] font-black uppercase tracking-wider bg-[#C86414] text-white border-none shadow-sm">
                               {product.etiqueta}
-                            </Badge>
-                          )}
-
-                          {product.oferta_porcentaje > 0 && (
-                            <Badge className="absolute bottom-3 left-3 text-[9px] font-black uppercase tracking-wider bg-red-500 text-white border-none">
-                              🔥 -{product.oferta_porcentaje}% OFF
                             </Badge>
                           )}
                         </div>
@@ -732,24 +725,41 @@ export default function CatalogoPage() {
                             {product.descripcion || 'Sin descripción detallada.'}
                           </p>
 
-                          {/* Micro Badges: Prep time, Kcal, Customizations */}
-                          <div className="flex flex-wrap gap-1.5 pt-1">
-                            {product.prep_time_minutes > 0 && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-[9px] font-black text-blue-600">
-                                ⏱️ {product.prep_time_minutes} min
-                              </span>
-                            )}
-                            {product.nutri_kcal > 0 && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-[9px] font-black text-emerald-700">
-                                🔥 {product.nutri_kcal} kcal
-                              </span>
-                            )}
-                            {totalCustomGroups > 0 && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-[9px] font-black text-amber-700">
-                                ⚙️ {totalCustomGroups} pers.
-                              </span>
-                            )}
-                          </div>
+                          {/* Micro Badges: 3 columns x 2 rows (4 nutritional + prep time + discount) */}
+                          {(product.nutri_kcal > 0 || product.nutri_proteina || product.nutri_carbohidratos || product.nutri_grasa || product.prep_time_minutes > 0 || product.oferta_porcentaje > 0) && (
+                            <div className="grid grid-cols-3 gap-1.5 pt-1">
+                              {product.nutri_kcal > 0 && (
+                                <span className="inline-flex items-center justify-center gap-1 px-1.5 py-0.5 rounded-md bg-orange-50 text-[9px] font-black text-[#C86414] whitespace-nowrap">
+                                  🔥 {product.nutri_kcal} kcal
+                                </span>
+                              )}
+                              {product.nutri_proteina && (
+                                <span className="inline-flex items-center justify-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-[9px] font-black text-rose-700 whitespace-nowrap">
+                                  🥩 {product.nutri_proteina} prot
+                                </span>
+                              )}
+                              {product.nutri_carbohidratos && (
+                                <span className="inline-flex items-center justify-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-[9px] font-black text-amber-700 whitespace-nowrap">
+                                  🍚 {product.nutri_carbohidratos} carb
+                                </span>
+                              )}
+                              {product.nutri_grasa && (
+                                <span className="inline-flex items-center justify-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-[9px] font-black text-emerald-700 whitespace-nowrap">
+                                  🥑 {product.nutri_grasa} grasa
+                                </span>
+                              )}
+                              {product.prep_time_minutes > 0 && (
+                                <span className="inline-flex items-center justify-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-[9px] font-black text-blue-600 whitespace-nowrap">
+                                  ⏱️ {product.prep_time_minutes} min
+                                </span>
+                              )}
+                              {product.oferta_porcentaje > 0 && (
+                                <span className="inline-flex items-center justify-center gap-1 px-1.5 py-0.5 rounded-md bg-red-50 text-[9px] font-black text-red-600 whitespace-nowrap">
+                                  🔥 -{product.oferta_porcentaje}%
+                                </span>
+                              )}
+                            </div>
+                          )}
 
                           <p className="font-black text-lg text-[#15803D] pt-1">
                             {formatCurrency(product.precio)}
@@ -907,12 +917,34 @@ export default function CatalogoPage() {
                       />
                       <div className="size-11 rounded-xl border border-gray-200 overflow-hidden bg-white shrink-0 flex items-center justify-center">
                         {formData.imagen_url ? (
-                          <img src={formData.imagen_url} className="w-full h-full object-cover" alt="" />
+                          <img
+                            src={formData.imagen_url}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = '/images/hero-almuerzo.jpg';
+                            }}
+                            className="w-full h-full object-cover"
+                            alt="Vista previa"
+                          />
                         ) : (
                           <ImageIcon className="w-5 h-5 text-gray-300" />
                         )}
                       </div>
                     </div>
+
+                    {formData.imagen_url && (
+                      <div className="mt-2 relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 h-44 w-full">
+                        <img
+                          src={formData.imagen_url}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/images/hero-almuerzo.jpg';
+                          }}
+                          className="w-full h-full object-cover"
+                          alt={formData.nombre || 'Vista previa del plato'}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
