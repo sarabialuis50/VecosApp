@@ -38,7 +38,7 @@ const DEFAULT_NOTIFICATIONS = [
     {
         id: 'notif-order',
         title: 'Estado de Pedido',
-        message: 'Tu último pedido fue entregado con éxito. ¡Gracias por preferir Fogón & Mesa!',
+        message: "Tu último pedido fue entregado con éxito. ¡Gracias por preferir Veco's Restaurante!",
         theme: 'green',
         read: false
     },
@@ -239,9 +239,9 @@ export default function ClientProfilePage() {
     async function fetchBusiness() {
         if (token === 'universal-client-token') {
             setBusiness({
-                nombre: 'Fogón & Mesa',
+                nombre: "Veco's Restaurante",
                 slug: slug || 'demo-restaurante',
-                logo_url: '/images/hero-almuerzo.jpg',
+                logo_url: '/images/vecos-logo.jpg',
             });
             return;
         }
@@ -1409,7 +1409,7 @@ export default function ClientProfilePage() {
                     open={showWheelModal}
                     onOpenChange={setShowWheelModal}
                     slug={slug}
-                    businessName="Fogón & Mesa"
+                    businessName="Veco's Restaurante"
                     userPhone={user?.telefono}
                     onSpinComplete={() => refreshCoupons()}
                 />

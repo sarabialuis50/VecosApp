@@ -47,6 +47,12 @@ import {
     PENDING_COUPON_KEY,
 } from '@/utils/wheelDefaults';
 import { repairProductImages } from '@/utils/demoMockAdapter';
+import {
+    loadMenuIngredientsLocal,
+    evaluateProductIngredients,
+    ensureVecosMenuMigration,
+} from '@/utils/menuIngredients';
+import { VECOS_CATEGORIES, VECOS_PRODUCTS } from '@/utils/vecosMenuData';
 
 // Normalización fonética para búsquedas tolerantes en español (acentos, s/z/c, b/v, ll/y)
 const normalizeSearchText = (text) => {
@@ -62,24 +68,21 @@ const normalizeSearchText = (text) => {
         .trim();
 };
 
-// Mock Data for the Demo
+// Datos oficiales de Veco's Restaurante
 const DEMO_BUSINESS = {
-    nombre: "Fogón & Mesa",
-    logo_url: "/images/hero-almuerzo.jpg",
+    nombre: "Veco's Restaurante",
+    logo_url: "/images/vecos-logo.jpg",
     banner_url: "/images/hero-almuerzo.jpg",
-    slogan: "Almuerzos caseros, cazuelas lentas y parrilla al carbón.",
-    banner_tag: "Cocina de Almuerzos",
+    slogan: "Sabor que te encanta — Ejecutivos, Preparados del Día, Asados al carbón, Vaqueritos y Picadas.",
+    banner_tag: "Sabor que te encanta",
     banner_title: "Nuestro Menú",
-    banner_description: "Almuerzos caseros, cazuelas lentas y parrilla al carbón preparados cada día.",
+    banner_description: "Ejecutivos, Preparados del Día, Asados al carbón, Vaqueritos y Picadas. Valor de icopor por almuerzo: $1.000.",
     slug: "demo-restaurante"
 };
 
 const DEMO_CATEGORIES = [
     { nombre: 'Todas', icono: '🍽️' },
-    { nombre: 'Ejecutivos del Día', icono: '🍱' },
-    { nombre: 'Cazuelas & Olla', icono: '🍲' },
-    { nombre: 'Parrilla & Bowls', icono: '🥩' },
-    { nombre: 'Bebidas & Postres', icono: '🥤' }
+    ...VECOS_CATEGORIES
 ];
 
 const DEMO_PRODUCTS = [
@@ -645,11 +648,13 @@ export default function DemoRestaurante() {
 
     const cartTotal = cart.reduce((acc, item) => acc + (item.precio * item.quantity), 0);
     const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+    const ICOPOR_PER_ITEM = 1000;
+    const icoporTotal = cartCount * ICOPOR_PER_ITEM;
 
     const discountAmount = appliedCoupon?.coupon?.premio_tipo === 'descuento'
         ? Math.round((cartTotal * Number(appliedCoupon.coupon.premio_valor || 0)) / 100)
         : 0;
-    const finalTotal = Math.max(0, cartTotal - discountAmount);
+    const finalTotal = Math.max(0, cartTotal - discountAmount) + icoporTotal;
 
     // Load active wheel coupons and auto-apply pending coupon from Profile
     useEffect(() => {
@@ -705,6 +710,7 @@ export default function DemoRestaurante() {
     };
 
     const loadClientMenuProducts = () => {
+        ensureVecosMenuMigration();
         try {
             const saved = localStorage.getItem('fogon_mesa_custom_products');
             if (saved) {
@@ -714,14 +720,17 @@ export default function DemoRestaurante() {
                 }
             }
         } catch (e) {}
-        return repairProductImages(DEMO_PRODUCTS);
+        return repairProductImages(JSON.parse(JSON.stringify(VECOS_PRODUCTS)));
     };
 
     const [menuProducts, setMenuProducts] = useState(loadClientMenuProducts);
+    const [menuIngredients, setMenuIngredients] = useState(loadMenuIngredientsLocal);
+    const [selectedIngredients, setSelectedIngredients] = useState({});
 
     useEffect(() => {
         const syncMenu = () => {
             setMenuProducts(loadClientMenuProducts());
+            setMenuIngredients(loadMenuIngredientsLocal());
         };
         window.addEventListener('storage', syncMenu);
         window.addEventListener('focus', syncMenu);
@@ -841,6 +850,8 @@ export default function DemoRestaurante() {
 
         const finalUnitPrice = selectedProduct.precio + selectedModifiers.reduce((acc, m) => acc + (m.precio * (m.cantidad || 1)), 0);
 
+        const selectedIngNames = Object.values(selectedIngredients).flat().filter(Boolean);
+
         const cartItem = {
             id: selectedProduct.id + Date.now(),
             productId: selectedProduct.id,
@@ -849,11 +860,15 @@ export default function DemoRestaurante() {
             quantity: qty,
             imagen: selectedProduct.imagen || selectedProduct.imagen_url || '/images/hero-almuerzo.jpg',
             notas: productNotes,
-            modificadores_visual: selectedModifiers.map(m => (m.cantidad && m.cantidad > 1) ? `${m.cantidad}x ${m.nombre}` : m.nombre)
+            modificadores_visual: [
+                ...selectedIngNames,
+                ...selectedModifiers.map(m => (m.cantidad && m.cantidad > 1) ? `${m.cantidad}x ${m.nombre}` : m.nombre)
+            ]
         };
 
         setCart(prev => [...prev, cartItem]);
         setSelectedProduct(null);
+        setSelectedIngredients({});
         toast.success(`${selectedProduct.nombre} agregado al carrito`);
     };
 
@@ -867,19 +882,34 @@ export default function DemoRestaurante() {
     };
 
     const handleProductClick = (product) => {
+        const ingEval = evaluateProductIngredients(product, menuIngredients);
+        if (ingEval.soldOut) {
+            toast.info(`"${product.nombre}" está agotado por hoy`);
+            return;
+        }
+        // Ningún ingrediente es obligatorio para el cliente: inicia vacío para que elija solo lo que desea (ej. sin sopa)
+        setSelectedIngredients({});
         setSelectedProduct(product);
         setQty(1);
         setSelectedModifiers([]);
         setProductNotes('');
     };
 
-    const ProductCard = ({ product }) => (
+    const ProductCard = ({ product }) => {
+        const ingEval = evaluateProductIngredients(product, menuIngredients);
+        const isSoldOut = ingEval.soldOut;
+
+        return (
         <motion.div
             layout
             key={product.id}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="group bg-[#231F1D] rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden border border-white/10 shadow-lg hover:border-[#C86414]/60 hover:shadow-2xl transition-all duration-300 flex flex-row h-auto cursor-pointer"
+            className={`group bg-[#231F1D] rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden border transition-all duration-300 flex flex-row h-auto ${
+                isSoldOut
+                    ? 'opacity-55 grayscale-[40%] border-red-500/30 cursor-not-allowed'
+                    : 'border-white/10 shadow-lg hover:border-[#C86414]/60 hover:shadow-2xl cursor-pointer'
+            }`}
             onClick={() => handleProductClick(product)}
         >
             {/* Left Column (Image + Prep Time) */}
@@ -892,8 +922,17 @@ export default function DemoRestaurante() {
                             e.currentTarget.onerror = null;
                             e.currentTarget.src = "/images/hero-almuerzo.jpg";
                         }}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        className={`w-full h-full object-cover transition-transform duration-700 ${isSoldOut ? '' : 'group-hover:scale-105'}`}
                     />
+
+                    {/* Overlay Agotado si falta ingrediente obligatorio */}
+                    {isSoldOut && (
+                        <div className="absolute inset-0 bg-black/55 backdrop-blur-[1px] z-30 flex items-center justify-center">
+                            <span className="px-3 py-1 rounded-xl bg-red-600 text-white text-[10px] md:text-xs font-black uppercase tracking-widest shadow-lg border border-white/25">
+                                Agotado
+                            </span>
+                        </div>
+                    )}
 
                     {/* Badge Etiqueta - Fixed position (Left) */}
                     <div className="absolute top-2 left-2 md:top-3 md:left-3 z-20">
@@ -983,13 +1022,20 @@ export default function DemoRestaurante() {
                             </span>
                         )}
                     </div>
-                    <div className="size-9 md:size-12 bg-[#C86414] rounded-full flex items-center justify-center shadow-lg shadow-[#C86414]/25 text-white group-hover:scale-110 active:scale-95 transition-all border border-white/15">
-                        <Plus className="w-4 h-4 md:w-6 md:h-6 stroke-[3]" />
-                    </div>
+                    {isSoldOut ? (
+                        <div className="px-3 py-1.5 rounded-full bg-red-600/20 border border-red-500/40 text-red-400 text-[9px] md:text-[11px] font-black uppercase tracking-wider">
+                            Agotado
+                        </div>
+                    ) : (
+                        <div className="size-9 md:size-12 bg-[#C86414] rounded-full flex items-center justify-center shadow-lg shadow-[#C86414]/25 text-white group-hover:scale-110 active:scale-95 transition-all border border-white/15">
+                            <Plus className="w-4 h-4 md:w-6 md:h-6 stroke-[3]" />
+                        </div>
+                    )}
                 </div>
             </div>
         </motion.div>
-    );
+        );
+    };
 
     const ProductSection = ({ title, items, icon, rows, onVerTodo }) => {
         const displayItems = rows ? items.slice(0, rows * 2) : items;
@@ -1551,6 +1597,12 @@ export default function DemoRestaurante() {
                                             <p className="text-xs font-black text-gray-400 uppercase tracking-wider mb-3">Resumen de Pago</p>
                                             <div className="p-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200 space-y-2">
                                                 <div className="flex justify-between text-sm font-medium"><span>Subtotal</span><span>{formatCurrency(cartTotal)}</span></div>
+                                                {icoporTotal > 0 && (
+                                                    <div className="flex justify-between text-sm font-medium text-gray-600">
+                                                        <span>Empaque icopor ($1.000 × {cartCount})</span>
+                                                        <span>{formatCurrency(icoporTotal)}</span>
+                                                    </div>
+                                                )}
                                                 {appliedCoupon && (
                                                     discountAmount > 0 ? (
                                                         <div className="flex justify-between text-sm font-bold text-emerald-700">
@@ -1706,6 +1758,86 @@ export default function DemoRestaurante() {
                                                     {selectedProduct.descripcion}
                                                 </p>
                                             </div>
+
+                                            {/* Ingredientes / Componentes disponibles del plato (todos opcionales para el cliente) */}
+                                            {(() => {
+                                                const selEval = evaluateProductIngredients(selectedProduct, menuIngredients);
+                                                // Ocultar proteína única interna (solo controla si el plato está Agotado)
+                                                const visibleGroups = selEval.availableGroups.filter(
+                                                    (g) => !(g.category === 'proteina' && g.items.length === 1)
+                                                );
+                                                if (visibleGroups.length === 0) return null;
+                                                return (
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <h3 className="text-[10px] font-black text-[#1F1C1A] uppercase tracking-widest opacity-60">
+                                                                Acompañantes / Ingredientes (Opcional)
+                                                            </h3>
+                                                            <span className="text-[10px] font-semibold text-gray-400">
+                                                                Elige solo lo que desees
+                                                            </span>
+                                                        </div>
+                                                        <div className="space-y-3">
+                                                            {visibleGroups.map((group) => {
+                                                                const currentSel = selectedIngredients[group.category] || [];
+                                                                const isSingleChoiceCat = ['sopa', 'arroz', 'proteina', 'bebida'].includes(group.category);
+                                                                return (
+                                                                    <div key={group.category} className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-2.5">
+                                                                        <div className="flex items-center justify-between">
+                                                                            <span className="text-xs font-black text-[#1F1C1A] uppercase tracking-wider flex items-center gap-1.5">
+                                                                                <span>{group.emoji}</span>
+                                                                                <span>{group.label}</span>
+                                                                            </span>
+                                                                            <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-gray-200/70 text-gray-500">
+                                                                                Opcional
+                                                                            </span>
+                                                                        </div>
+
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {group.items.map((ing) => {
+                                                                                const isPicked = currentSel.includes(ing.name);
+                                                                                return (
+                                                                                    <button
+                                                                                        key={ing.id}
+                                                                                        type="button"
+                                                                                        onClick={() => {
+                                                                                            setSelectedIngredients((prev) => {
+                                                                                                const prevArr = prev[group.category] || [];
+                                                                                                const exists = prevArr.includes(ing.name);
+                                                                                                if (isSingleChoiceCat) {
+                                                                                                    // Tocar el seleccionado lo desmarca (ej. pedir sin sopa)
+                                                                                                    return {
+                                                                                                        ...prev,
+                                                                                                        [group.category]: exists ? [] : [ing.name],
+                                                                                                    };
+                                                                                                }
+                                                                                                return {
+                                                                                                    ...prev,
+                                                                                                    [group.category]: exists
+                                                                                                        ? prevArr.filter((n) => n !== ing.name)
+                                                                                                        : [...prevArr, ing.name],
+                                                                                                };
+                                                                                            });
+                                                                                        }}
+                                                                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                                                                                            isPicked
+                                                                                                ? 'bg-[#C86414] text-white border-[#C86414] shadow-sm'
+                                                                                                : 'bg-white text-[#1F1C1A] border-gray-200 hover:border-[#C86414]/60'
+                                                                                        }`}
+                                                                                    >
+                                                                                        {isPicked && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                                                                                        <span>{ing.name}</span>
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
 
                                             {/* Nutritional Info Section (Requested Design) */}
                                             {(selectedProduct.nutri_kcal || selectedProduct.nutri_proteina) && (

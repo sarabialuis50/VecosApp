@@ -21,14 +21,14 @@ const savedLocalBanner = typeof window !== 'undefined' ? localStorage.getItem('f
 
 const UNIVERSAL_ADMIN_BUSINESS = {
   id: 'fogon-y-mesa-id',
-  nombre: 'Fogón & Mesa',
+  nombre: "Veco's Restaurante",
   slug: 'demo-restaurante',
-  email: 'admin@fogonmesa.com',
+  email: 'admin@vecosrestaurante.com',
   plan: 'pro',
   parent_id: null,
   telefono: '3017810256',
-  direccion: 'Calle 84 # 45 - 22, Zona Gastronómica',
-  logo_url: savedLocalLogo || '/images/hero-almuerzo.jpg',
+  direccion: "Zona Gastronómica — Veco's Restaurante",
+  logo_url: savedLocalLogo || '/images/vecos-logo.jpg',
   banner_url: savedLocalBanner || '/images/hero-almuerzo.jpg',
 };
 

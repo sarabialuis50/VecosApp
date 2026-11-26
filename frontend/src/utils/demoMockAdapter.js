@@ -8,19 +8,25 @@ import {
   generateCouponCode,
   pickWeightedSegment,
 } from './wheelDefaults';
+import {
+  loadMenuIngredientsLocal,
+  saveMenuIngredientsLocal,
+  ensureVecosMenuMigration,
+} from './menuIngredients';
+import { VECOS_CATEGORIES, VECOS_PRODUCTS } from './vecosMenuData';
 
 const demoStore = {
   business: {
-    id: 'fogon-y-mesa-id',
-    nombre: 'Fogón & Mesa',
+    id: 'vecos-restaurante-id',
+    nombre: "Veco's Restaurante",
     slug: 'demo-restaurante',
-    email: 'admin@fogonmesa.com',
+    email: 'admin@vecosrestaurante.com',
     plan: 'pro',
     parent_id: null,
     telefono: '3017810256',
-    direccion: 'Calle 84 # 45 - 22, Zona Gastronómica',
-    slogan: 'Almuerzos caseros, cazuelas lentas y parrilla al carbón.',
-    logo_url: '/images/hero-almuerzo.jpg',
+    direccion: 'Zona Gastronómica — Veco\'s Restaurante',
+    slogan: 'Sabor que te encanta — Ejecutivos, Preparados del Día, Asados, Vaqueritos y Picadas.',
+    logo_url: '/images/vecos-logo.jpg',
     banner_url: '/images/hero-almuerzo.jpg',
     whatsapp_activo: true,
     whatsapp_creditos: 120,
@@ -103,237 +109,8 @@ const demoStore = {
       ],
     },
   ],
-  categories: [
-    { id: 'cat-1', nombre: 'Ejecutivos del Día', icono: '🍽️', orden: 1 },
-    { id: 'cat-2', nombre: 'Cazuelas & Olla', icono: '🍲', orden: 2 },
-    { id: 'cat-3', nombre: 'Parrilla & Bowls', icono: '🥩', orden: 3 },
-    { id: 'cat-4', nombre: 'Bebidas & Postres', icono: '🥤', orden: 4 },
-  ],
-  products: [
-    // 1. Ejecutivos del Día
-    {
-      id: 'prod-1',
-      nombre: 'Churrasco a la Brasa (250g)',
-      categoria: 'Ejecutivos del Día',
-      precio: 22000,
-      descripcion: 'Corte jugoso al carbón con chimichurri de la casa, arroz con cilantro, tajadas maduras y ensalada fresca.',
-      imagen: '/images/hero-almuerzo.jpg',
-      disponible: true,
-      available: true,
-      destacado: true,
-      etiqueta: 'MÁS PEDIDO'
-    },
-    {
-      id: 'prod-2',
-      nombre: 'Pechuga al Romero y Limón',
-      categoria: 'Ejecutivos del Día',
-      precio: 18500,
-      descripcion: 'Pechuga marinada 12 horas en finas hierbas, puré de papa rústico al ajo y vegetales rostizados.',
-      imagen: '/images/plato-pollo.jpg',
-      disponible: true,
-      available: true,
-      destacado: true,
-      etiqueta: 'LIGERO'
-    },
-    {
-      id: 'prod-3',
-      nombre: 'Sobrebarriga Criolla en Salsa',
-      categoria: 'Ejecutivos del Día',
-      precio: 19500,
-      descripcion: 'Cocción lenta de 4 horas en salsa de tomate asado y cebolla, papa chorreada, arroz blanco y aguacate.',
-      imagen: '/images/plato-cazuela.jpg',
-      disponible: true,
-      available: true,
-      destacado: true,
-      etiqueta: 'ESPECIALIDAD'
-    },
-    {
-      id: 'prod-4',
-      nombre: 'Filete de Tilapia al Ajillo',
-      categoria: 'Ejecutivos del Día',
-      precio: 21000,
-      descripcion: 'Pesca fresca sellada en mantequilla clarificada, patacones crujientes, arroz con coco y ensalada de mango.',
-      imagen: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: false,
-      etiqueta: 'FRESCO'
-    },
-    {
-      id: 'prod-5',
-      nombre: 'Costillitas al Fogón Criollo',
-      categoria: 'Ejecutivos del Día',
-      precio: 20500,
-      descripcion: 'Costillitas tiernas doradas a fuego vivo con yuca al vapor, arroz parbolizado y suero costeño artesanal.',
-      imagen: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: false,
-      etiqueta: 'OFERTA'
-    },
-
-    // 2. Cazuelas & Olla
-    {
-      id: 'prod-6',
-      nombre: 'Cazuela de Frijoles de la Casa',
-      categoria: 'Cazuelas & Olla',
-      precio: 24000,
-      descripcion: 'Frijoles rojos cremosos con chicharrón carnudo, carne desmechada, maduritos, aguacate, arroz y arepa asada.',
-      imagen: '/images/plato-cazuela.jpg',
-      disponible: true,
-      available: true,
-      destacado: true,
-      etiqueta: 'IMPERDIBLE'
-    },
-    {
-      id: 'prod-7',
-      nombre: 'Ajiaco Santafereño Tradicional',
-      categoria: 'Cazuelas & Olla',
-      precio: 23000,
-      descripcion: 'Tres variedades de papa, pollo desmechado, mazorca tierna, guascas, alcaparras, crema de leche y aguacate.',
-      imagen: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: true,
-      etiqueta: 'SOLO JUE-DOM'
-    },
-    {
-      id: 'prod-8',
-      nombre: 'Sancocho Trifásico en Leña',
-      categoria: 'Cazuelas & Olla',
-      precio: 25000,
-      descripcion: 'Caldo concentrado con res, cerdo y pollo, yuca, plátano verde, mazorca, arroz blanco y ají casero.',
-      imagen: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: false,
-      etiqueta: 'FIN DE SEMANA'
-    },
-    {
-      id: 'prod-9',
-      nombre: 'Mondongo Criollo Paisa',
-      categoria: 'Cazuelas & Olla',
-      precio: 22000,
-      descripcion: 'Caldo espeso con carne de cerdo en trocitos, papa criolla, verduras picadas finas, arroz, banano y arepa.',
-      imagen: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: false,
-      etiqueta: 'TRADICIONAL'
-    },
-
-    // 3. Parrilla & Bowls
-    {
-      id: 'prod-10',
-      nombre: 'Punta de Anca al Carbón (300g)',
-      categoria: 'Parrilla & Bowls',
-      precio: 32000,
-      descripcion: 'Asada al término de tu elección, acompañada de papa criolla salteada, ensalada verde y chimichurri.',
-      imagen: '/images/hero-almuerzo.jpg',
-      disponible: true,
-      available: true,
-      destacado: true,
-      etiqueta: 'CORTE PREMIUM'
-    },
-    {
-      id: 'prod-11',
-      nombre: 'Bowl Mediodía Saludable',
-      categoria: 'Parrilla & Bowls',
-      precio: 19000,
-      descripcion: 'Base de arroz integral y quinua, pollo a la plancha, aguacate, maíz tierno, tomate cherry y vinagreta cítrica.',
-      imagen: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: false,
-      etiqueta: 'BALANCEADO'
-    },
-    {
-      id: 'prod-12',
-      nombre: 'Costillas BBQ de Guayaba',
-      categoria: 'Parrilla & Bowls',
-      precio: 28000,
-      descripcion: 'Costillas de cerdo glaseadas en salsa artesanal de guayaba y especias, con papas rústicas y coleslaw.',
-      imagen: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: true,
-      etiqueta: 'FAVORITO'
-    },
-    {
-      id: 'prod-13',
-      nombre: 'Lomo de Cerdo al Carbón',
-      categoria: 'Parrilla & Bowls',
-      precio: 26000,
-      descripcion: 'Corte tierno de lomo sellado en parrilla de leña, con papas a la francesa caseras y ensalada de repollo agridulce.',
-      imagen: 'https://images.unsplash.com/photo-1558030006-450675393462?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: false,
-      etiqueta: 'AL CARBÓN'
-    },
-
-    // 4. Bebidas & Postres
-    {
-      id: 'prod-14',
-      nombre: 'Limonada de Hierbabuena y Panela',
-      categoria: 'Bebidas & Postres',
-      precio: 6500,
-      descripcion: 'Limón tahití recién exprimido con hojas frescas de hierbabuena y toque de panela orgánica.',
-      imagen: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: false,
-      etiqueta: 'REFRESCANTE'
-    },
-    {
-      id: 'prod-15',
-      nombre: 'Jugo Natural de Maracuyá o Mango',
-      categoria: 'Bebidas & Postres',
-      precio: 7000,
-      descripcion: 'Pulpa 100% natural preparada al momento en agua o leche.',
-      imagen: 'https://images.unsplash.com/photo-1546173159-315724a31696?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: false,
-      etiqueta: 'NATURAL'
-    },
-    {
-      id: 'prod-16',
-      nombre: 'Flan de Caramelo & Café',
-      categoria: 'Bebidas & Postres',
-      precio: 8500,
-      descripcion: 'Receta cremosa de la casa con baño de caramelo oscuro y toque de café colombiano.',
-      imagen: 'https://images.unsplash.com/photo-1528975604071-b4dc52a2d18c?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: true,
-      etiqueta: 'POSTRE'
-    },
-    {
-      id: 'prod-17',
-      nombre: 'Torta Tibia de Almojábana con Bocadillo',
-      categoria: 'Bebidas & Postres',
-      precio: 9000,
-      descripcion: 'Dulce tradicional horneado con queso campesino y centro derretido de guayaba de Vélez.',
-      imagen: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: false,
-      etiqueta: 'ARTESANAL'
-    },
-    {
-      id: 'prod-18',
-      nombre: 'Limonada de Coco Cremosa',
-      categoria: 'Bebidas & Postres',
-      precio: 9500,
-      descripcion: 'Refrescante mezcla frozen de limón fresco, crema de coco artesanal y hielo frapeado.',
-      imagen: 'https://images.unsplash.com/photo-1536935338788-846bb9981813?w=500&q=80',
-      disponible: true,
-      available: true,
-      destacado: false,
-      etiqueta: 'FROZEN'
-    }
-  ],
+  categories: [...VECOS_CATEGORIES],
+  products: JSON.parse(JSON.stringify(VECOS_PRODUCTS)),
   customers: [
     { id: 'cust-1', nombre: 'Laura Martínez', name: 'Laura Martínez', telefono: '3001234567', phone: '3001234567', puntos: 1420, points: 1420, puntos_totales: 1420, puntos_disponibles: 1420, total_gastado: 385000, pedidos_count: 14 },
     { id: 'cust-2', nombre: 'Andrés Rojas', name: 'Andrés Rojas', telefono: '3109876543', phone: '3109876543', puntos: 780, points: 780, puntos_totales: 780, puntos_disponibles: 780, total_gastado: 215000, pedidos_count: 9 },
@@ -459,17 +236,18 @@ export function repairProductImages(products) {
 }
 
 function loadDemoProductsFromStorage() {
+  ensureVecosMenuMigration();
   try {
     const saved = localStorage.getItem('fogon_mesa_custom_products');
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         demoStore.products = repairProductImages(parsed);
         return demoStore.products;
       }
     }
   } catch (e) {}
-  demoStore.products = repairProductImages(demoStore.products);
+  demoStore.products = repairProductImages(JSON.parse(JSON.stringify(VECOS_PRODUCTS)));
   return demoStore.products;
 }
 
@@ -633,10 +411,17 @@ export async function demoMockAdapter(config) {
       data = { deleted: true };
     }
   } else if (path.match(/^\/categories\/[^/]+$/)) {
+    ensureVecosMenuMigration();
     try {
       const savedCats = localStorage.getItem('fogon_mesa_custom_categories');
-      if (savedCats) demoStore.categories = JSON.parse(savedCats);
-    } catch (e) {}
+      if (savedCats) {
+        demoStore.categories = JSON.parse(savedCats);
+      } else {
+        demoStore.categories = [...VECOS_CATEGORIES];
+      }
+    } catch (e) {
+      demoStore.categories = [...VECOS_CATEGORIES];
+    }
     if (method === 'post') {
       const cat = { id: `cat-${Date.now()}`, nombre: body.nombre || 'Nueva Categoría', icono: body.icono || '🍽️' };
       demoStore.categories.push(cat);
@@ -659,6 +444,77 @@ export async function demoMockAdapter(config) {
       data = { ok: true };
     } else {
       data = demoStore.categories;
+    }
+  } else if (path === '/menu-ingredients/bulk-assign-category' && method === 'post') {
+    const targetCat = String(body.category || '').trim();
+    const ingId = String(body.ingredient_id || '').trim();
+    const action = body.action || 'add';
+    const isReq = body.is_required === true;
+    loadDemoProductsFromStorage();
+    let affected = 0;
+    demoStore.products = demoStore.products.map((p) => {
+      if (p.categoria !== targetCat) return p;
+      const current = Array.isArray(p.menu_item_ingredients) ? p.menu_item_ingredients : [];
+      if (action === 'remove') {
+        const next = current.filter((l) => String(l.ingredient_id) !== ingId);
+        if (next.length !== current.length) affected += 1;
+        return { ...p, menu_item_ingredients: next };
+      }
+      const already = current.some((l) => String(l.ingredient_id) === ingId);
+      if (already) return p;
+      affected += 1;
+      return {
+        ...p,
+        menu_item_ingredients: [...current, { ingredient_id: ingId, is_required: isReq }],
+      };
+    });
+    try { localStorage.setItem('fogon_mesa_custom_products', JSON.stringify(demoStore.products)); } catch (e) {}
+    data = { ok: true, affected };
+  } else if (path === '/menu-ingredients') {
+    const list = loadMenuIngredientsLocal();
+    if (method === 'post') {
+      const nameTrim = String(body.name || '').trim();
+      const exists = list.some((i) => i.name.toLowerCase() === nameTrim.toLowerCase());
+      if (exists) {
+        data = { error: 'Ya existe un ingrediente con ese nombre', ingredients: list };
+      } else {
+        const newIng = {
+          id: `ing-${Date.now()}`,
+          name: nameTrim || 'Nuevo ingrediente',
+          category: body.category || 'acompanante',
+          is_available: body.is_available !== false,
+          is_active: true,
+        };
+        const updated = [...list, newIng];
+        saveMenuIngredientsLocal(updated);
+        data = newIng;
+      }
+    } else {
+      data = list;
+    }
+  } else if (path.match(/^\/menu-ingredients\/[^/]+$/)) {
+    const ingId = path.split('/').pop();
+    const list = loadMenuIngredientsLocal();
+    if (method === 'put' || method === 'patch') {
+      const updated = list.map((i) => (String(i.id) === String(ingId) ? { ...i, ...body } : i));
+      saveMenuIngredientsLocal(updated);
+      data = updated.find((i) => String(i.id) === String(ingId)) || { ok: true };
+    } else if (method === 'delete') {
+      const updated = list.filter((i) => String(i.id) !== String(ingId));
+      saveMenuIngredientsLocal(updated);
+      // También limpiar referencias en productos
+      loadDemoProductsFromStorage();
+      demoStore.products = demoStore.products.map((p) => {
+        if (!Array.isArray(p.menu_item_ingredients)) return p;
+        return {
+          ...p,
+          menu_item_ingredients: p.menu_item_ingredients.filter(
+            (link) => String(link.ingredient_id) !== String(ingId)
+          ),
+        };
+      });
+      try { localStorage.setItem('fogon_mesa_custom_products', JSON.stringify(demoStore.products)); } catch (e) {}
+      data = { deleted: true };
     }
   } else if (path.match(/^\/tags\/[^/]+$/)) {
     let tagsList = ['Recomendado', 'Más Vendido', 'Nuevo', 'Oferta', 'Picante'];

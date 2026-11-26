@@ -24,8 +24,15 @@ import {
   ListChecks,
   Clock,
   Star,
-  Flame
+  Flame,
+  ChefHat
 } from 'lucide-react';
+import {
+  INGREDIENT_CATEGORIES,
+  loadMenuIngredientsLocal,
+  evaluateProductIngredients,
+  getIngredientCategoryMeta,
+} from '@/utils/menuIngredients';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,7 +56,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-const defaultCategories = ['Ejecutivos del Día', 'Cazuelas & Olla', 'Parrilla & Bowls', 'Bebidas & Postres'];
+const defaultCategories = ['Ejecutivos', 'Preparados del Día', 'Asados', 'Vaqueritos', 'Picadas', 'Bebidas'];
 const defaultTags = ['Recomendado', 'Más Vendido', 'Nuevo', 'Oferta', 'Picante'];
 
 const defaultImages = [
@@ -78,7 +85,8 @@ const emptyFormData = {
   nutri_grasa: '',
   tamanos: [],
   modificadores: [],
-  opciones: []
+  opciones: [],
+  menu_item_ingredients: []
 };
 
 export default function CatalogoPage() {
@@ -116,11 +124,151 @@ export default function CatalogoPage() {
   const [editingTagOriginal, setEditingTagOriginal] = useState(null);
   const [savingTag, setSavingTag] = useState(false);
 
+  // Ingredients Management Modal State (Opción A: switch rápido dentro de Menú)
+  const [ingredients, setIngredients] = useState(() => loadMenuIngredientsLocal());
+  const [isIngredientsModalOpen, setIsIngredientsModalOpen] = useState(false);
+  const [newIngredientName, setNewIngredientName] = useState('');
+  const [newIngredientCategory, setNewIngredientCategory] = useState('acompanante');
+  const [savingIngredient, setSavingIngredient] = useState(false);
+  const [bulkAssignCategory, setBulkAssignCategory] = useState('Ejecutivos');
+
   useEffect(() => {
     fetchProducts();
     fetchCategories();
     fetchTags();
+    fetchIngredients();
   }, [slug]);
+
+  const fetchIngredients = async () => {
+    try {
+      const res = await api().get('/menu-ingredients');
+      if (Array.isArray(res.data)) {
+        setIngredients(res.data);
+      }
+    } catch {
+      setIngredients(loadMenuIngredientsLocal());
+    }
+  };
+
+  const handleCreateIngredient = async (e) => {
+    e.preventDefault();
+    const cleanName = newIngredientName.trim();
+    if (!cleanName) {
+      toast.error('Escribe el nombre del ingrediente');
+      return;
+    }
+    setSavingIngredient(true);
+    try {
+      const res = await api().post('/menu-ingredients', {
+        name: cleanName,
+        category: newIngredientCategory,
+        is_available: true,
+      });
+      if (res.data?.error) {
+        toast.error(res.data.error);
+      } else {
+        toast.success(`Ingrediente "${cleanName}" creado`);
+        setNewIngredientName('');
+        fetchIngredients();
+      }
+    } catch {
+      toast.error('Error al crear ingrediente');
+    } finally {
+      setSavingIngredient(false);
+    }
+  };
+
+  const handleToggleIngredientAvailability = async (ing) => {
+    const nextVal = !ing.is_available;
+    setIngredients((prev) =>
+      prev.map((item) => (item.id === ing.id ? { ...item, is_available: nextVal } : item))
+    );
+    try {
+      await api().put(`/menu-ingredients/${ing.id}`, { is_available: nextVal });
+      toast.success(
+        nextVal
+          ? `"${ing.name}" marcado como Disponible`
+          : `"${ing.name}" marcado como Agotado`
+      );
+    } catch {
+      setIngredients((prev) =>
+        prev.map((item) => (item.id === ing.id ? { ...item, is_available: !nextVal } : item))
+      );
+      toast.error('No se pudo actualizar el ingrediente');
+    }
+  };
+
+  const handleBulkAssignIngredient = async (ing, action = 'add') => {
+    const targetCat = bulkAssignCategory || categoryNames[0];
+    if (!targetCat) return;
+    try {
+      const res = await api().post('/menu-ingredients/bulk-assign-category', {
+        category: targetCat,
+        ingredient_id: ing.id,
+        action,
+        is_required: false,
+      });
+      const count = res.data?.affected ?? 0;
+      toast.success(
+        action === 'add'
+          ? `"${ing.name}" asociado a ${count} platos de ${targetCat}`
+          : `"${ing.name}" quitado de ${count} platos de ${targetCat}`
+      );
+      fetchProducts();
+    } catch {
+      toast.error('No se pudo aplicar el cambio a la categoría');
+    }
+  };
+
+  const handleDeleteIngredient = async (ing) => {
+    if (!window.confirm(`¿Eliminar "${ing.name}" de la lista de ingredientes?`)) return;
+    try {
+      await api().delete(`/menu-ingredients/${ing.id}`);
+      toast.success(`Ingrediente "${ing.name}" eliminado`);
+      fetchIngredients();
+      fetchProducts();
+    } catch {
+      toast.error('Error al eliminar ingrediente');
+    }
+  };
+
+  const toggleProductIngredient = (ing) => {
+    setFormData((prev) => {
+      const current = Array.isArray(prev.menu_item_ingredients) ? prev.menu_item_ingredients : [];
+      const exists = current.some((l) => String(l.ingredient_id) === String(ing.id));
+      if (exists) {
+        return {
+          ...prev,
+          menu_item_ingredients: current.filter((l) => String(l.ingredient_id) !== String(ing.id)),
+        };
+      }
+      const catMeta = getIngredientCategoryMeta(ing.category);
+      return {
+        ...prev,
+        menu_item_ingredients: [
+          ...current,
+          {
+            ingredient_id: ing.id,
+            is_required: catMeta.defaultRequired,
+            quantity: 1,
+            unit: 'porcion',
+          },
+        ],
+      };
+    });
+  };
+
+  const toggleProductIngredientRequired = (ingId) => {
+    setFormData((prev) => {
+      const current = Array.isArray(prev.menu_item_ingredients) ? prev.menu_item_ingredients : [];
+      return {
+        ...prev,
+        menu_item_ingredients: current.map((l) =>
+          String(l.ingredient_id) === String(ingId) ? { ...l, is_required: !l.is_required } : l
+        ),
+      };
+    });
+  };
 
   const fetchProducts = async () => {
     try {
@@ -216,6 +364,7 @@ export default function CatalogoPage() {
       tamanos: JSON.parse(JSON.stringify(product.tamanos || [])),
       modificadores: JSON.parse(JSON.stringify(product.modificadores || [])),
       opciones: JSON.parse(JSON.stringify(product.opciones || [])),
+      menu_item_ingredients: JSON.parse(JSON.stringify(product.menu_item_ingredients || [])),
     });
     setIsModalOpen(true);
   };
@@ -357,6 +506,7 @@ export default function CatalogoPage() {
         tamanos: formData.tamanos || [],
         modificadores: formData.modificadores || [],
         opciones: formData.opciones || [],
+        menu_item_ingredients: formData.menu_item_ingredients || [],
       };
 
       if (editingProduct) {
@@ -566,6 +716,24 @@ export default function CatalogoPage() {
               Etiquetas ({tags.length})
             </Button>
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsIngredientsModalOpen(true)}
+              className={`h-9 px-3 rounded-xl border font-bold text-[11px] uppercase tracking-wider gap-1.5 shadow-none ${
+                ingredients.some((i) => !i.is_available)
+                  ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'
+                  : 'border-amber-300 bg-amber-50/70 text-amber-800 hover:bg-amber-100'
+              }`}
+            >
+              <ChefHat className="w-3.5 h-3.5" />
+              Acompañantes / Ingred. ({ingredients.length})
+              {ingredients.filter((i) => !i.is_available).length > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-red-600 text-white text-[9px] font-black">
+                  {ingredients.filter((i) => !i.is_available).length} agot.
+                </span>
+              )}
+            </Button>
+            <Button
               size="sm"
               onClick={openCreateModal}
               className="h-9 px-4 rounded-xl bg-[#4ADE80] hover:bg-[#22C55E] text-[#111814] font-black text-[11px] uppercase tracking-wider shadow-md shadow-[#4ADE80]/20 gap-1.5"
@@ -665,6 +833,8 @@ export default function CatalogoPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               <AnimatePresence>
                 {categoryProducts.map((product) => {
+                  const ingEval = evaluateProductIngredients(product, ingredients);
+                  const effectivelySoldOut = !product.disponible || ingEval.soldOut;
                   return (
                     <motion.div
                       key={product.id}
@@ -673,7 +843,7 @@ export default function CatalogoPage() {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       className={`bg-white rounded-3xl border-2 transition-all overflow-hidden flex flex-col justify-between hover:shadow-xl ${
-                        product.disponible ? 'border-gray-100' : 'border-red-100 bg-red-50/20 opacity-75'
+                        effectivelySoldOut ? 'border-red-100 bg-red-50/20 opacity-85' : 'border-gray-100'
                       }`}
                     >
                       <div>
@@ -697,11 +867,20 @@ export default function CatalogoPage() {
                           )}
 
                           <Badge
+                            title={
+                              ingEval.soldOut
+                                ? `Agotado por ingrediente: ${ingEval.missingNames.join(', ')}`
+                                : undefined
+                            }
                             className={`absolute top-3 left-3 text-[9px] font-black uppercase tracking-wider border-none ${
-                              product.disponible ? 'bg-[#22C55E] text-white' : 'bg-red-500 text-white'
+                              effectivelySoldOut ? 'bg-red-500 text-white' : 'bg-[#22C55E] text-white'
                             }`}
                           >
-                            {product.disponible ? 'Disponible' : 'Agotado'}
+                            {!product.disponible
+                              ? 'Inactivo'
+                              : ingEval.soldOut
+                                ? 'Agotado (Ingred.)'
+                                : 'Disponible'}
                           </Badge>
 
                           {product.etiqueta && (
@@ -1268,6 +1447,99 @@ export default function CatalogoPage() {
                   ))}
                 </div>
 
+                {/* Ingredientes / Componentes asociados al plato (menu_item_ingredients) */}
+                <div className="space-y-4 pt-4 border-t border-gray-100">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="size-8 rounded-full bg-amber-50 flex items-center justify-center">
+                        <ChefHat className="w-4 h-4 text-[#C86414]" />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-black uppercase tracking-wider text-gray-900">
+                          Ingredientes / Componentes del Plato
+                        </Label>
+                        <p className="text-[10px] text-gray-400">
+                          Asocia los ingredientes de este plato. Marca como <b>Base del plato</b> solo los esenciales (si se agotan, el plato queda Agotado). Los demás son <b>Opcionales</b>: el cliente elige si los quiere o no, y si se agotan solo se ocultan.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsIngredientsModalOpen(true)}
+                      className="h-8 rounded-xl border-amber-200 bg-amber-50/70 text-amber-800 hover:bg-amber-100 text-[10px] font-black gap-1.5 px-3"
+                    >
+                      <Plus className="w-3 h-3" /> Gestionar Ingredientes
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {INGREDIENT_CATEGORIES.map((cat) => {
+                      const catItems = ingredients.filter((i) => i.category === cat.id && i.is_active !== false);
+                      if (catItems.length === 0) return null;
+                      return (
+                        <div key={cat.id} className="p-3.5 rounded-2xl bg-gray-50/70 border border-gray-100 space-y-2">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-gray-600 flex items-center gap-1.5">
+                            <span>{cat.emoji}</span>
+                            <span>{cat.label}</span>
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {catItems.map((ing) => {
+                              const linked = (formData.menu_item_ingredients || []).find(
+                                (l) => String(l.ingredient_id) === String(ing.id)
+                              );
+                              const isChecked = !!linked;
+                              return (
+                                <div
+                                  key={ing.id}
+                                  className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl border transition-all ${
+                                    isChecked
+                                      ? 'bg-white border-[#4ADE80] shadow-sm'
+                                      : 'bg-white/60 border-gray-100 hover:border-gray-200'
+                                  }`}
+                                >
+                                  <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => toggleProductIngredient(ing)}
+                                      className="size-4 rounded accent-[#16A34A] shrink-0"
+                                    />
+                                    <span className={`text-xs font-bold truncate ${!ing.is_available ? 'line-through text-red-400' : 'text-gray-800'}`}>
+                                      {ing.name}
+                                    </span>
+                                    {!ing.is_available && (
+                                      <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-red-100 text-red-600 shrink-0">
+                                        Agotado
+                                      </span>
+                                    )}
+                                  </label>
+
+                                  {isChecked && (
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleProductIngredientRequired(ing.id)}
+                                      className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider shrink-0 transition-colors ${
+                                        linked.is_required
+                                          ? 'bg-[#C86414]/15 text-[#C86414] hover:bg-[#C86414]/25'
+                                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                      }`}
+                                      title="Base del plato: si se agota, el plato entero queda Agotado. Opcional: si se agota, solo se oculta la opción."
+                                    >
+                                      {linked.is_required ? 'Base del plato' : 'Opcional'}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Descuento (%) y Tiempo de Preparación */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 rounded-3xl border border-[#4ADE80]/25 bg-emerald-50/30">
                   <div className="space-y-1.5">
@@ -1549,6 +1821,169 @@ export default function CatalogoPage() {
                   Cerrar
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* INGREDIENTS QUICK-TOGGLE MANAGER MODAL (Opción A) */}
+        <Dialog open={isIngredientsModalOpen} onOpenChange={setIsIngredientsModalOpen}>
+          <DialogContent className="max-w-xl w-[95vw] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl bg-white max-h-[88vh] flex flex-col">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between shrink-0">
+              <div>
+                <DialogTitle className="text-lg font-black text-gray-900 flex items-center gap-2">
+                  <ChefHat className="w-5 h-5 text-[#C86414]" />
+                  Acompañantes / Ingredientes del Día
+                </DialogTitle>
+                <DialogDescription className="text-xs text-gray-500">
+                  Desmarca un acompañante cuando se agote para ocultarlo automáticamente en todos los platos asociados.
+                </DialogDescription>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-5 overflow-y-auto flex-1">
+              {/* Selector de categoría para asociación masiva en 1 clic */}
+              <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/70 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[11px] font-bold text-amber-900">
+                  Asociar / quitar en bloque a categoría:
+                </div>
+                <Select value={bulkAssignCategory} onValueChange={setBulkAssignCategory}>
+                  <SelectTrigger className="h-8 w-44 rounded-xl bg-white border-amber-200 text-xs font-bold">
+                    <SelectValue placeholder="Categoría..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoryNames.map((cat) => (
+                      <SelectItem key={cat} value={cat} className="text-xs font-bold">
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Formulario rápido para crear ingrediente */}
+              <form onSubmit={handleCreateIngredient} className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                  Agregar nuevo ingrediente o componente
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    value={newIngredientName}
+                    onChange={(e) => setNewIngredientName(e.target.value)}
+                    placeholder="Ej: Arroz de fideo, Sopa de lentejas..."
+                    className="h-10 rounded-xl bg-white border-gray-200 text-xs font-bold flex-1"
+                  />
+                  <Select value={newIngredientCategory} onValueChange={setNewIngredientCategory}>
+                    <SelectTrigger className="h-10 sm:w-40 rounded-xl bg-white border-gray-200 text-xs font-bold">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INGREDIENT_CATEGORIES.map((c) => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs font-bold">
+                          {c.emoji} {c.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="submit"
+                    disabled={savingIngredient}
+                    className="h-10 px-4 rounded-xl bg-[#4ADE80] hover:bg-[#22C55E] text-[#111814] font-black text-xs uppercase shrink-0"
+                  >
+                    {savingIngredient ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+ Agregar'}
+                  </Button>
+                </div>
+              </form>
+
+              {/* Lista agrupada por categoría con switch rápido */}
+              <div className="space-y-4">
+                {INGREDIENT_CATEGORIES.map((cat) => {
+                  const catItems = ingredients.filter((i) => i.category === cat.id);
+                  if (catItems.length === 0) return null;
+                  return (
+                    <div key={cat.id} className="space-y-2">
+                      <div className="flex items-center justify-between px-1">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+                          <span>{cat.emoji}</span>
+                          <span>{cat.label}</span>
+                        </h4>
+                        <span className="text-[10px] font-bold text-gray-400">
+                          {catItems.filter((i) => i.is_available).length}/{catItems.length} disp.
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {catItems.map((ing) => {
+                          const usedCount = products.filter((p) =>
+                            (p.menu_item_ingredients || []).some(
+                              (l) => String(l.ingredient_id) === String(ing.id)
+                            )
+                          ).length;
+
+                          return (
+                            <div
+                              key={ing.id}
+                              className={`flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-2xl border transition-all ${
+                                ing.is_available
+                                  ? 'bg-white border-gray-100'
+                                  : 'bg-red-50/60 border-red-200'
+                              }`}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className={`text-xs font-black truncate ${ing.is_available ? 'text-gray-900' : 'text-red-700 line-through'}`}>
+                                  {ing.name}
+                                </p>
+                                <p className="text-[10px] font-semibold text-gray-400">
+                                  {usedCount === 0
+                                    ? 'Sin platos asociados'
+                                    : usedCount === 1
+                                      ? 'Asociado a 1 plato'
+                                      : `Asociado a ${usedCount} platos`}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleBulkAssignIngredient(ing, 'add')}
+                                  className="px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-[9px] font-black text-amber-800 transition-colors"
+                                  title={`Asociar a todos los platos de ${bulkAssignCategory}`}
+                                >
+                                  + {bulkAssignCategory}
+                                </button>
+                                <span className={`text-[9px] font-black uppercase tracking-wider ${ing.is_available ? 'text-[#15803D]' : 'text-red-600'}`}>
+                                  {ing.is_available ? 'Disponible' : 'Agotado'}
+                                </span>
+                                <Switch
+                                  checked={!!ing.is_available}
+                                  onCheckedChange={() => handleToggleIngredientAvailability(ing)}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteIngredient(ing)}
+                                  className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                  title="Eliminar ingrediente"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsIngredientsModalOpen(false)}
+                className="w-full h-11 rounded-xl border-gray-200 font-black text-xs uppercase tracking-wider"
+              >
+                Listo
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

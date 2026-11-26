@@ -132,9 +132,9 @@ export const DashboardLayout = ({ children }) => {
             <Link to={basePath} className="flex items-center gap-3 group/sidebar" onClick={() => setSidebarOpen(false)}>
               {/* Business Logo */}
               <div className="size-11 shrink-0 rounded-xl bg-white shadow-md border border-slate-100/10 flex items-center justify-center overflow-hidden transition-transform group-hover/sidebar:scale-105 duration-500">
-                {(user?.logo_url || (typeof window !== 'undefined' && localStorage.getItem('fogon_mesa_logo')) || '/images/hero-almuerzo.jpg') ? (
+                {(user?.logo_url || (typeof window !== 'undefined' && localStorage.getItem('fogon_mesa_logo')) || '/images/vecos-logo.jpg') ? (
                   <img
-                    src={user?.logo_url || (typeof window !== 'undefined' && localStorage.getItem('fogon_mesa_logo')) || '/images/hero-almuerzo.jpg'}
+                    src={user?.logo_url || (typeof window !== 'undefined' && localStorage.getItem('fogon_mesa_logo')) || '/images/vecos-logo.jpg'}
                     alt="Logo"
                     className="w-full h-full object-cover"
                   />
