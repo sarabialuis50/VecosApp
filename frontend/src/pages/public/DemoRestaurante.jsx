@@ -899,16 +899,18 @@ export default function DemoRestaurante() {
         setCheckoutData({ nombre: '', direccion: '', telefono: '', metodo: 'WhatsApp' });
     };
 
-    const handleProductClick = (product) => {
+    const handleProductClick = (product, preselectedSize = null) => {
         const ingEval = evaluateProductIngredients(product, menuIngredients);
         if (ingEval.soldOut) {
             toast.info(`"${product.nombre}" está agotado por hoy`);
             return;
         }
-        // Pre-seleccionar el primer tamaño si el plato tiene tamaños configurados
-        const defaultSizes = (product.tamanos || [])
-            .map((g) => (g.opciones && g.opciones.length > 0 ? { ...g.opciones[0], isSize: true } : null))
-            .filter(Boolean);
+        // Si el cliente hizo clic en un tamaño específico en la tarjeta, pre-seleccionarlo; si no, el primero
+        const defaultSizes = preselectedSize
+            ? [{ ...preselectedSize, isSize: true }]
+            : (product.tamanos || [])
+                .map((g) => (g.opciones && g.opciones.length > 0 ? { ...g.opciones[0], isSize: true } : null))
+                .filter(Boolean);
         setSelectedIngredients({});
         setSelectedProduct(product);
         setQty(1);
@@ -1032,27 +1034,71 @@ export default function DemoRestaurante() {
                     </div>
                 )}
 
-                <div className="flex items-center justify-between mt-auto pt-2 md:pt-3 border-t border-white/10">
-                    <div className="flex items-baseline gap-2 md:gap-3">
-                        {product.precio > 0 && (
-                            <span className="text-base md:text-2xl font-black text-[#FBF9F5]">{formatCurrency(product.precio)}</span>
-                        )}
-                        {product.precio_original > 0 && product.precio_original > product.precio && (
-                            <span className="text-[9px] md:text-[13px] font-bold text-[#9A9086] line-through decoration-1 opacity-70">
-                                {formatCurrency(product.precio_original)}
-                            </span>
-                        )}
-                    </div>
-                    {isSoldOut ? (
-                        <div className="px-3 py-1.5 rounded-full bg-red-600/20 border border-red-500/40 text-red-400 text-[9px] md:text-[11px] font-black uppercase tracking-wider">
-                            Agotado
+                {(() => {
+                    const sizeOptions = (product.tamanos || [])
+                        .flatMap((g) => g.opciones || [])
+                        .filter((o) => o && o.nombre && Number(o.precio) > 0);
+
+                    if (sizeOptions.length > 0) {
+                        return (
+                            <div className="mt-auto pt-2 md:pt-3 border-t border-white/10 w-full">
+                                {isSoldOut ? (
+                                    <div className="flex justify-end">
+                                        <div className="px-3 py-1.5 rounded-full bg-red-600/20 border border-red-500/40 text-red-400 text-[9px] md:text-[11px] font-black uppercase tracking-wider">
+                                            Agotado
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-1 w-full">
+                                        {sizeOptions.map((opt, idx) => (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleProductClick(product, opt);
+                                                }}
+                                                className="group/opt flex items-center gap-1 px-1.5 py-1 md:px-2 md:py-1.5 rounded-lg bg-[#181615] hover:bg-[#C86414]/20 border border-white/20 hover:border-[#C86414] transition-all text-left w-full min-w-0"
+                                            >
+                                                <span className="size-2.5 md:size-3 rounded-full border-[1.5px] border-white/55 group-hover/opt:border-[#F59E0B] flex items-center justify-center shrink-0 transition-colors">
+                                                    <span className="size-1 md:size-1.5 rounded-full bg-[#F59E0B] opacity-0 group-hover/opt:opacity-100 transition-opacity" />
+                                                </span>
+                                                <span className="text-[8px] md:text-[9.5px] leading-none font-black flex items-center justify-between gap-1 flex-1 min-w-0">
+                                                    <span className="text-[#F59E0B] truncate">{opt.nombre}</span>
+                                                    <span className="text-[#FBF9F5] shrink-0">{formatCurrency(opt.precio).replace(/\s+/g, '')}</span>
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <div className="flex items-center justify-between gap-2 mt-auto pt-2 md:pt-3 border-t border-white/10">
+                            <div className="flex items-baseline gap-2 md:gap-3">
+                                {product.precio > 0 && (
+                                    <span className="text-base md:text-2xl font-black text-[#FBF9F5]">{formatCurrency(product.precio)}</span>
+                                )}
+                                {product.precio_original > 0 && product.precio_original > product.precio && (
+                                    <span className="text-[9px] md:text-[13px] font-bold text-[#9A9086] line-through decoration-1 opacity-70">
+                                        {formatCurrency(product.precio_original)}
+                                    </span>
+                                )}
+                            </div>
+                            {isSoldOut ? (
+                                <div className="px-3 py-1.5 rounded-full bg-red-600/20 border border-red-500/40 text-red-400 text-[9px] md:text-[11px] font-black uppercase tracking-wider">
+                                    Agotado
+                                </div>
+                            ) : (
+                                <div className="size-9 md:size-12 bg-[#C86414] rounded-full flex items-center justify-center shadow-lg shadow-[#C86414]/25 text-white group-hover:scale-110 active:scale-95 transition-all border border-white/15">
+                                    <Plus className="w-4 h-4 md:w-6 md:h-6 stroke-[3]" />
+                                </div>
+                            )}
                         </div>
-                    ) : (
-                        <div className="size-9 md:size-12 bg-[#C86414] rounded-full flex items-center justify-center shadow-lg shadow-[#C86414]/25 text-white group-hover:scale-110 active:scale-95 transition-all border border-white/15">
-                            <Plus className="w-4 h-4 md:w-6 md:h-6 stroke-[3]" />
-                        </div>
-                    )}
-                </div>
+                    );
+                })()}
             </div>
         </motion.div>
         );
@@ -1960,8 +2006,17 @@ export default function DemoRestaurante() {
                                                                         }}
                                                                         className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${isSelected ? 'bg-[#C86414]/5 border-[#C86414] shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200'}`}
                                                                     >
-                                                                        <span className={`text-sm font-black ${isSelected ? 'text-[#1F1C1A]' : 'text-gray-600'}`}>
-                                                                            {option.nombre}
+                                                                        <span className={`text-sm font-black flex items-center gap-3 ${isSelected ? 'text-[#1F1C1A]' : 'text-gray-600'}`}>
+                                                                            {categoryKey === 'tamanos' && (
+                                                                                <span className={`size-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                                                                                    isSelected
+                                                                                        ? 'border-[#C86414] bg-[#C86414]'
+                                                                                        : 'border-gray-300 bg-white'
+                                                                                }`}>
+                                                                                    {isSelected && <span className="size-2 rounded-full bg-white" />}
+                                                                                </span>
+                                                                            )}
+                                                                            <span>{option.nombre}</span>
                                                                         </span>
                                                                         {option.precio > 0 && (
                                                                             <span className={`text-xs font-black ${isSelected ? 'text-[#C86414]' : 'text-gray-400'}`}>

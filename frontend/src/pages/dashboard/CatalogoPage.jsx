@@ -131,6 +131,9 @@ export default function CatalogoPage() {
   const [newIngredientCategory, setNewIngredientCategory] = useState('acompanante');
   const [savingIngredient, setSavingIngredient] = useState(false);
   const [bulkAssignCategory, setBulkAssignCategory] = useState('Ejecutivos');
+  const [editingIngredientId, setEditingIngredientId] = useState(null);
+  const [editingIngredientName, setEditingIngredientName] = useState('');
+  const [editingIngredientCategory, setEditingIngredientCategory] = useState('acompanante');
 
   useEffect(() => {
     fetchProducts();
@@ -167,7 +170,30 @@ export default function CatalogoPage() {
       if (res.data?.error) {
         toast.error(res.data.error);
       } else {
-        toast.success(`Ingrediente "${cleanName}" creado`);
+        const createdIng = res.data;
+        // Si estamos creando/editando un plato, asociarlo automáticamente al plato actual
+        if (isModalOpen && createdIng?.id) {
+          const catMeta = getIngredientCategoryMeta(createdIng.category);
+          setFormData((prev) => {
+            const current = Array.isArray(prev.menu_item_ingredients) ? prev.menu_item_ingredients : [];
+            if (current.some((l) => String(l.ingredient_id) === String(createdIng.id))) return prev;
+            return {
+              ...prev,
+              menu_item_ingredients: [
+                ...current,
+                {
+                  ingredient_id: createdIng.id,
+                  is_required: catMeta.defaultRequired,
+                  quantity: 1,
+                  unit: 'porcion',
+                },
+              ],
+            };
+          });
+          toast.success(`"${cleanName}" creado y asociado al plato actual`);
+        } else {
+          toast.success(`Ingrediente "${cleanName}" creado`);
+        }
         setNewIngredientName('');
         fetchIngredients();
       }
@@ -209,6 +235,26 @@ export default function CatalogoPage() {
         is_required: false,
       });
       const count = res.data?.affected ?? 0;
+      // Sincronizar también el plato actualmente abierto si pertenece a esa categoría
+      if (isModalOpen && formData.categoria === targetCat) {
+        setFormData((prev) => {
+          const current = Array.isArray(prev.menu_item_ingredients) ? prev.menu_item_ingredients : [];
+          if (action === 'remove') {
+            return {
+              ...prev,
+              menu_item_ingredients: current.filter((l) => String(l.ingredient_id) !== String(ing.id)),
+            };
+          }
+          if (current.some((l) => String(l.ingredient_id) === String(ing.id))) return prev;
+          return {
+            ...prev,
+            menu_item_ingredients: [
+              ...current,
+              { ingredient_id: ing.id, is_required: false, quantity: 1, unit: 'porcion' },
+            ],
+          };
+        });
+      }
       toast.success(
         action === 'add'
           ? `"${ing.name}" asociado a ${count} platos de ${targetCat}`
@@ -217,6 +263,37 @@ export default function CatalogoPage() {
       fetchProducts();
     } catch {
       toast.error('No se pudo aplicar el cambio a la categoría');
+    }
+  };
+
+  const handleStartEditIngredient = (ing) => {
+    setEditingIngredientId(ing.id);
+    setEditingIngredientName(ing.name || '');
+    setEditingIngredientCategory(ing.category || 'acompanante');
+  };
+
+  const handleSaveEditIngredient = async (ingId) => {
+    const cleanName = editingIngredientName.trim();
+    if (!cleanName) {
+      toast.error('El nombre del ingrediente no puede estar vacío');
+      return;
+    }
+    try {
+      await api().put(`/menu-ingredients/${ingId}`, {
+        name: cleanName,
+        category: editingIngredientCategory,
+      });
+      setIngredients((prev) =>
+        prev.map((item) =>
+          item.id === ingId
+            ? { ...item, name: cleanName, category: editingIngredientCategory }
+            : item
+        )
+      );
+      setEditingIngredientId(null);
+      toast.success('Ingrediente actualizado');
+    } catch {
+      toast.error('Error al actualizar ingrediente');
     }
   };
 
@@ -473,13 +550,22 @@ export default function CatalogoPage() {
     }
   };
 
+  const pricedSizesInForm = (formData.tamanos || [])
+    .flatMap((g) => g.opciones || [])
+    .map((o) => Number(o?.precio || 0))
+    .filter((p) => p > 0);
+  const hasSizedPricesInForm = pricedSizesInForm.length > 0;
+  const minSizePriceInForm = hasSizedPricesInForm ? Math.min(...pricedSizesInForm) : null;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.nombre.trim()) {
       toast.error('El nombre del plato es obligatorio');
       return;
     }
-    const basePrice = parseFloat(formData.precio || '0');
+    const basePrice = hasSizedPricesInForm
+      ? minSizePriceInForm
+      : parseFloat(formData.precio || '0');
     if (isNaN(basePrice)) {
       toast.error('Ingresa un precio válido');
       return;
@@ -672,36 +758,36 @@ export default function CatalogoPage() {
       <div className="max-w-7xl mx-auto space-y-8 pb-16">
 
         {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <div className="size-10 rounded-xl bg-[#4ADE80]/15 flex items-center justify-center text-[#22C55E] shrink-0">
               <UtensilsCrossed className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight uppercase truncate">
+              <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight uppercase">
                 Gestión de Menú
               </h1>
-              <p className="text-xs text-gray-400 font-medium truncate">
+              <p className="text-xs text-gray-400 font-medium">
                 {products.length} platos registrados en {categories.length} categorías
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
               onClick={() => window.open('/menu', '_blank')}
-              className="h-9 px-3 rounded-xl border border-gray-200 text-gray-700 font-bold text-[11px] uppercase tracking-wider hover:bg-gray-50 gap-1.5 shadow-none"
+              className="h-9 px-3 rounded-xl bg-white border border-slate-300 text-gray-800 font-bold text-[11px] uppercase tracking-wider hover:bg-gray-50 gap-1.5 shadow-sm"
             >
-              <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+              <ExternalLink className="w-3.5 h-3.5 text-gray-500" />
               Ver Menú
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsCategoryModalOpen(true)}
-              className="h-9 px-3 rounded-xl border border-[#4ADE80]/60 text-[#15803D] hover:bg-[#4ADE80]/10 font-bold text-[11px] uppercase tracking-wider gap-1.5 shadow-none"
+              className="h-9 px-3 rounded-xl bg-white border border-[#4ADE80]/80 text-[#15803D] hover:bg-[#4ADE80]/10 font-bold text-[11px] uppercase tracking-wider gap-1.5 shadow-sm"
             >
               <FolderPlus className="w-3.5 h-3.5 text-[#22C55E]" />
               Categorías ({categories.length})
@@ -710,7 +796,7 @@ export default function CatalogoPage() {
               variant="outline"
               size="sm"
               onClick={() => setIsTagModalOpen(true)}
-              className="h-9 px-3 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold text-[11px] uppercase tracking-wider gap-1.5 shadow-none"
+              className="h-9 px-3 rounded-xl bg-white border border-slate-300 text-gray-800 hover:bg-gray-50 font-bold text-[11px] uppercase tracking-wider gap-1.5 shadow-sm"
             >
               <Tag className="w-3.5 h-3.5 text-[#22C55E]" />
               Etiquetas ({tags.length})
@@ -718,15 +804,20 @@ export default function CatalogoPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIsIngredientsModalOpen(true)}
-              className={`h-9 px-3 rounded-xl border font-bold text-[11px] uppercase tracking-wider gap-1.5 shadow-none ${
+              onClick={() => {
+                if (filterCategory && filterCategory !== 'all') {
+                  setBulkAssignCategory(filterCategory);
+                }
+                setIsIngredientsModalOpen(true);
+              }}
+              className={`h-9 px-3 rounded-xl border font-bold text-[11px] uppercase tracking-wider gap-1.5 shadow-sm ${
                 ingredients.some((i) => !i.is_available)
                   ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'
                   : 'border-amber-300 bg-amber-50/70 text-amber-800 hover:bg-amber-100'
               }`}
             >
               <ChefHat className="w-3.5 h-3.5" />
-              Acompañantes / Ingred. ({ingredients.length})
+              Acompañantes / Ingredientes ({ingredients.length})
               {ingredients.filter((i) => !i.is_available).length > 0 && (
                 <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-red-600 text-white text-[9px] font-black">
                   {ingredients.filter((i) => !i.is_available).length} agot.
@@ -940,9 +1031,31 @@ export default function CatalogoPage() {
                             </div>
                           )}
 
-                          <p className="font-black text-lg text-[#15803D] pt-1">
-                            {formatCurrency(product.precio)}
-                          </p>
+                          {(() => {
+                            const sizeOptions = (product.tamanos || [])
+                              .flatMap((g) => g.opciones || [])
+                              .filter((o) => o && o.nombre && Number(o.precio) > 0);
+                            if (sizeOptions.length > 0) {
+                              return (
+                                <div className="flex flex-wrap gap-1.5 pt-1.5">
+                                  {sizeOptions.map((opt, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200/80 text-[11px] font-black text-[#15803D]"
+                                    >
+                                      <span className="text-gray-600 font-bold">{opt.nombre}:</span>
+                                      <span>{formatCurrency(opt.precio)}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            }
+                            return (
+                              <p className="font-black text-lg text-[#15803D] pt-1">
+                                {formatCurrency(product.precio)}
+                              </p>
+                            );
+                          })()}
                         </div>
                       </div>
 
@@ -999,29 +1112,93 @@ export default function CatalogoPage() {
             <div className="max-h-[78vh] overflow-y-auto">
               <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
                 {/* Nombre y Precio */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-black uppercase tracking-wider text-gray-700">Nombre del Plato *</Label>
+                    <div className="h-5 flex items-center justify-between gap-2">
+                      <Label className="text-xs font-black uppercase tracking-wider text-gray-700">Nombre del Plato *</Label>
+                    </div>
                     <Input
                       value={formData.nombre}
                       onChange={e => setFormData({ ...formData, nombre: e.target.value })}
                       required
                       className="h-11 rounded-xl bg-gray-50 border-gray-200 font-semibold"
-                      placeholder="Ej: Hamburguesa Suprema"
+                      placeholder="Ej: Pechuga Gratinada"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-black uppercase tracking-wider text-gray-700">Precio Base (COP) *</Label>
+                    <div className="h-5 flex items-center justify-between gap-2">
+                      <Label className="text-xs font-black uppercase tracking-wider text-gray-700">
+                        Precio Base (COP) {!hasSizedPricesInForm && '*'}
+                      </Label>
+                      {hasSizedPricesInForm && (
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-[#15803D]">
+                          Definido por Tamaños
+                        </span>
+                      )}
+                    </div>
                     <Input
                       type="text"
-                      value={formatPriceInput(formData.precio)}
+                      value={formatPriceInput(hasSizedPricesInForm ? minSizePriceInForm : formData.precio)}
+                      readOnly={hasSizedPricesInForm}
                       onChange={e => {
+                        if (hasSizedPricesInForm) return;
                         const raw = e.target.value.replace(/\D/g, '');
                         setFormData({ ...formData, precio: raw });
                       }}
-                      className="h-11 rounded-xl bg-gray-50 border-gray-200 font-black text-[#15803D]"
+                      className={`h-11 rounded-xl font-black text-[#15803D] ${
+                        hasSizedPricesInForm
+                          ? 'bg-emerald-50/70 border-emerald-200 cursor-not-allowed'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
                       placeholder="25.000"
                     />
+                    {hasSizedPricesInForm && (
+                      <p className="text-[10px] text-gray-500">
+                        Calculado automáticamente desde el tamaño más económico. Edita los precios en la sección <b>Tamaños</b>.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Categoría y Etiqueta */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                  <div className="space-y-1.5">
+                    <div className="h-5 flex items-center">
+                      <Label className="text-xs font-black uppercase tracking-wider text-gray-700">Categoría</Label>
+                    </div>
+                    <Select
+                      value={formData.categoria}
+                      onValueChange={val => setFormData({ ...formData, categoria: val })}
+                    >
+                      <SelectTrigger className="w-full h-11 rounded-xl bg-gray-50 border-gray-200 text-xs font-bold">
+                        <SelectValue placeholder="Seleccionar categoría..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoryNames.map((cat) => (
+                          <SelectItem key={cat} value={cat} className="text-xs font-bold">{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="h-5 flex items-center">
+                      <Label className="text-xs font-black uppercase tracking-wider text-gray-700">Etiqueta (Opcional)</Label>
+                    </div>
+                    <Select
+                      value={formData.etiqueta || 'none'}
+                      onValueChange={val => setFormData({ ...formData, etiqueta: val === 'none' ? '' : val })}
+                    >
+                      <SelectTrigger className="w-full h-11 rounded-xl bg-gray-50 border-gray-200 border-dashed text-xs font-bold">
+                        <SelectValue placeholder="Sin etiqueta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" className="text-xs font-bold">Ninguna</SelectItem>
+                        {tags.map(tag => (
+                          <SelectItem key={tag} value={tag} className="text-xs font-bold">{tag}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -1124,44 +1301,6 @@ export default function CatalogoPage() {
                         />
                       </div>
                     )}
-                  </div>
-                </div>
-
-                {/* Categoría y Etiqueta */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 rounded-3xl border border-gray-100 bg-gray-50/50">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-black uppercase tracking-wider text-gray-700">Categoría</Label>
-                    <Select
-                      value={formData.categoria}
-                      onValueChange={val => setFormData({ ...formData, categoria: val })}
-                    >
-                      <SelectTrigger className="h-11 rounded-xl bg-white border-gray-200 text-xs font-bold">
-                        <SelectValue placeholder="Seleccionar categoría..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categoryNames.map((cat) => (
-                          <SelectItem key={cat} value={cat} className="text-xs font-bold">{cat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-black uppercase tracking-wider text-gray-700">Etiqueta (Opcional)</Label>
-                    <Select
-                      value={formData.etiqueta || 'none'}
-                      onValueChange={val => setFormData({ ...formData, etiqueta: val === 'none' ? '' : val })}
-                    >
-                      <SelectTrigger className="h-11 rounded-xl bg-white border-gray-200 border-dashed text-xs font-bold">
-                        <SelectValue placeholder="Sin etiqueta" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none" className="text-xs font-bold">Ninguna</SelectItem>
-                        {tags.map(tag => (
-                          <SelectItem key={tag} value={tag} className="text-xs font-bold">{tag}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
 
@@ -1470,7 +1609,10 @@ export default function CatalogoPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setIsIngredientsModalOpen(true)}
+                      onClick={() => {
+                        if (formData.categoria) setBulkAssignCategory(formData.categoria);
+                        setIsIngredientsModalOpen(true);
+                      }}
                       className="h-8 rounded-xl border-amber-200 bg-amber-50/70 text-amber-800 hover:bg-amber-100 text-[10px] font-black gap-1.5 px-3"
                     >
                       <Plus className="w-3 h-3" /> Gestionar Ingredientes
@@ -1921,6 +2063,64 @@ export default function CatalogoPage() {
                             )
                           ).length;
 
+                          const isEditingIng = editingIngredientId === ing.id;
+
+                          if (isEditingIng) {
+                            return (
+                              <div
+                                key={ing.id}
+                                className="flex flex-wrap sm:flex-nowrap items-center gap-2 px-3 py-2.5 rounded-2xl border-2 border-[#4ADE80] bg-emerald-50/30"
+                              >
+                                <Input
+                                  value={editingIngredientName}
+                                  onChange={(e) => setEditingIngredientName(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleSaveEditIngredient(ing.id);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingIngredientId(null);
+                                    }
+                                  }}
+                                  autoFocus
+                                  className="h-9 rounded-xl bg-white border-gray-200 text-xs font-bold flex-1 min-w-[140px]"
+                                  placeholder="Nombre del ingrediente"
+                                />
+                                <Select
+                                  value={editingIngredientCategory}
+                                  onValueChange={setEditingIngredientCategory}
+                                >
+                                  <SelectTrigger className="h-9 w-36 rounded-xl bg-white border-gray-200 text-xs font-bold shrink-0">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {INGREDIENT_CATEGORIES.map((c) => (
+                                      <SelectItem key={c.id} value={c.id} className="text-xs font-bold">
+                                        {c.emoji} {c.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEditIngredient(ing.id)}
+                                  className="p-2 rounded-xl bg-[#22C55E] hover:bg-[#16A34A] text-white transition-colors shrink-0"
+                                  title="Guardar cambios"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingIngredientId(null)}
+                                  className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 transition-colors shrink-0"
+                                  title="Cancelar"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            );
+                          }
+
                           return (
                             <div
                               key={ing.id}
@@ -1943,7 +2143,7 @@ export default function CatalogoPage() {
                                 </p>
                               </div>
 
-                              <div className="flex items-center gap-2 shrink-0">
+                              <div className="flex items-center gap-1.5 shrink-0">
                                 <button
                                   type="button"
                                   onClick={() => handleBulkAssignIngredient(ing, 'add')}
@@ -1959,6 +2159,14 @@ export default function CatalogoPage() {
                                   checked={!!ing.is_available}
                                   onCheckedChange={() => handleToggleIngredientAvailability(ing)}
                                 />
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditIngredient(ing)}
+                                  className="p-1.5 rounded-lg text-gray-400 hover:text-[#15803D] hover:bg-emerald-50 transition-colors"
+                                  title="Editar ingrediente"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteIngredient(ing)}

@@ -2,7 +2,7 @@
 
 export const MENU_INGREDIENTS_STORAGE_KEY = 'fogon_mesa_menu_ingredients';
 export const VECOS_MENU_VERSION_KEY = 'vecos_menu_version';
-export const VECOS_MENU_VERSION = 'vecos_v4';
+export const VECOS_MENU_VERSION = 'vecos_v6';
 
 export const INGREDIENT_CATEGORIES = [
   { id: 'arroz', label: 'Arroz', emoji: '🍚', defaultRequired: false },
