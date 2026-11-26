@@ -1825,6 +1825,194 @@ async def register_inventory_transaction(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class SedeIngredientCreateInput(BaseModel):
+    nombre: str
+    unidad_medida: str = "unidades"
+    stock_actual: float = 0.0
+    stock_minimo: float = 0.0
+    costo_unitario: float = 0.0
+
+
+class SedeIngredientUpdateInput(BaseModel):
+    nombre: Optional[str] = None
+    unidad_medida: Optional[str] = None
+    stock_minimo: Optional[float] = None
+    costo_unitario: Optional[float] = None
+
+
+@api_router.post("/catalog/sedes/{sede_slug}/inventory")
+async def create_sede_ingredient(
+    sede_slug: str,
+    data: SedeIngredientCreateInput,
+    business: Business = Depends(get_current_business)
+):
+    """
+    Crea un nuevo ingrediente en global_ingredients (o reutiliza si ya existe)
+    y registra su stock inicial en sede_inventory para la sede.
+    """
+    nombre_limpio = data.nombre.strip()
+    if not nombre_limpio:
+        raise HTTPException(status_code=400, detail="El nombre del ingrediente es obligatorio")
+
+    negocio_res = supabase.table('negocios').select('id, brand_id').eq('slug', sede_slug).execute()
+    if not negocio_res.data:
+        raise HTTPException(status_code=404, detail="Sede no encontrada")
+    sede_id = negocio_res.data[0]['id']
+    brand_id = negocio_res.data[0].get('brand_id')
+
+    if not brand_id:
+        try:
+            brand_res = supabase.table('brands').select('id').limit(1).execute()
+            if brand_res.data:
+                brand_id = brand_res.data[0]['id']
+        except Exception:
+            pass
+    if not brand_id:
+        brand_id = sede_id
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    try:
+        # 1. Reuse or create global ingredient
+        gi_res = supabase.table('global_ingredients').select('id, nombre, unidad_medida').eq(
+            'brand_id', brand_id).ilike('nombre', nombre_limpio).limit(1).execute()
+
+        if gi_res.data:
+            gi_id = gi_res.data[0]['id']
+            supabase.table('global_ingredients').update({
+                'unidad_medida': data.unidad_medida,
+                'updated_at': now_iso,
+            }).eq('id', gi_id).execute()
+        else:
+            gi_id = str(uuid.uuid4())
+            supabase.table('global_ingredients').insert({
+                'id': gi_id,
+                'brand_id': brand_id,
+                'nombre': nombre_limpio,
+                'unidad_medida': data.unidad_medida,
+                'created_at': now_iso,
+                'updated_at': now_iso,
+            }).execute()
+
+        # 2. Check if already in sede_inventory
+        existing_inv = supabase.table('sede_inventory').select('id').eq(
+            'sede_id', sede_id).eq('global_ingredient_id', gi_id).execute()
+
+        if existing_inv.data:
+            inv_id = existing_inv.data[0]['id']
+            supabase.table('sede_inventory').update({
+                'stock_actual': float(data.stock_actual),
+                'stock_minimo': float(data.stock_minimo),
+                'costo_unitario': float(data.costo_unitario),
+                'updated_at': now_iso,
+            }).eq('id', inv_id).execute()
+        else:
+            inv_id = str(uuid.uuid4())
+            supabase.table('sede_inventory').insert({
+                'id': inv_id,
+                'sede_id': sede_id,
+                'global_ingredient_id': gi_id,
+                'stock_actual': float(data.stock_actual),
+                'stock_minimo': float(data.stock_minimo),
+                'costo_unitario': float(data.costo_unitario),
+                'created_at': now_iso,
+                'updated_at': now_iso,
+            }).execute()
+
+        # 3. Record initial stock entry transaction if stock > 0
+        if float(data.stock_actual) > 0:
+            try:
+                supabase.table('inventory_transactions').insert({
+                    'id': str(uuid.uuid4()),
+                    'sede_id': sede_id,
+                    'global_ingredient_id': gi_id,
+                    'tipo': 'entrada',
+                    'cantidad': float(data.stock_actual),
+                    'notas': 'Stock inicial',
+                    'created_at': now_iso,
+                }).execute()
+            except Exception as tx_err:
+                logger.warning(f"Could not log initial stock transaction: {tx_err}")
+
+        return {
+            'id': inv_id,
+            'sede_id': sede_id,
+            'global_ingredient_id': gi_id,
+            'nombre': nombre_limpio,
+            'unidad_medida': data.unidad_medida,
+            'stock_actual': float(data.stock_actual),
+            'stock_minimo': float(data.stock_minimo),
+            'costo_unitario': float(data.costo_unitario),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating ingredient for sede {sede_slug}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al crear ingrediente: {str(e)}")
+
+
+@api_router.put("/catalog/sedes/{sede_slug}/inventory/{inventory_id}")
+async def update_sede_ingredient(
+    sede_slug: str,
+    inventory_id: str,
+    data: SedeIngredientUpdateInput,
+    business: Business = Depends(get_current_business)
+):
+    """Actualiza datos de un ingrediente (nombre, unidad, stock mínimo, costo unitario)."""
+    negocio_res = supabase.table('negocios').select('id').eq('slug', sede_slug).execute()
+    if not negocio_res.data:
+        raise HTTPException(status_code=404, detail="Sede no encontrada")
+    sede_id = negocio_res.data[0]['id']
+
+    inv_res = supabase.table('sede_inventory').select('*').eq('id', inventory_id).eq('sede_id', sede_id).execute()
+    if not inv_res.data:
+        raise HTTPException(status_code=404, detail="Ingrediente no encontrado en esta sede")
+
+    inv_row = inv_res.data[0]
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    try:
+        inv_updates = {'updated_at': now_iso}
+        if data.stock_minimo is not None:
+            inv_updates['stock_minimo'] = float(data.stock_minimo)
+        if data.costo_unitario is not None:
+            inv_updates['costo_unitario'] = float(data.costo_unitario)
+        supabase.table('sede_inventory').update(inv_updates).eq('id', inventory_id).execute()
+
+        gi_updates = {'updated_at': now_iso}
+        if data.nombre is not None and data.nombre.strip():
+            gi_updates['nombre'] = data.nombre.strip()
+        if data.unidad_medida is not None and data.unidad_medida.strip():
+            gi_updates['unidad_medida'] = data.unidad_medida.strip()
+        if len(gi_updates) > 1:
+            supabase.table('global_ingredients').update(gi_updates).eq('id', inv_row['global_ingredient_id']).execute()
+
+        return {"message": "Ingrediente actualizado correctamente"}
+    except Exception as e:
+        logger.error(f"Error updating ingredient {inventory_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al actualizar ingrediente: {str(e)}")
+
+
+@api_router.delete("/catalog/sedes/{sede_slug}/inventory/{inventory_id}")
+async def delete_sede_ingredient(
+    sede_slug: str,
+    inventory_id: str,
+    business: Business = Depends(get_current_business)
+):
+    """Elimina un ingrediente del inventario de la sede."""
+    negocio_res = supabase.table('negocios').select('id').eq('slug', sede_slug).execute()
+    if not negocio_res.data:
+        raise HTTPException(status_code=404, detail="Sede no encontrada")
+    sede_id = negocio_res.data[0]['id']
+
+    try:
+        supabase.table('sede_inventory').delete().eq('id', inventory_id).eq('sede_id', sede_id).execute()
+        return {"message": "Ingrediente eliminado correctamente"}
+    except Exception as e:
+        logger.error(f"Error deleting ingredient {inventory_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al eliminar ingrediente: {str(e)}")
+
+
 # --- Options ---
 @api_router.get("/menu-items/{item_id}/options", response_model=List[MenuItemOption])
 async def get_menu_item_options(item_id: str):
