@@ -23,7 +23,8 @@ import {
     ChevronLeft,
     ChevronRight,
     Heart,
-    Clock
+    Clock,
+    Ticket
 } from 'lucide-react';
 import {
     Dialog,
@@ -36,7 +37,13 @@ import { Button } from '@/components/ui/button';
 import confetti from 'canvas-confetti';
 import LandingAgent from '@/components/LandingAgent';
 import RuletaPremiosModal from '@/components/RuletaPremiosModal';
-import { loadWheelConfigLocal } from '@/utils/wheelDefaults';
+import {
+    loadWheelConfigLocal,
+    getCouponsForUser,
+    validateCouponCode,
+    markCouponAsUsed,
+    PENDING_COUPON_KEY,
+} from '@/utils/wheelDefaults';
 
 // Mock Data for the Demo
 const DEMO_BUSINESS = {
@@ -579,17 +586,18 @@ export default function DemoRestaurante() {
         telefono: '',
         metodo: 'WhatsApp'
     });
+    const [couponCodeInput, setCouponCodeInput] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [availableCoupons, setAvailableCoupons] = useState([]);
 
     const formatCurrency = (value) => {
-        if (value === undefined || value === null || isNaN(value) || Number(value) === 0) return '';
+        if (value === undefined || value === null || isNaN(value) || Number(value) === 0) return '$ 0';
         return new Intl.NumberFormat('es-CO', {
             style: 'currency',
             currency: 'COP',
             minimumFractionDigits: 0, maximumFractionDigits: 0
         }).format(Number(value));
     };
-
-
 
     const updateQuantity = (id, delta) => {
         setCart(prev => prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
@@ -599,6 +607,64 @@ export default function DemoRestaurante() {
 
     const cartTotal = cart.reduce((acc, item) => acc + (item.precio * item.quantity), 0);
     const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+    const discountAmount = appliedCoupon?.coupon?.premio_tipo === 'descuento'
+        ? Math.round((cartTotal * Number(appliedCoupon.coupon.premio_valor || 0)) / 100)
+        : 0;
+    const finalTotal = Math.max(0, cartTotal - discountAmount);
+
+    // Load active wheel coupons and auto-apply pending coupon from Profile
+    useEffect(() => {
+        let userPhone = '';
+        try {
+            const savedProfile = localStorage.getItem('universal_client_profile');
+            if (savedProfile) userPhone = JSON.parse(savedProfile).telefono || '';
+        } catch {}
+        const active = getCouponsForUser(userPhone).filter((c) => c.isActive);
+        setAvailableCoupons(active);
+
+        try {
+            const pendingCode = localStorage.getItem(PENDING_COUPON_KEY);
+            if (pendingCode && !appliedCoupon) {
+                setCouponCodeInput(pendingCode);
+                if (cartTotal > 0) {
+                    const res = validateCouponCode(pendingCode, cartTotal);
+                    if (res.valid) {
+                        setAppliedCoupon(res);
+                    }
+                }
+            }
+        } catch {}
+    }, [isCartOpen, isWheelOpen, cartTotal]);
+
+    // If cart total drops below coupon minimum, remove applied coupon cleanly
+    useEffect(() => {
+        if (!appliedCoupon) return;
+        const minReq = Number(appliedCoupon.coupon?.compra_minima || 0);
+        if (minReq > 0 && cartTotal < minReq) {
+            setAppliedCoupon(null);
+            toast.info(`El cupón requiere un consumo mínimo de ${formatCurrency(minReq)}.`);
+        }
+    }, [cartTotal]);
+
+    const handleApplyCoupon = (codeToApply) => {
+        const targetCode = (codeToApply ?? couponCodeInput).trim();
+        const res = validateCouponCode(targetCode, cartTotal);
+        if (!res.valid) {
+            toast.error(res.error);
+            return;
+        }
+        setAppliedCoupon(res);
+        setCouponCodeInput(res.coupon.codigo_cupon);
+        toast.success(`¡Cupón aplicado! ${res.coupon.premio_emoji || '🎁'} ${res.coupon.premio_label}`);
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponCodeInput('');
+        try { localStorage.removeItem(PENDING_COUPON_KEY); } catch {}
+        toast.info('Cupón removido del pedido');
+    };
 
     const cleanQuery = searchQuery.trim().toLowerCase();
 
@@ -638,6 +704,9 @@ export default function DemoRestaurante() {
             if (!checkoutData.nombre || !checkoutData.direccion || !checkoutData.telefono) {
                 toast.error('Por favor completa todos los campos');
                 return;
+            }
+            if (appliedCoupon?.coupon?.codigo_cupon) {
+                markCouponAsUsed(appliedCoupon.coupon.codigo_cupon);
             }
             setStep('success');
             confetti({
@@ -690,6 +759,8 @@ export default function DemoRestaurante() {
         setCart([]);
         setStep('cart');
         setIsCartOpen(false);
+        setAppliedCoupon(null);
+        setCouponCodeInput('');
         setCheckoutData({ nombre: '', direccion: '', telefono: '', metodo: 'WhatsApp' });
     };
 
@@ -1186,12 +1257,96 @@ export default function DemoRestaurante() {
                                             </div>
                                         </div>
 
-                                        <div className="pt-4">
+                                        <div className="pt-2 space-y-3">
+                                            <p className="text-xs font-black text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                <Ticket className="w-3.5 h-3.5 text-[#C86414]" />
+                                                ¿Tienes un cupón de la ruleta?
+                                            </p>
+
+                                            {appliedCoupon ? (
+                                                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <span className="text-xl shrink-0">{appliedCoupon.coupon.premio_emoji || '🎁'}</span>
+                                                        <div className="min-w-0">
+                                                            <p className="text-xs font-black text-emerald-900 truncate">
+                                                                {appliedCoupon.coupon.premio_label}
+                                                            </p>
+                                                            <p className="text-[10px] font-mono font-bold text-emerald-700">
+                                                                {appliedCoupon.coupon.codigo_cupon} • Aplicado
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleRemoveCoupon}
+                                                        className="text-[11px] font-black text-red-500 hover:text-red-700 shrink-0 px-2 py-1"
+                                                    >
+                                                        Quitar
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2.5">
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={couponCodeInput}
+                                                            onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                                                            placeholder="Ej: FM-PREMIO-1208"
+                                                            className="flex-1 h-11 bg-gray-50 border border-gray-200 rounded-xl px-3.5 text-xs font-mono font-bold uppercase focus:border-[#C86414] focus:outline-none"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleApplyCoupon()}
+                                                            className="px-4 h-11 rounded-xl bg-[#181615] hover:bg-[#C86414] text-white text-xs font-black transition-colors shrink-0"
+                                                        >
+                                                            Aplicar
+                                                        </button>
+                                                    </div>
+
+                                                    {availableCoupons.length > 0 && (
+                                                        <div className="space-y-1.5">
+                                                            <p className="text-[10px] font-bold text-gray-400">
+                                                                Tus cupones disponibles (toca para aplicar):
+                                                            </p>
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                {availableCoupons.map((c) => (
+                                                                    <button
+                                                                        key={c.id || c.codigo_cupon}
+                                                                        type="button"
+                                                                        onClick={() => handleApplyCoupon(c.codigo_cupon)}
+                                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-[11px] font-bold text-[#181615] transition-colors"
+                                                                    >
+                                                                        <span>{c.premio_emoji || '🎁'}</span>
+                                                                        <span className="max-w-[150px] truncate">{c.premio_label}</span>
+                                                                        <span className="text-[10px] font-black text-[#C86414]">Aplicar</span>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="pt-2">
                                             <p className="text-xs font-black text-gray-400 uppercase tracking-wider mb-3">Resumen de Pago</p>
                                             <div className="p-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200 space-y-2">
                                                 <div className="flex justify-between text-sm font-medium"><span>Subtotal</span><span>{formatCurrency(cartTotal)}</span></div>
+                                                {appliedCoupon && (
+                                                    discountAmount > 0 ? (
+                                                        <div className="flex justify-between text-sm font-bold text-emerald-700">
+                                                            <span>Cupón ({appliedCoupon.coupon.codigo_cupon})</span>
+                                                            <span>- {formatCurrency(discountAmount)}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex justify-between text-sm font-bold text-emerald-700">
+                                                            <span>🎁 {appliedCoupon.coupon.premio_label}</span>
+                                                            <span>GRATIS</span>
+                                                        </div>
+                                                    )
+                                                )}
                                                 <div className="flex justify-between text-sm font-medium"><span>Envío</span><span className="text-[#C86414]">GRATIS</span></div>
-                                                <div className="pt-2 border-t border-gray-200 flex justify-between text-lg font-black text-gray-900"><span>Total</span><span>{formatCurrency(cartTotal)}</span></div>
+                                                <div className="pt-2 border-t border-gray-200 flex justify-between text-lg font-black text-gray-900"><span>Total</span><span>{formatCurrency(finalTotal)}</span></div>
                                             </div>
                                         </div>
                                     </div>
@@ -1209,7 +1364,13 @@ export default function DemoRestaurante() {
                                         <div className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 mb-8 space-y-2 text-left">
                                             <div className="flex justify-between text-xs font-bold"><span>Cliente</span><span className="text-gray-900">{checkoutData.nombre}</span></div>
                                             <div className="flex justify-between text-xs font-bold"><span>Orden #</span><span className="text-gray-900">DEMO-001</span></div>
-                                            <div className="flex justify-between text-xs font-bold"><span>Total</span><span className="text-[#C86414] font-black">{formatCurrency(cartTotal)}</span></div>
+                                            {appliedCoupon && (
+                                                <div className="flex justify-between text-xs font-bold text-emerald-700">
+                                                    <span>Premio redimido</span>
+                                                    <span>{appliedCoupon.coupon.premio_emoji} {appliedCoupon.coupon.premio_label} ({appliedCoupon.coupon.codigo_cupon})</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between text-xs font-bold"><span>Total</span><span className="text-[#C86414] font-black">{formatCurrency(finalTotal)}</span></div>
                                         </div>
                                     </div>
                                 )}

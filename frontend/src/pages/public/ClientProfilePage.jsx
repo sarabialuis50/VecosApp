@@ -12,9 +12,11 @@ import {
     User, Edit, MapPin, Package, Heart, Ticket, LogOut, ArrowLeft,
     Truck, Star, Plus, Briefcase, Home, CheckCircle2, Loader2, Phone, ShieldCheck,
     Lock, Shield, Navigation, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight,
-    Settings, Camera, Crown, Gift, ShoppingCart, Bike, Bell, Headphones, Utensils, Mail
+    Settings, Camera, Crown, Gift, ShoppingCart, Bike, Bell, Headphones, Utensils, Mail,
+    Copy, Clock
 } from 'lucide-react';
 import RuletaPremiosModal from '@/components/RuletaPremiosModal';
+import { getCouponsForUser, PENDING_COUPON_KEY } from '@/utils/wheelDefaults';
 
 const RAW_API = (import.meta.env && (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL)) || '';
 const API_BASE = RAW_API ? (RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api`) : '/api';
@@ -100,6 +102,8 @@ export default function ClientProfilePage() {
     const [showAddressModal, setShowAddressModal] = useState(false);
     const [selectedAddressId, setSelectedAddressId] = useState(null);
     const [showWheelModal, setShowWheelModal] = useState(false);
+    const [showCouponsModal, setShowCouponsModal] = useState(false);
+    const [userCoupons, setUserCoupons] = useState([]);
     const [showSecurityModal, setShowSecurityModal] = useState(false);
     const [showFavoritesModal, setShowFavoritesModal] = useState(false);
     const [showNotificationsModal, setShowNotificationsModal] = useState(false);
@@ -184,6 +188,34 @@ export default function ClientProfilePage() {
         } else {
             navigate(`/${slug}/menu`);
         }
+    };
+
+    const refreshCoupons = () => {
+        setUserCoupons(getCouponsForUser(user?.telefono || ''));
+    };
+
+    useEffect(() => {
+        refreshCoupons();
+    }, [user?.telefono, showWheelModal, showCouponsModal]);
+
+    const activeCoupons = userCoupons.filter((c) => c.isActive);
+    const inactiveCoupons = userCoupons.filter((c) => !c.isActive);
+
+    const handleCopyCouponCode = (code) => {
+        if (!code) return;
+        navigator.clipboard?.writeText(code);
+        toast.success(`Código ${code} copiado`);
+    };
+
+    const handleUseCouponInOrder = (coupon) => {
+        try {
+            localStorage.setItem(PENDING_COUPON_KEY, coupon.codigo_cupon);
+        } catch {}
+        setShowCouponsModal(false);
+        toast.success(`Cupón ${coupon.codigo_cupon} seleccionado`, {
+            description: 'Agrega tus platos al carrito y se aplicará automáticamente.'
+        });
+        goToMenu();
     };
 
     useEffect(() => {
@@ -1135,7 +1167,10 @@ export default function ClientProfilePage() {
                     </div>
 
                     <div
-                        onClick={() => setShowWheelModal(true)}
+                        onClick={() => {
+                            refreshCoupons();
+                            setShowCouponsModal(true);
+                        }}
                         className="flex-1 flex flex-col items-center px-1 cursor-pointer group"
                     >
                         <div className="flex items-center gap-1 text-[#C86414] font-black text-xs sm:text-sm group-hover:scale-105 transition-transform">
@@ -1143,7 +1178,9 @@ export default function ClientProfilePage() {
                             <span>Canjear</span>
                             <ChevronRight className="w-3.5 h-3.5" />
                         </div>
-                        <span className="text-[11px] font-bold text-gray-500 mt-0.5">Mis premios</span>
+                        <span className="text-[11px] font-bold text-gray-500 mt-0.5">
+                            {activeCoupons.length > 0 ? `${activeCoupons.length} premio${activeCoupons.length > 1 ? 's' : ''}` : 'Mis premios'}
+                        </span>
                     </div>
                 </div>
 
@@ -1374,7 +1411,151 @@ export default function ClientProfilePage() {
                     slug={slug}
                     businessName="Fogón & Mesa"
                     userPhone={user?.telefono}
+                    onSpinComplete={() => refreshCoupons()}
                 />
+
+                {/* Modal 1B: Mis Cupones y Premios Ganados */}
+                <Dialog open={showCouponsModal} onOpenChange={setShowCouponsModal}>
+                    <DialogContent className="rounded-[2rem] max-w-md max-h-[85vh] overflow-y-auto">
+                        <DialogHeader>
+                            <div className="flex items-center justify-between gap-2 pr-6">
+                                <DialogTitle className="text-xl font-black text-[#181615] flex items-center gap-2">
+                                    <Ticket className="w-5 h-5 text-[#C86414]" />
+                                    Mis Premios y Cupones
+                                </DialogTitle>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowCouponsModal(false);
+                                        setShowWheelModal(true);
+                                    }}
+                                    className="px-3 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 border border-amber-200 text-[#C86414] text-[11px] font-black transition-colors cursor-pointer"
+                                >
+                                    🎰 Ruleta
+                                </button>
+                            </div>
+                        </DialogHeader>
+
+                        <div className="space-y-4 pt-2">
+                            {activeCoupons.length === 0 ? (
+                                <div className="py-8 px-4 text-center rounded-2xl bg-amber-50/50 border border-amber-100 space-y-3">
+                                    <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto text-2xl">
+                                        🎁
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-black text-[#181615]">Aún no tienes cupones activos</p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Gira la Ruleta del Día para ganar papas, postres, bebidas o descuentos para tu próximo pedido.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowCouponsModal(false);
+                                            setShowWheelModal(true);
+                                        }}
+                                        className="rounded-xl bg-[#C86414] hover:bg-[#181615] text-white font-bold text-xs px-5 h-10"
+                                    >
+                                        🎰 Girar la Ruleta ahora
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <p className="text-[11px] font-black uppercase tracking-wider text-emerald-700">
+                                        Disponibles para usar ({activeCoupons.length})
+                                    </p>
+                                    {activeCoupons.map((coupon) => {
+                                        const expDate = coupon.expira_en
+                                            ? new Date(coupon.expira_en).toLocaleDateString('es-CO', {
+                                                  day: '2-digit',
+                                                  month: 'short',
+                                                  hour: '2-digit',
+                                                  minute: '2-digit',
+                                              })
+                                            : null;
+                                        return (
+                                            <div
+                                                key={coupon.id || coupon.codigo_cupon}
+                                                className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 via-white to-orange-50/70 border-2 border-amber-200/80 shadow-sm space-y-3"
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <span className="text-2xl shrink-0">{coupon.premio_emoji || '🎁'}</span>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-black text-[#181615] leading-snug">
+                                                            {coupon.premio_label}
+                                                        </p>
+                                                        <div className="flex items-center flex-wrap gap-2 mt-1 text-[11px] text-gray-500 font-medium">
+                                                            {expDate && (
+                                                                <span className="flex items-center gap-1">
+                                                                    <Clock className="w-3 h-3 text-[#C86414]" />
+                                                                    Vence: {expDate}
+                                                                </span>
+                                                            )}
+                                                            {Number(coupon.compra_minima || 0) > 0 && (
+                                                                <span>• Mín. ${Number(coupon.compra_minima).toLocaleString('es-CO')}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[#181615] text-white">
+                                                    <span className="font-mono font-black text-xs tracking-wider text-amber-300">
+                                                        {coupon.codigo_cupon}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleCopyCouponCode(coupon.codigo_cupon)}
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-[10px] font-bold transition-colors cursor-pointer"
+                                                    >
+                                                        <Copy className="w-3 h-3" />
+                                                        Copiar
+                                                    </button>
+                                                </div>
+
+                                                <Button
+                                                    type="button"
+                                                    onClick={() => handleUseCouponInOrder(coupon)}
+                                                    className="w-full h-10 rounded-xl bg-[#C86414] hover:bg-[#181615] text-white font-bold text-xs"
+                                                >
+                                                    Usar en mi pedido →
+                                                </Button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {inactiveCoupons.length > 0 && (
+                                <div className="space-y-2 pt-2 border-t border-gray-100">
+                                    <p className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+                                        Historial ({inactiveCoupons.length})
+                                    </p>
+                                    {inactiveCoupons.slice(0, 5).map((coupon) => (
+                                        <div
+                                            key={coupon.id || coupon.codigo_cupon}
+                                            className="p-3 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between gap-3 opacity-70"
+                                        >
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <span className="text-lg">{coupon.premio_emoji || '🎁'}</span>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-gray-600 truncate">{coupon.premio_label}</p>
+                                                    <p className="text-[10px] font-mono text-gray-400">{coupon.codigo_cupon}</p>
+                                                </div>
+                                            </div>
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                                                coupon.isUsed
+                                                    ? 'bg-emerald-100 text-emerald-700'
+                                                    : 'bg-gray-200 text-gray-500'
+                                            }`}>
+                                                {coupon.isUsed ? 'Canjeado' : 'Expirado'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </DialogContent>
+                </Dialog>
 
                 {/* Modal 2: Direcciones */}
                 <Dialog open={showAddressModal} onOpenChange={setShowAddressModal}>
