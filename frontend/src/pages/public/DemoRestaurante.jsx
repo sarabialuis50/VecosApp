@@ -46,6 +46,7 @@ import {
     getCouponsForUser,
     validateCouponCode,
     markCouponAsUsed,
+    getMinDeliveryCost,
     PENDING_COUPON_KEY,
 } from '@/utils/wheelDefaults';
 import { repairProductImages } from '@/utils/demoMockAdapter';
@@ -893,7 +894,11 @@ export default function DemoRestaurante() {
                 total: finalTotal,
                 icopor_total: icoporTotal,
                 descuento_cupon: appliedCoupon?.discountAmount || 0,
-                domicilio_gratis: Boolean(appliedCoupon?.freeDelivery),
+                domicilio_gratis: Boolean(appliedCoupon?.freeDelivery && checkoutData.tipo_servicio === 'domicilio'),
+                domicilio_gratis_valor: (appliedCoupon?.freeDelivery && checkoutData.tipo_servicio === 'domicilio')
+                    ? Math.max(Number(checkoutData.costo_envio_estimado || 0), getMinDeliveryCost())
+                    : 0,
+                costo_regalo_ruleta: appliedCoupon?.isGift ? Number(appliedCoupon?.giftCost || 0) : 0,
                 cupon_ruleta: appliedCoupon?.coupon?.codigo_cupon || null,
                 notas: couponNote,
                 metodo_pago: checkoutData.metodo_pago,

@@ -25,6 +25,7 @@ import {
   loadWheelConfigLocal,
   saveWheelConfigLocal,
   loadWheelHistoryLocal,
+  getMinDeliveryCost,
 } from '@/utils/wheelDefaults';
 
 const PRIZE_TYPE_LABELS = {
@@ -42,7 +43,20 @@ const PRIZE_TYPE_LABELS = {
 export default function RuletaAdminSection({ slug, api, businessName = "Veco's Restaurante" }) {
   const [wheelConfig, setWheelConfig] = useState(() => loadWheelConfigLocal());
   const [history, setHistory] = useState(() => loadWheelHistoryLocal());
+  const [minDeliveryCost, setMinDeliveryCost] = useState(() => getMinDeliveryCost());
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const syncDeliveryCost = () => setMinDeliveryCost(getMinDeliveryCost());
+    window.addEventListener('storage', syncDeliveryCost);
+    window.addEventListener('focus', syncDeliveryCost);
+    window.addEventListener('vecos-data-updated', syncDeliveryCost);
+    return () => {
+      window.removeEventListener('storage', syncDeliveryCost);
+      window.removeEventListener('focus', syncDeliveryCost);
+      window.removeEventListener('vecos-data-updated', syncDeliveryCost);
+    };
+  }, []);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   useEffect(() => {
@@ -369,9 +383,10 @@ export default function RuletaAdminSection({ slug, api, businessName = "Veco's R
                   <th className="py-3.5 px-4">#</th>
                   <th className="py-3.5 px-4">Premio Visible</th>
                   <th className="py-3.5 px-4">Tipo</th>
+                  <th className="py-3.5 px-4 text-center">Valor</th>
                   <th className="py-3.5 px-4 text-center">Probabilidad (%)</th>
                   <th className="py-3.5 px-4 text-center">Tope Diario</th>
-                  <th className="py-3.5 px-4 text-center">Costo Aprox.</th>
+                  <th className="py-3.5 px-4 text-center">Costo Unit. ($)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-xs">
@@ -398,6 +413,35 @@ export default function RuletaAdminSection({ slug, api, businessName = "Veco's R
                       </Badge>
                     </td>
                     <td className="py-3 px-4 text-center">
+                      {seg.tipo === 'descuento' ? (
+                        <div className="inline-flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={seg.valor ?? 0}
+                            onChange={(e) => updateSegment(idx, 'valor', Math.min(100, Math.max(1, parseInt(e.target.value) || 0)))}
+                            className="h-9 w-16 rounded-xl bg-white border-gray-200 text-xs font-black text-center text-blue-700"
+                          />
+                          <span className="text-[10px] font-black text-gray-400">%</span>
+                        </div>
+                      ) : seg.tipo === 'puntos' ? (
+                        <div className="inline-flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min="1"
+                            max="1000"
+                            value={seg.valor ?? 0}
+                            onChange={(e) => updateSegment(idx, 'valor', Math.max(1, parseInt(e.target.value) || 0))}
+                            className="h-9 w-16 rounded-xl bg-white border-gray-200 text-xs font-black text-center text-orange-600"
+                          />
+                          <span className="text-[10px] font-black text-gray-400">pts</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs font-bold text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-center">
                       <div className="inline-flex items-center gap-1">
                         <Input
                           type="number"
@@ -421,7 +465,32 @@ export default function RuletaAdminSection({ slug, api, businessName = "Veco's R
                       />
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span className="text-[10px] font-bold text-gray-500">{seg.costo_aprox || 'Bajo'}</span>
+                      {seg.tipo === 'regalo' || seg.tipo === 'producto' ? (
+                        <div className="inline-flex items-center gap-1">
+                          <span className="text-[10px] font-black text-gray-400">$</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="500"
+                            value={seg.costo_unitario ?? 3000}
+                            onChange={(e) => updateSegment(idx, 'costo_unitario', Math.max(0, parseInt(e.target.value) || 0))}
+                            className="h-9 w-24 rounded-xl bg-white border-gray-200 text-xs font-black text-center text-emerald-700"
+                          />
+                        </div>
+                      ) : seg.tipo === 'domicilio_gratis' ? (
+                        <div className="inline-flex flex-col items-center leading-tight">
+                          <span className="text-xs font-black text-teal-700">
+                            ${minDeliveryCost.toLocaleString('es-CO')}
+                          </span>
+                          <span className="text-[9px] font-bold text-gray-400">Mín. Config.</span>
+                        </div>
+                      ) : seg.tipo === 'descuento' ? (
+                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg whitespace-nowrap">
+                          Según factura
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-gray-400">$ 0</span>
+                      )}
                     </td>
                   </tr>
                 ))}

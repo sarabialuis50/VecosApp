@@ -53,6 +53,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { getMinDeliveryCost } from '@/utils/wheelDefaults';
 import { toast } from 'sonner';
 
 const OrderStatusBadge = ({ status }) => {
@@ -336,9 +337,18 @@ export default function DashboardPage() {
   );
 
   const periodStats = useMemo(() => {
+    const minDelivCost = getMinDeliveryCost();
     const ingresosBrutos = filteredValidOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
     const icoporTotal = filteredValidOrders.reduce((acc, o) => acc + Number(o.icopor_total || 0), 0);
     const descuentosTotal = filteredValidOrders.reduce((acc, o) => acc + Number(o.descuento_cupon || 0), 0);
+    const domiciliosGratisTotal = filteredValidOrders.reduce((acc, o) => {
+      if (Number(o.domicilio_gratis_valor || 0) > 0) return acc + Number(o.domicilio_gratis_valor);
+      if (o.domicilio_gratis) return acc + Math.max(Number(o.costo_envio_original || 0), minDelivCost);
+      return acc;
+    }, 0);
+    const regalosRuletaTotal = filteredValidOrders.reduce((acc, o) => acc + Number(o.costo_regalo_ruleta || 0), 0);
+    const inversionPremiosTotal = descuentosTotal + domiciliosGratisTotal + regalosRuletaTotal;
+    const pctInversionPremios = ingresosBrutos > 0 ? ((inversionPremiosTotal / ingresosBrutos) * 100).toFixed(1) : '0.0';
     const ingresosComida = Math.max(0, ingresosBrutos - icoporTotal);
     const ticketProm = filteredValidOrders.length > 0 ? Math.round(ingresosBrutos / filteredValidOrders.length) : 0;
     return {
@@ -346,6 +356,10 @@ export default function DashboardPage() {
       ingresosComida,
       icoporTotal,
       descuentosTotal,
+      domiciliosGratisTotal,
+      regalosRuletaTotal,
+      inversionPremiosTotal,
+      pctInversionPremios,
       pedidosCount: filteredValidOrders.length,
       ticketProm,
     };
@@ -412,8 +426,11 @@ export default function DashboardPage() {
       'Detalle Platos',
       'Icopor (COP)',
       'Descuento Cupón (COP)',
+      'Domicilio Gratis No Cobrado (COP)',
+      'Costo Regalo Ruleta (COP)',
       'Total Neto (COP)',
     ];
+    const minDelivCost = getMinDeliveryCost();
     const rows = filteredOrders.map((o) => {
       const d = o.created_at ? new Date(o.created_at) : new Date();
       const fecha = d.toLocaleDateString('es-CO');
@@ -425,6 +442,9 @@ export default function DashboardPage() {
             ? 'Para Llevar'
             : 'Domicilio';
       const itemsStr = (o.items || []).map((i) => `${i.cantidad}x ${i.nombre}`).join(' | ');
+      const domGratisVal = Number(o.domicilio_gratis_valor || 0) > 0
+        ? Number(o.domicilio_gratis_valor)
+        : (o.domicilio_gratis ? Math.max(Number(o.costo_envio_original || 0), minDelivCost) : 0);
       return [
         fecha,
         hora,
@@ -437,6 +457,8 @@ export default function DashboardPage() {
         `"${itemsStr.replace(/"/g, '""')}"`,
         Number(o.icopor_total || 0),
         Number(o.descuento_cupon || 0),
+        domGratisVal,
+        Number(o.costo_regalo_ruleta || 0),
         Number(o.total || 0),
       ].join(',');
     });
@@ -596,11 +618,11 @@ export default function DashboardPage() {
                 subtitle="Domicilios y para llevar"
               />
               <StatCard
-                title="Descuentos Ruleta / Cupones"
-                value={formatCurrency(periodStats.descuentosTotal)}
+                title="Inversión Premios Ruleta"
+                value={formatCurrency(periodStats.inversionPremiosTotal)}
                 icon={Gift}
                 color="bg-rose-500"
-                subtitle={`${(analytics?.puntos_total || 0).toLocaleString('es-CO')} pts en circulación`}
+                subtitle={`${periodStats.pctInversionPremios}% de ventas · Dom. gratis: ${formatCurrency(periodStats.domiciliosGratisTotal)}`}
               />
               <StatCard
                 title="Valorización Inventario"
@@ -855,9 +877,11 @@ export default function DashboardPage() {
               </Card>
               <Card className="rounded-2xl border border-gray-200 bg-white">
                 <CardContent className="p-5">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-rose-600">(-) Descuentos Cupones Ruleta</p>
-                  <p className="text-2xl font-black text-rose-600 mt-1">-{formatCurrency(periodStats.descuentosTotal)}</p>
-                  <p className="text-[11px] text-gray-500 mt-1">Promociones redimidas en caja</p>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-rose-600">(-) Inversión Premios Ruleta</p>
+                  <p className="text-2xl font-black text-rose-600 mt-1">-{formatCurrency(periodStats.inversionPremiosTotal)}</p>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Desc: {formatCurrency(periodStats.descuentosTotal)} · Dom. gratis: {formatCurrency(periodStats.domiciliosGratisTotal)} · Regalos: {formatCurrency(periodStats.regalosRuletaTotal)}
+                  </p>
                 </CardContent>
               </Card>
               <Card className="rounded-2xl border-2 border-emerald-500 bg-emerald-50/40">

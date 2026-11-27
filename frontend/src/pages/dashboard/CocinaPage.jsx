@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import useWebSocket from '@/hooks/useWebSocket';
-import { ChefHat, Clock, Volume2, VolumeX, RefreshCw, X, Truck, UtensilsCrossed, ArrowLeft } from 'lucide-react';
+import { ChefHat, Clock, Volume2, VolumeX, RefreshCw, X, Truck, UtensilsCrossed, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { playOrderSound, notifyNewOrder, unlockAudioAndNotifications } from '@/utils/sound';
@@ -101,8 +101,16 @@ export default function CocinaPage() {
   const filteredOrders = typeFilter === 'all'
     ? orders
     : typeFilter === 'delivery'
-      ? orders.filter(o => o.tipo === 'delivery')
-      : orders.filter(o => ['mesa', 'takeaway'].includes(o.tipo));
+      ? orders.filter(o => o.tipo === 'delivery' || o.tipo_servicio === 'domicilio')
+      : typeFilter === 'mesa'
+        ? orders.filter(o => o.tipo === 'mesa' || o.tipo_servicio === 'mesa')
+        : orders.filter(o => o.tipo === 'takeaway' || o.tipo_servicio === 'recoger' || o.tipo_servicio === 'llevar');
+
+  const filterLabels = {
+    delivery: 'Domicilios',
+    mesa: 'En Mesa',
+    takeaway: 'Recoger/Llevar',
+  };
 
   const kitchenBadge = kitchenType === 'delivery'
     ? { icon: <Truck className="w-4 h-4" />, label: 'Cocina Domicilios', color: 'bg-orange-500/20 text-orange-300 border border-orange-500/30' }
@@ -151,7 +159,7 @@ export default function CocinaPage() {
               </div>
               <p className="text-xs text-gray-400">
                 {filteredOrders.length} pedidos activos
-                {typeFilter !== 'all' ? ` · ${typeFilter === 'delivery' ? 'Domicilios' : 'Salón'}` : ''}
+                {typeFilter !== 'all' ? ` · ${filterLabels[typeFilter] || ''}` : ''}
               </p>
             </div>
           </div>
@@ -175,16 +183,19 @@ export default function CocinaPage() {
           </div>
         </div>
 
-        <div className="px-4 pb-2 flex gap-2 border-t border-gray-700/50 pt-2">
+        <div className="px-4 pb-2 flex flex-wrap gap-2 border-t border-gray-700/50 pt-2">
           <button onClick={() => setTypeFilter('all')}
             className={`px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${typeFilter === 'all' ? 'bg-gray-400 text-gray-900' : 'bg-gray-700/60 text-gray-400 hover:bg-gray-700'}`}
           >Todos los pedidos</button>
+          <button onClick={() => setTypeFilter('mesa')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${typeFilter === 'mesa' ? 'bg-emerald-500 text-white shadow' : 'bg-gray-700/60 text-gray-400 hover:bg-gray-700'}`}
+          ><UtensilsCrossed className="w-3.5 h-3.5" />En Mesa</button>
+          <button onClick={() => setTypeFilter('takeaway')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${typeFilter === 'takeaway' ? 'bg-blue-500 text-white shadow' : 'bg-gray-700/60 text-gray-400 hover:bg-gray-700'}`}
+          ><ShoppingBag className="w-3.5 h-3.5" />Recoger/Llevar</button>
           <button onClick={() => setTypeFilter('delivery')}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${typeFilter === 'delivery' ? 'bg-orange-500 text-white shadow' : 'bg-gray-700/60 text-gray-400 hover:bg-gray-700'}`}
           ><Truck className="w-3.5 h-3.5" />Domicilios</button>
-          <button onClick={() => setTypeFilter('salon')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${typeFilter === 'salon' ? 'bg-emerald-500 text-white shadow' : 'bg-gray-700/60 text-gray-400 hover:bg-gray-700'}`}
-          ><UtensilsCrossed className="w-3.5 h-3.5" />Salón / Para Llevar</button>
         </div>
       </header>
 
@@ -268,14 +279,18 @@ function ConnectionBadge({ isConnected }) {
 function EmptyState({ kitchenType, typeFilter }) {
   const icon = kitchenType === 'delivery' || typeFilter === 'delivery'
     ? <Truck className="w-20 h-20 mb-4 opacity-30" />
-    : kitchenType === 'salon' || typeFilter === 'salon'
-      ? <UtensilsCrossed className="w-20 h-20 mb-4 opacity-30" />
-      : <ChefHat className="w-20 h-20 mb-4 opacity-30" />;
+    : typeFilter === 'takeaway'
+      ? <ShoppingBag className="w-20 h-20 mb-4 opacity-30" />
+      : kitchenType === 'salon' || typeFilter === 'mesa'
+        ? <UtensilsCrossed className="w-20 h-20 mb-4 opacity-30" />
+        : <ChefHat className="w-20 h-20 mb-4 opacity-30" />;
   const message = kitchenType === 'delivery' || typeFilter === 'delivery'
     ? 'No hay domicilios activos'
-    : kitchenType === 'salon' || typeFilter === 'salon'
-      ? 'No hay pedidos de salón activos'
-      : 'No hay pedidos activos';
+    : typeFilter === 'takeaway'
+      ? 'No hay pedidos para recoger/llevar activos'
+      : kitchenType === 'salon' || typeFilter === 'mesa'
+        ? 'No hay pedidos en mesa activos'
+        : 'No hay pedidos activos';
   return (
     <div className="flex flex-col items-center justify-center h-[60vh] text-gray-500">
       {icon}

@@ -14,6 +14,7 @@ export const DEFAULT_WHEEL_SEGMENTS = [
     color: '#F97316',
     textColor: '#FFFFFF',
     costo_aprox: 'Muy bajo',
+    costo_unitario: 0,
   },
   {
     id: 2,
@@ -26,6 +27,7 @@ export const DEFAULT_WHEEL_SEGMENTS = [
     color: '#10B981',
     textColor: '#FFFFFF',
     costo_aprox: 'Bajo',
+    costo_unitario: 3000,
   },
   {
     id: 3,
@@ -38,6 +40,7 @@ export const DEFAULT_WHEEL_SEGMENTS = [
     color: '#64748B',
     textColor: '#FFFFFF',
     costo_aprox: 'Sin costo',
+    costo_unitario: 0,
   },
   {
     id: 4,
@@ -50,6 +53,7 @@ export const DEFAULT_WHEEL_SEGMENTS = [
     color: '#3B82F6',
     textColor: '#FFFFFF',
     costo_aprox: 'Variable',
+    costo_unitario: 0,
   },
   {
     id: 5,
@@ -62,6 +66,7 @@ export const DEFAULT_WHEEL_SEGMENTS = [
     color: '#14B8A6',
     textColor: '#FFFFFF',
     costo_aprox: 'Bajo-medio',
+    costo_unitario: 0,
   },
   {
     id: 6,
@@ -74,6 +79,7 @@ export const DEFAULT_WHEEL_SEGMENTS = [
     color: '#8B5CF6',
     textColor: '#FFFFFF',
     costo_aprox: 'Variable',
+    costo_unitario: 0,
   },
   {
     id: 7,
@@ -86,6 +92,7 @@ export const DEFAULT_WHEEL_SEGMENTS = [
     color: '#EAB308',
     textColor: '#FFFFFF',
     costo_aprox: 'Sin costo',
+    costo_unitario: 0,
   },
 ];
 
@@ -260,6 +267,18 @@ export function getCouponsForUser(rawPhone = '') {
     });
 }
 
+export function getMinDeliveryCost() {
+  try {
+    const raw = localStorage.getItem('vecos_business_config');
+    if (raw) {
+      const cfg = JSON.parse(raw);
+      const minCost = Number(cfg?.costo_minimo_domicilio);
+      if (!Number.isNaN(minCost) && minCost >= 0) return minCost;
+    }
+  } catch {}
+  return 3000;
+}
+
 export function validateCouponCode(rawCode, subtotal = 0) {
   const code = String(rawCode || '').trim().toUpperCase();
   if (!code) {
@@ -301,6 +320,14 @@ export function validateCouponCode(rawCode, subtotal = 0) {
       ? Math.round((Number(subtotal) * Number(match.premio_valor || 0)) / 100)
       : 0;
 
+  const isGift = match.premio_tipo === 'regalo' || match.premio_tipo === 'producto';
+  let giftCost = 0;
+  if (isGift) {
+    const wheelCfg = loadWheelConfigLocal();
+    const giftSeg = (wheelCfg.segmentos || []).find((s) => s.tipo === 'regalo' || s.tipo === 'producto');
+    giftCost = Number(match.costo_unitario ?? giftSeg?.costo_unitario ?? 3000);
+  }
+
   return {
     valid: true,
     coupon: {
@@ -309,7 +336,8 @@ export function validateCouponCode(rawCode, subtotal = 0) {
     },
     discountAmount,
     freeDelivery: match.premio_tipo === 'domicilio_gratis',
-    isGift: match.premio_tipo === 'regalo' || match.premio_tipo === 'producto',
+    isGift,
+    giftCost,
     giftDetail: match.regalo_detalle || '',
   };
 }

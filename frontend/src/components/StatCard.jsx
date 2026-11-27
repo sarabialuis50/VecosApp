@@ -7,8 +7,8 @@ const StatCard = ({ title, value, icon: Icon, color = 'bg-[#4ADE80]', subtitle }
         whileHover={{ y: -4 }}
         className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
     >
-        <div className="flex items-center justify-between gap-2 mb-2">
-            <p className="text-[10px] sm:text-[11px] font-black text-gray-400 uppercase tracking-wider truncate flex-1" title={title}>
+        <div className="flex items-start justify-between gap-2 mb-2">
+            <p className="text-[10px] sm:text-[11px] font-black text-gray-500 uppercase tracking-wide leading-snug flex-1" title={title}>
                 {title}
             </p>
             {Icon && (
@@ -22,7 +22,7 @@ const StatCard = ({ title, value, icon: Icon, color = 'bg-[#4ADE80]', subtitle }
                 {value}
             </p>
             {subtitle && (
-                <p className="text-[10px] text-gray-400 mt-1 truncate font-medium" title={subtitle}>
+                <p className="text-[10px] text-gray-400 mt-1 leading-snug font-medium" title={subtitle}>
                     {subtitle}
                 </p>
             )}
