@@ -111,6 +111,7 @@ export default function RuletaPremiosModal({
   const [isSpinning, setIsSpinning] = useState(false);
   const [winResult, setWinResult] = useState(null);
   const [pendingDeliveryRecord, setPendingDeliveryRecord] = useState(null);
+  const [rejectedDeliveryThisSession, setRejectedDeliveryThisSession] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
   // Notify floating widgets (e.g. LandingAgent) when the wheel modal opens/closes
@@ -279,7 +280,8 @@ export default function RuletaPremiosModal({
     const history = loadWheelHistoryLocal();
     const today = getTodayDateStr();
     const todayAll = history.filter((h) => h.fecha_dia === today);
-    const { segment, index } = pickWeightedSegment(segments, todayAll);
+    const excludeTypes = rejectedDeliveryThisSession ? ['domicilio_gratis'] : [];
+    const { segment, index } = pickWeightedSegment(segments, todayAll, excludeTypes);
 
     // Calculate target rotation angle so pointer at 12 o'clock lands inside winning slice
     const sliceAngle = 360 / segments.length; // 45 deg for 8 slices
@@ -409,9 +411,10 @@ export default function RuletaPremiosModal({
   };
 
   const handleRejectDeliveryPrize = () => {
+    setRejectedDeliveryThisSession(true);
     setPendingDeliveryRecord(null);
     setWinResult(null);
-    toast.info('🔄 ¡Perfecto! Como estás en mesa, tienes otra oportunidad para girar.');
+    toast.info('🔄 ¡Perfecto! Como estás en mesa, tienes otra oportunidad (y no te volverá a salir Domicilio Gratis).');
   };
 
   const handleCopyCoupon = (code) => {

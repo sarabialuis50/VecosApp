@@ -184,7 +184,7 @@ export function generateCouponCode(segment) {
   return `VEC-${prefix}-${rand}`;
 }
 
-export function pickWeightedSegment(segments, todayHistory = []) {
+export function pickWeightedSegment(segments, todayHistory = [], excludeTypes = []) {
   // Count how many times each segment was won today
   const countsToday = {};
   for (const item of todayHistory) {
@@ -192,9 +192,12 @@ export function pickWeightedSegment(segments, todayHistory = []) {
     countsToday[segId] = (countsToday[segId] || 0) + 1;
   }
 
-  // Filter segments that haven't hit their daily cap
+  const excludedSet = new Set(Array.isArray(excludeTypes) ? excludeTypes : []);
+
+  // Filter segments that haven't hit their daily cap and are not excluded
   const eligible = segments
     .map((seg, index) => {
+      if (excludedSet.has(seg.tipo)) return { seg, index, weight: 0 };
       const used = countsToday[seg.id] || 0;
       const limit = Number(seg.limite_diario ?? 999);
       const prob = Number(seg.probabilidad ?? 0);
