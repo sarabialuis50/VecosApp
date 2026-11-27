@@ -74,6 +74,15 @@ export default function CustomersPage() {
     // Fetch Customers
     useEffect(() => {
         fetchCustomers();
+        const handleSync = () => fetchCustomers();
+        window.addEventListener('storage', handleSync);
+        window.addEventListener('focus', handleSync);
+        window.addEventListener('vecos-data-updated', handleSync);
+        return () => {
+            window.removeEventListener('storage', handleSync);
+            window.removeEventListener('focus', handleSync);
+            window.removeEventListener('vecos-data-updated', handleSync);
+        };
     }, [slug]);
 
     const fetchCustomers = async () => {
@@ -298,7 +307,7 @@ export default function CustomersPage() {
                 {/* Header Section */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="space-y-1">
-                        <h1 className="text-xl md:text-2xl font-black tracking-tight text-gray-900 uppercase">BASE DE CLIENTES</h1>
+                        <h1 className="text-xl md:text-2xl font-black tracking-tight text-gray-900 uppercase">CLIENTES</h1>
                         <p className="text-xs md:text-sm text-gray-500 font-medium leading-tight">Gestiona tu base de clientes y analiza sus comportamientos.</p>
                     </div>
                     <div className="grid grid-cols-2 md:flex md:items-center gap-2 md:gap-3">

@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useParams, useSearchParams } from 'react-router-dom';
+import { registerRealOrder } from '@/utils/demoMockAdapter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ShoppingCart,
@@ -78,7 +79,7 @@ const DEMO_BUSINESS = {
     banner_tag: "Sabor que te encanta",
     banner_title: "Nuestro Menú",
     banner_description: "Ejecutivos, Preparados del Día, Asados al carbón, Vaqueritos, Picadas y Bebidas.",
-    slug: "demo-restaurante"
+    slug: "vecos"
 };
 
 const DEMO_CATEGORIES = [
@@ -560,6 +561,9 @@ const DEMO_PRODUCTS = [
 
 export default function DemoRestaurante() {
     const navigate = useNavigate();
+    const { mesa: mesaRouteParam } = useParams();
+    const [searchParams] = useSearchParams();
+    const initialMesa = mesaRouteParam || searchParams.get('mesa') || '';
     const [businessLogo, setBusinessLogo] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('fogon_mesa_logo') : null) || DEMO_BUSINESS.logo_url);
     const [businessBanner, setBusinessBanner] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('fogon_mesa_banner') : null) || DEMO_BUSINESS.banner_url);
 
@@ -605,8 +609,8 @@ export default function DemoRestaurante() {
         nombre: '',
         direccion: '',
         telefono: '',
-        tipo_servicio: 'domicilio', // 'domicilio' | 'llevar' | 'mesa'
-        mesa_numero: '',
+        tipo_servicio: initialMesa ? 'mesa' : 'domicilio', // 'domicilio' | 'llevar' | 'mesa'
+        mesa_numero: initialMesa,
         metodo_pago: 'efectivo', // 'efectivo' | 'nequi' | 'daviplata' | 'transferencia'
     });
     const [lastOrderNumber, setLastOrderNumber] = useState('VEC-1001');
@@ -897,12 +901,9 @@ export default function DemoRestaurante() {
             };
             setLastOrderSnapshot(newOrderRecord);
             try {
-                const existingRaw = localStorage.getItem('vecos_orders');
-                const existing = existingRaw ? JSON.parse(existingRaw) : [];
-                const nextOrders = [newOrderRecord, ...(Array.isArray(existing) ? existing : [])];
-                localStorage.setItem('vecos_orders', JSON.stringify(nextOrders));
+                registerRealOrder(newOrderRecord);
             } catch (e) {
-                console.warn('Error guardando pedido local:', e);
+                console.warn('Error guardando pedido real:', e);
             }
 
             if (appliedCoupon?.coupon?.codigo_cupon) {

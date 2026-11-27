@@ -94,6 +94,15 @@ export default function FidelidadPage() {
 
   useEffect(() => {
     fetchData();
+    const handleSync = () => fetchData();
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', handleSync);
+    window.addEventListener('vecos-data-updated', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('vecos-data-updated', handleSync);
+    };
   }, [slug]);
 
   const fetchData = async () => {
@@ -123,7 +132,7 @@ export default function FidelidadPage() {
       if (transactionsRes.data) {
         const formatted = transactionsRes.data.map(t => ({
           ...t,
-          fecha: new Date(t.fecha).toLocaleString()
+          fecha: new Date(t.fecha || t.created_at || Date.now()).toLocaleString('es-CO')
         }));
         setRecentCredits(formatted);
       }

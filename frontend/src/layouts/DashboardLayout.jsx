@@ -29,10 +29,10 @@ const navItems = [
   { path: '/catalogo', icon: UtensilsCrossed, label: 'Menú' },
   { path: '/mesas', icon: TableProperties, label: 'Mesas' },
   { path: '/cocina', icon: ChefHat, label: 'Cocina' },
-  { path: '/clientes', icon: Users, label: 'Base de Clientes' },
+  { path: '/clientes', icon: Users, label: 'Clientes' },
   { path: '/fidelidad', icon: Gift, label: 'Fidelidad' },
   { path: '/empleados', icon: Users, label: 'Empleados' },
-  { path: '/inventario', icon: Package, label: 'Inventario', badge: 'NUEVO' },
+  { path: '/inventario', icon: Package, label: 'Inventario' },
   { path: '/marketing', icon: MessageSquareMore, label: 'WhatsApp Hub' },
   { path: '/consultor', icon: Sparkles, label: 'Consultor IA' },
   { path: '/perfil', icon: Users, label: 'Mi Perfil' },
@@ -47,13 +47,8 @@ const mobileBottomNavItems = [
   { path: '/mesas', icon: TableProperties, label: 'Mesas' },
 ];
 
-const superAdminOnlyPaths = [
-  // Originally restricted, but branches are independent and need to manage 
-  // their own catalog, inventory, config, etc.
-];
-
 export const DashboardLayout = ({ children }) => {
-  const { user, logout, isSuperAdmin } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -63,17 +58,8 @@ export const DashboardLayout = ({ children }) => {
     navigate('/', { replace: true });
   };
 
-  // Filter nav items based on role
-  const visibleNavItems = navItems.filter(item => {
-    if (isSuperAdmin) return true; // Super admin sees everything
-    // Branch admin: hide super-admin-only sections
-    return !superAdminOnlyPaths.includes(item.path);
-  });
-
-  const visibleMobileItems = mobileBottomNavItems.filter(item => {
-    if (isSuperAdmin) return true;
-    return !superAdminOnlyPaths.includes(item.path);
-  });
+  const visibleNavItems = navItems;
+  const visibleMobileItems = mobileBottomNavItems;
 
   const basePath = '/dashboard';
 
@@ -88,11 +74,11 @@ export const DashboardLayout = ({ children }) => {
           <Menu className="w-6 h-6 text-white" />
         </button>
         <div className="flex-1 flex items-center justify-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-transparent flex items-center justify-center overflow-hidden">
-            <img src="/logos/logo-icon-transparent.png" alt="Menu.IA" className="size-8 object-contain" />
+          <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden">
+            <img src={user?.logo_url || '/images/vecos-logo.jpg'} alt="Veco's Restaurante" className="size-full object-cover" />
           </div>
           <span className="font-heading font-black text-xl tracking-tighter text-white">
-            {user?.nombre || 'Mi Negocio'}
+            {user?.nombre || "Veco's Restaurante"}
           </span>
         </div>
         <div className="size-10 invisible" />

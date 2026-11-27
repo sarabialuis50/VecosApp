@@ -62,6 +62,15 @@ export default function EmpleadosPage() {
 
   useEffect(() => {
     fetchData();
+    const handleSync = () => fetchData();
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', handleSync);
+    window.addEventListener('vecos-data-updated', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('vecos-data-updated', handleSync);
+    };
   }, [slug]);
 
   const fetchData = async () => {
@@ -161,7 +170,7 @@ export default function EmpleadosPage() {
 
   const getWaiterUrl = () => {
     const publicUrl = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
-    return `${publicUrl}/mesero/${slug}`;
+    return `${publicUrl}/mesero`;
   };
 
   const handleCopyLink = () => {

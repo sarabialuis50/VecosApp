@@ -407,7 +407,19 @@ export default function WhatsappHubPage() {
                     </div>
                 </div>
 
-                {/* Global Marketing Metrics */}
+                {/* Global Marketing Metrics (datos reales de Veco's) */}
+                {(() => {
+                    let realOrders = [];
+                    let realCustomers = [];
+                    try {
+                        realOrders = JSON.parse(localStorage.getItem('vecos_orders') || '[]');
+                        realCustomers = JSON.parse(localStorage.getItem('vecos_customers') || '[]');
+                    } catch {}
+                    const totalMsgs = Number(bridgeState.messagesHandled || 0) + (Array.isArray(realOrders) ? realOrders.length : 0);
+                    const totalCusts = Array.isArray(realCustomers) ? realCustomers.length : 0;
+                    const returningCusts = Array.isArray(realCustomers) ? realCustomers.filter(c => Number(c.pedidos_count || 0) > 1).length : 0;
+                    const returnRate = totalCusts > 0 ? `${((returningCusts / totalCusts) * 100).toFixed(1)}%` : '0%';
+                    return (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Card className="rounded-[1.5rem] border-2 border-gray-100 shadow-sm bg-white overflow-hidden group hover:border-[#4ADE80] transition-all">
                         <CardContent className="p-6">
@@ -416,8 +428,8 @@ export default function WhatsappHubPage() {
                                     <Send className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Mensajes Enviados</p>
-                                    <h3 className="text-2xl font-black text-gray-900">1,248</h3>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Mensajes / Pedidos</p>
+                                    <h3 className="text-2xl font-black text-gray-900">{totalMsgs.toLocaleString('es-CO')}</h3>
                                 </div>
                             </div>
                         </CardContent>
@@ -429,8 +441,8 @@ export default function WhatsappHubPage() {
                                     <CheckCircle className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tasa de Apertura</p>
-                                    <h3 className="text-2xl font-black text-gray-900">96.4%</h3>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Clientes Registrados</p>
+                                    <h3 className="text-2xl font-black text-gray-900">{totalCusts.toLocaleString('es-CO')}</h3>
                                 </div>
                             </div>
                         </CardContent>
@@ -443,12 +455,14 @@ export default function WhatsappHubPage() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Retorno de Pedidos</p>
-                                    <h3 className="text-2xl font-black text-gray-900">12.8%</h3>
+                                    <h3 className="text-2xl font-black text-gray-900">{returnRate}</h3>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
+                    );
+                })()}
 
                 <div className="flex flex-col lg:grid lg:grid-cols-12 gap-8">
                     {/* Row 1 Left: Tabs & Selectores */}

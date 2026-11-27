@@ -175,10 +175,12 @@ export default function PedidosPage() {
         const handleSync = () => fetchOrders();
         window.addEventListener('storage', handleSync);
         window.addEventListener('focus', handleSync);
+        window.addEventListener('vecos-data-updated', handleSync);
         return () => {
             clearInterval(interval);
             window.removeEventListener('storage', handleSync);
             window.removeEventListener('focus', handleSync);
+            window.removeEventListener('vecos-data-updated', handleSync);
         };
     }, [slug, api]);
 

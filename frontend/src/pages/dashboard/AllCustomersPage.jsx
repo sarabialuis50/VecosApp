@@ -295,7 +295,7 @@ export default function AllCustomersPage() {
                     </div>
                     <Button
                         variant="outline"
-                        onClick={() => navigate(`/dashboard/${slug}/clientes`)}
+                        onClick={() => navigate('/clientes')}
                         className="h-11 px-6 rounded-xl border-2 font-black text-[11px] tracking-widest gap-2 hover:bg-gray-50 transition-all active:scale-95 text-gray-700 border-gray-200 bg-white"
                     >
                         <ArrowLeft className="w-4 h-4" />

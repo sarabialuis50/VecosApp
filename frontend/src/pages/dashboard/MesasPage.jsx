@@ -55,6 +55,15 @@ export default function MesasPage() {
 
   useEffect(() => {
     fetchData();
+    const handleSync = () => fetchTables();
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', handleSync);
+    window.addEventListener('vecos-data-updated', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('vecos-data-updated', handleSync);
+    };
   }, [slug]);
 
   const fetchData = async () => {
@@ -446,7 +455,7 @@ export default function MesasPage() {
               <div className="p-4 bg-white rounded-xl border shadow-sm">
                 <QRCodeSVG
                   id="qr-code-svg"
-                  value={`${baseUrl}/${slug}/mesa/${selectedTable?.numero}`}
+                  value={`${baseUrl}/mesa/${selectedTable?.numero}`}
                   size={200}
                   level="H"
                   includeMargin
@@ -454,10 +463,10 @@ export default function MesasPage() {
                 />
               </div>
               <p className="text-sm text-gray-500 mt-4 text-center">
-                Escanea para acceder al menú
+                Escanea para acceder al menú de Veco&apos;s Restaurante
               </p>
               <p className="text-xs text-gray-400 mt-1 font-mono">
-                {baseUrl}/{slug}/mesa/{selectedTable?.numero}
+                {baseUrl}/mesa/{selectedTable?.numero}
               </p>
               <Button
                 onClick={downloadQR}

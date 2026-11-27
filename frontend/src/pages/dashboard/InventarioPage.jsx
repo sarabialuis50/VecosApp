@@ -482,7 +482,18 @@ export default function InventarioPage() {
     }
   }, [slug, api]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+    const handleSync = () => loadData();
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', handleSync);
+    window.addEventListener('vecos-data-updated', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('vecos-data-updated', handleSync);
+    };
+  }, [loadData]);
 
   const handleDeleteIngredient = async (item) => {
     if (!window.confirm(`¿Eliminar "${item.nombre}" del inventario?`)) return;

@@ -45,8 +45,9 @@ import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import { FaWhatsapp } from 'react-icons/fa';
 import LandingAgent from '@/components/LandingAgent';
+import { registerRealOrder } from '@/utils/demoMockAdapter';
 
-const BUSINESS_SLUG = 'demo-restaurante';
+const BUSINESS_SLUG = 'vecos';
 
 const MENU_CATEGORIES = [
   {
@@ -352,6 +353,33 @@ export default function LandingPage() {
 
   const handleCheckoutSubmit = (e) => {
     e.preventDefault();
+    const orderNum = `VEC-${Math.floor(1000 + Math.random() * 9000)}`;
+    const isMesa = checkoutForm.deliveryType === 'mesa';
+    const isPickup = checkoutForm.deliveryType === 'recoger';
+    try {
+      registerRealOrder({
+        id: orderNum,
+        numero_orden: orderNum,
+        cliente_nombre: checkoutForm.name?.trim() || 'Cliente Web',
+        cliente_telefono: checkoutForm.phone?.trim() || '',
+        tipo: isMesa ? 'mesa' : isPickup ? 'takeaway' : 'delivery',
+        tipo_pedido: isMesa ? 'mesa' : isPickup ? 'takeaway' : 'delivery',
+        tipo_servicio: isMesa ? 'mesa' : isPickup ? 'recoger' : 'domicilio',
+        direccion: !isMesa && !isPickup ? (checkoutForm.address?.trim() || '') : '',
+        mesa_numero: isMesa ? (checkoutForm.address?.trim() || '1') : null,
+        estado: 'pendiente',
+        total: cartTotal,
+        metodo_pago: checkoutForm.payment || 'efectivo',
+        items: cart.map((item) => ({
+          nombre: item.nombre,
+          cantidad: item.qty,
+          precio_unitario: item.precio,
+          notas: item.notes || '',
+        })),
+      });
+    } catch (err) {
+      console.warn('Error registrando pedido desde Landing:', err);
+    }
     setCartStep('success');
     confetti({
       particleCount: 90,
@@ -389,31 +417,31 @@ export default function LandingPage() {
   };
 
   const handleWhatsAppOrder = async () => {
-    const apiBase = (import.meta.env && (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL)) || '/api';
-    const orderUrl = apiBase.endsWith('/api') ? `${apiBase}/orders/demo-restaurante` : `${apiBase}/api/orders/demo-restaurante`;
+    const orderNum = `VEC-${Math.floor(1000 + Math.random() * 9000)}`;
     try {
-      await fetch(orderUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cliente_nombre: 'Pedido Web (WhatsApp)',
-          cliente_telefono: '3000000000',
-          tipo: 'delivery',
-          metodo_entrega: 'Domicilio',
-          metodo_pago: 'Efectivo',
-          notas: `Sopa: ${selectedSoup} | Proteína: ${selectedProtein} | Acompañamientos: ${selectedSides.join(' + ')} | Bebida: ${selectedDrink}`,
-          items: [
-            {
-              nombre: `Almuerzo del Día (${selectedProtein})`,
-              cantidad: 1,
-              precio: 18500,
-              notas: `Sopa: ${selectedSoup}, Acompañamientos: ${selectedSides.join(' + ')}, Bebida: ${selectedDrink}`,
-            },
-          ],
-        }),
+      registerRealOrder({
+        id: orderNum,
+        numero_orden: orderNum,
+        cliente_nombre: 'Pedido Web (Almuerzo del Día)',
+        cliente_telefono: '',
+        tipo: 'delivery',
+        tipo_pedido: 'delivery',
+        tipo_servicio: 'domicilio',
+        estado: 'pendiente',
+        total: 18500,
+        metodo_pago: 'efectivo',
+        notas: `Sopa: ${selectedSoup} | Proteína: ${selectedProtein} | Acompañamientos: ${selectedSides.join(' + ')} | Bebida: ${selectedDrink}`,
+        items: [
+          {
+            nombre: `Almuerzo del Día (${selectedProtein})`,
+            cantidad: 1,
+            precio_unitario: 18500,
+            notas: `Sopa: ${selectedSoup}, Acompañamientos: ${selectedSides.join(' + ')}, Bebida: ${selectedDrink}`,
+          },
+        ],
       });
     } catch (err) {
-      console.warn('No se pudo registrar orden previa en cocina:', err);
+      console.warn('No se pudo registrar orden en cocina:', err);
     }
     const text = `¡Hola Veco's Restaurante! Quiero pedir el Almuerzo del Día ($18.500):%0A• Sopa: ${selectedSoup}%0A• Proteína: ${selectedProtein}%0A• Acompañamientos: ${selectedSides.join(' + ')}%0A• Bebida: ${selectedDrink}`;
     window.open(`https://wa.me/573017810256?text=${text}`, '_blank', 'noopener,noreferrer');
@@ -1263,7 +1291,7 @@ export default function LandingPage() {
                   type="button"
                   onClick={() => {
                     setIsAuthModalOpen(false);
-                    navigate(`/${BUSINESS_SLUG}/mis-pedidos`);
+                    navigate('/mis-pedidos');
                   }}
                   className="w-full py-2.5 text-xs font-bold text-[#2F5D46] hover:underline"
                 >

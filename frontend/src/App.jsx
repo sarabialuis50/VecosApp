@@ -34,7 +34,6 @@ import GeminiConsultantPage from "@/pages/dashboard/GeminiConsultantPage";
 import WhatsappHubPage from "@/pages/dashboard/WhatsappHubPage";
 import MiPerfilPage from "@/pages/dashboard/MiPerfilPage";
 import ConfiguracionPage from "@/pages/dashboard/ConfiguracionPage";
-import CatalogoMaestroPage from "@/pages/dashboard/CatalogoMaestroPage";
 import InventarioPage from "@/pages/dashboard/InventarioPage";
 import BusinessHomePage from "@/pages/public/BusinessHomePage";
 import CustomerDetailsPage from "@/pages/dashboard/CustomerDetailsPage";
@@ -102,6 +101,7 @@ function AppRoutes() {
 
       {/* Public Customer Menu (Clean single-business URLs) */}
       <Route path="/menu" element={<DemoRestaurante />} />
+      <Route path="/mesa/:mesa" element={<DemoRestaurante />} />
       <Route path="/mi-cuenta" element={<CartProvider><ClientProfilePage /></CartProvider>} />
       <Route path="/mi-cuenta/editar" element={<CartProvider><ClientEditProfilePage /></CartProvider>} />
       <Route path="/mi-cuenta/pedidos" element={<CartProvider><ClientOrdersPage /></CartProvider>} />

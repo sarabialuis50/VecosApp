@@ -20,12 +20,11 @@ const savedLocalLogo = typeof window !== 'undefined' ? localStorage.getItem('fog
 const savedLocalBanner = typeof window !== 'undefined' ? localStorage.getItem('fogon_mesa_banner') : null;
 
 const UNIVERSAL_ADMIN_BUSINESS = {
-  id: 'fogon-y-mesa-id',
+  id: 'vecos-restaurante-id',
   nombre: "Veco's Restaurante",
-  slug: 'demo-restaurante',
+  slug: 'vecos',
   email: 'admin@vecosrestaurante.com',
   plan: 'pro',
-  parent_id: null,
   telefono: '3017810256',
   direccion: "Zona Gastronómica — Veco's Restaurante",
   logo_url: savedLocalLogo || '/images/vecos-logo.jpg',
@@ -164,16 +163,11 @@ export const AuthProvider = ({ children }) => {
     setTrialLocked(null);
   };
 
-  // Role helpers — derived from user.parent_id
-  // isSuperAdmin: true for don-jediondo (no parent) → sees all branches
-  // isSedeAdmin: true for sede-norte/centro/sur → locked to own branch
-  const isSuperAdmin = !!user && !user.parent_id;
-  const isSedeAdmin  = !!user &&  !!user.parent_id;
-
+  // Single-business architecture: Veco's Restaurante (no multi-tenant / multi-sede roles)
   return (
     <AuthContext.Provider value={{
       user, setUser, token, loading, login, register, logout, api, trialLocked,
-      isSuperAdmin, isSedeAdmin
+      isSuperAdmin: !!user, isSedeAdmin: false
     }}>
       {children}
     </AuthContext.Provider>

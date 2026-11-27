@@ -11,11 +11,10 @@ export default function CocinaPage() {
   const { slug = 'vecos' } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { api, user, isSuperAdmin } = useAuth();
+  const { api, user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [sedeFilter, setSedeFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [cocinasDualesActivo, setCocinasDualesActivo] = useState(false);
   const [configLoading, setConfigLoading] = useState(true);
@@ -26,23 +25,18 @@ export default function CocinaPage() {
       ? 'salon'
       : null;
 
-  const wsIds = isSuperAdmin && orders.length > 0
-    ? [...new Set([user?.id, ...orders.map(o => o.negocio_id)].filter(Boolean))]
-    : user?.id;
-
-  const { lastMessage, isConnected } = useWebSocket(wsIds);
+  const { lastMessage, isConnected } = useWebSocket(user?.id);
 
   const previousOrdersRef = useRef(new Set());
   const isFirstLoadRef = useRef(true);
 
   useEffect(() => {
-    if (isSuperAdmin) { setConfigLoading(false); return; }
     api().get(`/business/${slug}`).then(res => {
       setCocinasDualesActivo(res.data?.cocinas_duales_activo || false);
     }).catch(() => {
       setCocinasDualesActivo(false);
     }).finally(() => { setConfigLoading(false); });
-  }, [slug, api, isSuperAdmin]);
+  }, [slug, api]);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -72,25 +66,27 @@ export default function CocinaPage() {
   }, [slug, api, soundEnabled, kitchenType]);
 
   useEffect(() => {
-    if (isSuperAdmin || kitchenType || !cocinasDualesActivo) {
+    if (kitchenType || !cocinasDualesActivo) {
       fetchOrders();
       const interval = setInterval(fetchOrders, 5000);
       const handleSync = () => fetchOrders();
       window.addEventListener('storage', handleSync);
       window.addEventListener('focus', handleSync);
+      window.addEventListener('vecos-data-updated', handleSync);
       return () => {
         clearInterval(interval);
         window.removeEventListener('storage', handleSync);
         window.removeEventListener('focus', handleSync);
+        window.removeEventListener('vecos-data-updated', handleSync);
       };
     }
-  }, [fetchOrders, isSuperAdmin, kitchenType, cocinasDualesActivo]);
+  }, [fetchOrders, kitchenType, cocinasDualesActivo]);
 
   useEffect(() => {
     if (lastMessage && (lastMessage.type === 'new_order' || lastMessage.type === 'order_updated')) {
-      if (isSuperAdmin || kitchenType || !cocinasDualesActivo) fetchOrders();
+      if (kitchenType || !cocinasDualesActivo) fetchOrders();
     }
-  }, [lastMessage, fetchOrders, isSuperAdmin, kitchenType, cocinasDualesActivo]);
+  }, [lastMessage, fetchOrders, kitchenType, cocinasDualesActivo]);
 
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
@@ -102,27 +98,11 @@ export default function CocinaPage() {
     }
   };
 
-  const sedesPresentes = [];
-
-  const sedeFiltered = orders;
-
   const filteredOrders = typeFilter === 'all'
-    ? sedeFiltered
+    ? orders
     : typeFilter === 'delivery'
-      ? sedeFiltered.filter(o => o.tipo === 'delivery')
-      : sedeFiltered.filter(o => ['mesa', 'takeaway'].includes(o.tipo));
-
-  const PALETTE = [
-    { bg: 'bg-blue-500',   text: 'text-blue-100',   label: '🔵' },
-    { bg: 'bg-yellow-500', text: 'text-yellow-900',  label: '🟡' },
-    { bg: 'bg-green-500',  text: 'text-green-100',   label: '🟢' },
-    { bg: 'bg-red-500',    text: 'text-red-100',     label: '🔴' },
-    { bg: 'bg-purple-500', text: 'text-purple-100',  label: '🟣' },
-  ];
-  const sedeColorMap = {};
-  sedesPresentes.forEach((sede, i) => {
-    sedeColorMap[sede.slug] = { ...PALETTE[i % PALETTE.length], nombre: sede.nombre };
-  });
+      ? orders.filter(o => o.tipo === 'delivery')
+      : orders.filter(o => ['mesa', 'takeaway'].includes(o.tipo));
 
   const kitchenBadge = kitchenType === 'delivery'
     ? { icon: <Truck className="w-4 h-4" />, label: 'Cocina Domicilios', color: 'bg-orange-500/20 text-orange-300 border border-orange-500/30' }
@@ -130,7 +110,7 @@ export default function CocinaPage() {
       ? { icon: <UtensilsCrossed className="w-4 h-4" />, label: 'Cocina Salón', color: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' }
       : null;
 
-  if (configLoading || (loading && orders.length === 0 && (isSuperAdmin || kitchenType || !cocinasDualesActivo))) {
+  if (configLoading || (loading && orders.length === 0 && (kitchenType || !cocinasDualesActivo))) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#22C55E]" />
@@ -138,7 +118,7 @@ export default function CocinaPage() {
     );
   }
 
-  if (!isSuperAdmin && cocinasDualesActivo && !kitchenType) {
+  if (cocinasDualesActivo && !kitchenType) {
     return <KitchenSelectionScreen slug={slug} navigate={navigate} />;
   }
 
@@ -149,19 +129,19 @@ export default function CocinaPage() {
           <div className="flex items-center gap-3">
             {kitchenType && (
               <button
-                onClick={() => navigate(`/dashboard/${slug}`)}
+                onClick={() => navigate('/dashboard')}
                 className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-700 hover:bg-gray-600 transition-colors"
                 title="Salir al Dashboard"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-300" />
               </button>
             )}
-            <div className="w-10 h-10 rounded-xl bg-transparent flex items-center justify-center overflow-hidden">
-              <img src="/logos/logo-icon-transparent.png" alt="Menu.IA" className="w-full h-full object-contain" />
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden">
+              <img src={user?.logo_url || '/images/vecos-logo.jpg'} alt="Veco's Restaurante" className="w-full h-full object-cover" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-heading font-bold text-lg">Cocina</h1>
+                <h1 className="font-heading font-bold text-lg">Cocina — Veco&apos;s</h1>
                 {kitchenBadge && (
                   <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${kitchenBadge.color}`}>
                     {kitchenBadge.icon}
@@ -195,38 +175,17 @@ export default function CocinaPage() {
           </div>
         </div>
 
-        {isSuperAdmin && sedesPresentes.length > 1 && (
-          <div className="px-4 pb-2 flex gap-2 overflow-x-auto">
-            <button
-              onClick={() => setSedeFilter('all')}
-              className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap ${sedeFilter === 'all' ? 'bg-white text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-            >Todas</button>
-            {sedesPresentes.map(sede => {
-              const info = sedeColorMap[sede.slug] || { bg: 'bg-gray-500', text: 'text-white', label: '⚫' };
-              return (
-                <button key={sede.slug} onClick={() => setSedeFilter(sede.slug)}
-                  className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap ${sedeFilter === sede.slug ? `${info.bg} text-white shadow` : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-                >
-                  {info.label} {sede.nombre}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {isSuperAdmin && (
-          <div className="px-4 pb-2 flex gap-2 border-t border-gray-700/50 pt-2">
-            <button onClick={() => setTypeFilter('all')}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${typeFilter === 'all' ? 'bg-gray-400 text-gray-900' : 'bg-gray-700/60 text-gray-400 hover:bg-gray-700'}`}
-            >Todos los pedidos</button>
-            <button onClick={() => setTypeFilter('delivery')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${typeFilter === 'delivery' ? 'bg-orange-500 text-white shadow' : 'bg-gray-700/60 text-gray-400 hover:bg-gray-700'}`}
-            ><Truck className="w-3.5 h-3.5" />Domicilios</button>
-            <button onClick={() => setTypeFilter('salon')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${typeFilter === 'salon' ? 'bg-emerald-500 text-white shadow' : 'bg-gray-700/60 text-gray-400 hover:bg-gray-700'}`}
-            ><UtensilsCrossed className="w-3.5 h-3.5" />Salón</button>
-          </div>
-        )}
+        <div className="px-4 pb-2 flex gap-2 border-t border-gray-700/50 pt-2">
+          <button onClick={() => setTypeFilter('all')}
+            className={`px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${typeFilter === 'all' ? 'bg-gray-400 text-gray-900' : 'bg-gray-700/60 text-gray-400 hover:bg-gray-700'}`}
+          >Todos los pedidos</button>
+          <button onClick={() => setTypeFilter('delivery')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${typeFilter === 'delivery' ? 'bg-orange-500 text-white shadow' : 'bg-gray-700/60 text-gray-400 hover:bg-gray-700'}`}
+          ><Truck className="w-3.5 h-3.5" />Domicilios</button>
+          <button onClick={() => setTypeFilter('salon')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap ${typeFilter === 'salon' ? 'bg-emerald-500 text-white shadow' : 'bg-gray-700/60 text-gray-400 hover:bg-gray-700'}`}
+          ><UtensilsCrossed className="w-3.5 h-3.5" />Salón / Para Llevar</button>
+        </div>
       </header>
 
       <main className="p-4">
@@ -237,7 +196,7 @@ export default function CocinaPage() {
             {filteredOrders
               .filter(order => !(order.tipo === 'delivery' && order.estado === 'listo'))
               .map((order) => (
-                <OrderCard key={order.id} order={order} onUpdateStatus={updateOrderStatus} sedeColorMap={sedeColorMap} isSuperAdmin={isSuperAdmin} />
+                <OrderCard key={order.id} order={order} onUpdateStatus={updateOrderStatus} />
               ))}
           </div>
         )}

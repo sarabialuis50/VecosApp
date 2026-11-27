@@ -107,6 +107,14 @@ export default function CatalogoPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [generatingAIDesc, setGeneratingAIDesc] = useState(false);
   const [generatingAIImg, setGeneratingAIImg] = useState(false);
+  const [aiImageCompare, setAiImageCompare] = useState({
+    visible: false,
+    openai: null,
+    pexels: null,
+    pexelsIndex: 0,
+    loadingOpenai: false,
+    loadingPexels: false,
+  });
   const [analyzingNutrition, setAnalyzingNutrition] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -480,11 +488,13 @@ export default function CatalogoPage() {
       categoria: categoryNames[0] || 'Ejecutivos del Día',
       imagen_url: defaultImages[Math.floor(Math.random() * defaultImages.length)],
     });
+    setAiImageCompare({ visible: false, openai: null, pexels: null, pexelsIndex: 0, loadingOpenai: false, loadingPexels: false });
     setIsModalOpen(true);
   };
 
   const openEditModal = (product) => {
     setEditingProduct(product);
+    setAiImageCompare({ visible: false, openai: null, pexels: null, pexelsIndex: 0, loadingOpenai: false, loadingPexels: false });
     setFormData({
       nombre: product.nombre || '',
       descripcion: product.descripcion || '',
@@ -551,7 +561,8 @@ export default function CatalogoPage() {
     setGeneratingAIDesc(true);
     try {
       const res = await api().post('/ai/generate-product-description', {
-        nombre: formData.nombre
+        nombre: formData.nombre,
+        categoria: formData.categoria || '',
       });
       if (res.data?.description) {
         setFormData(prev => ({ ...prev, descripcion: res.data.description }));
@@ -564,26 +575,63 @@ export default function CatalogoPage() {
     }
   };
 
-  const handleGenerateAIImage = async () => {
+  const handleGenerateAIImage = async (provider = 'both') => {
     if (!formData.nombre.trim()) {
       toast.error('Asigna un nombre al plato para generar su imagen');
       return;
     }
     setGeneratingAIImg(true);
+    setAiImageCompare((prev) => ({
+      ...prev,
+      visible: true,
+      loadingOpenai: provider === 'both' || provider === 'openai',
+      loadingPexels: provider === 'both' || provider === 'pexels',
+    }));
     try {
       const res = await api().post('/ai/generate-product-image', {
         nombre: formData.nombre,
-        descripcion: formData.descripcion || ''
+        descripcion: formData.descripcion || '',
+        provider,
       });
-      if (res.data?.url) {
-        setFormData(prev => ({ ...prev, imagen_url: res.data.url }));
-        toast.success('¡Imagen generada por IA con éxito!');
+      const openaiRes = res.data?.openai;
+      const pexelsRes = res.data?.pexels;
+      setAiImageCompare((prev) => ({
+        visible: true,
+        openai: provider === 'both' || provider === 'openai' ? (openaiRes || { url: null, error: 'Sin resultado' }) : prev.openai,
+        pexels: provider === 'both' || provider === 'pexels' ? (pexelsRes || { url: null, options: [], error: 'Sin resultado' }) : prev.pexels,
+        pexelsIndex: provider === 'both' || provider === 'pexels' ? 0 : prev.pexelsIndex,
+        loadingOpenai: false,
+        loadingPexels: false,
+      }));
+      if (provider === 'openai' && openaiRes?.url) {
+        toast.success('¡Imagen de OpenAI lista! Elígela o genera con Pexels al lado para comparar.');
+      } else if (provider === 'pexels' && pexelsRes?.url) {
+        toast.success('¡Foto de Pexels lista! Elígela o genera con OpenAI al lado para comparar.');
+      } else if (openaiRes?.url || pexelsRes?.url) {
+        toast.success('¡Opciones listas! Compara OpenAI y Pexels y elige tu favorita.');
+      } else {
+        toast.error(openaiRes?.error || pexelsRes?.error || 'No se pudo generar la imagen');
       }
     } catch {
-      toast.error('Error al generar imagen con IA');
+      setAiImageCompare((prev) => ({ ...prev, loadingOpenai: false, loadingPexels: false }));
+      toast.error('Error al generar imágenes');
     } finally {
       setGeneratingAIImg(false);
     }
+  };
+
+  const handleCyclePexelsPhoto = () => {
+    setAiImageCompare((prev) => {
+      const opts = prev.pexels?.options || [];
+      if (opts.length <= 1) return prev;
+      const nextIdx = (prev.pexelsIndex + 1) % opts.length;
+      const chosen = opts[nextIdx];
+      return {
+        ...prev,
+        pexelsIndex: nextIdx,
+        pexels: { ...prev.pexels, url: chosen.url, photographer: chosen.photographer },
+      };
+    });
   };
 
   const handleAnalyzeNutrition = async () => {
@@ -1308,12 +1356,23 @@ export default function CatalogoPage() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={handleGenerateAIImage}
-                          disabled={generatingAIImg || uploadingImage}
+                          onClick={() => handleGenerateAIImage('openai')}
+                          disabled={aiImageCompare.loadingOpenai || uploadingImage}
                           className="h-8 rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-black gap-1.5 text-[10px]"
                         >
-                          {generatingAIImg ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                          {generatingAIImg ? 'GENERANDO...' : '🔮 GENERAR CON IA'}
+                          {aiImageCompare.loadingOpenai ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                          {aiImageCompare.loadingOpenai ? 'OPENAI...' : '✨ OPENAI'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleGenerateAIImage('pexels')}
+                          disabled={aiImageCompare.loadingPexels || uploadingImage}
+                          className="h-8 rounded-xl border-teal-200 text-teal-700 hover:bg-teal-50 font-black gap-1.5 text-[10px]"
+                        >
+                          {aiImageCompare.loadingPexels ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />}
+                          {aiImageCompare.loadingPexels ? 'PEXELS...' : '📷 PEXELS'}
                         </Button>
                         <Button
                           type="button"
@@ -1352,6 +1411,208 @@ export default function CatalogoPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* Comparador lado a lado: OpenAI (Estilo Veco's) vs Pexels (Foto Real) */}
+                    {aiImageCompare.visible && (
+                      <div className="mt-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-700">
+                            Compara y elige la mejor imagen para tu plato
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAiImageCompare({
+                                  visible: true,
+                                  openai: null,
+                                  pexels: null,
+                                  pexelsIndex: 0,
+                                  loadingOpenai: false,
+                                  loadingPexels: false,
+                                });
+                                toast.info('Comparador reiniciado. Genera de nuevo con tu descripción actual.');
+                              }}
+                              className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                            >
+                              ↻ Reiniciar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAiImageCompare((prev) => ({ ...prev, visible: false }))}
+                              className="text-[10px] font-bold text-slate-400 hover:text-slate-700"
+                            >
+                              Ocultar
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Opción 1: OpenAI (Estilo Veco's) */}
+                          <div
+                            className={`rounded-xl border-2 bg-white overflow-hidden transition-all flex flex-col ${
+                              aiImageCompare.openai?.url && formData.imagen_url === aiImageCompare.openai.url
+                                ? 'border-emerald-500 ring-2 ring-emerald-200'
+                                : 'border-slate-200'
+                            }`}
+                          >
+                            <div className="px-3 py-2 bg-indigo-50/70 border-b border-indigo-100 flex items-center justify-between">
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-wider text-indigo-700">✨ OpenAI IA</p>
+                                <p className="text-[9px] text-indigo-500 font-medium">Estilo Veco&apos;s · Vajilla artesanal</p>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={aiImageCompare.loadingOpenai}
+                                onClick={() => handleGenerateAIImage('openai')}
+                                className="text-[9px] font-black uppercase px-2 py-1 rounded-lg bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+                              >
+                                {aiImageCompare.loadingOpenai ? '...' : 'Regenerar'}
+                              </button>
+                            </div>
+                            <div className="aspect-square bg-slate-50 flex items-center justify-center relative overflow-hidden">
+                              {aiImageCompare.loadingOpenai ? (
+                                <div className="flex flex-col items-center gap-2 text-indigo-500 p-4 text-center">
+                                  <Loader2 className="w-6 h-6 animate-spin" />
+                                  <span className="text-[10px] font-bold">Creando foto estilo Veco&apos;s...</span>
+                                </div>
+                              ) : aiImageCompare.openai?.url ? (
+                                <img
+                                  src={aiImageCompare.openai.url}
+                                  alt="OpenAI Veco's"
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex flex-col items-center justify-center gap-2.5 p-5 text-center w-full h-full border-2 border-dashed border-slate-200 m-2 rounded-xl bg-white">
+                                  <Sparkles className="w-7 h-7 text-indigo-400" />
+                                  <p className="text-[10px] text-slate-500 font-semibold leading-snug">
+                                    {aiImageCompare.openai?.error || 'Aún no generada con OpenAI'}
+                                  </p>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => handleGenerateAIImage('openai')}
+                                    className="h-8 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-wider"
+                                  >
+                                    Generar con OpenAI
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-2.5 mt-auto">
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={!aiImageCompare.openai?.url || aiImageCompare.loadingOpenai}
+                                onClick={() => {
+                                  setFormData((prev) => ({ ...prev, imagen_url: aiImageCompare.openai.url }));
+                                  toast.success('Imagen de OpenAI seleccionada');
+                                }}
+                                className={`w-full h-8 rounded-lg font-black text-[10px] uppercase tracking-wider ${
+                                  aiImageCompare.openai?.url && formData.imagen_url === aiImageCompare.openai.url
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                }`}
+                              >
+                                {aiImageCompare.openai?.url && formData.imagen_url === aiImageCompare.openai.url
+                                  ? '✓ Seleccionada'
+                                  : 'Elegir OpenAI'}
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Opción 2: Pexels (Fotografía Real) */}
+                          <div
+                            className={`rounded-xl border-2 bg-white overflow-hidden transition-all flex flex-col ${
+                              aiImageCompare.pexels?.url && formData.imagen_url === aiImageCompare.pexels.url
+                                ? 'border-emerald-500 ring-2 ring-emerald-200'
+                                : 'border-slate-200'
+                            }`}
+                          >
+                            <div className="px-3 py-2 bg-emerald-50/70 border-b border-emerald-100 flex items-center justify-between">
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">📷 Pexels</p>
+                                <p className="text-[9px] text-emerald-600 font-medium truncate max-w-[130px]">
+                                  {aiImageCompare.pexels?.photographer
+                                    ? `Foto: ${aiImageCompare.pexels.photographer}`
+                                    : 'Fotografía real HD'}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {(aiImageCompare.pexels?.options?.length || 0) > 1 && (
+                                  <button
+                                    type="button"
+                                    disabled={aiImageCompare.loadingPexels}
+                                    onClick={handleCyclePexelsPhoto}
+                                    className="text-[9px] font-black uppercase px-2 py-1 rounded-lg bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                                  >
+                                    Otra ({aiImageCompare.pexelsIndex + 1}/{aiImageCompare.pexels.options.length})
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  disabled={aiImageCompare.loadingPexels}
+                                  onClick={() => handleGenerateAIImage('pexels')}
+                                  title="Buscar de nuevo en Pexels con el nombre y descripción actual"
+                                  className="text-[9px] font-black uppercase px-2 py-1 rounded-lg bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                                >
+                                  {aiImageCompare.loadingPexels ? '...' : '↻'}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="aspect-square bg-slate-50 flex items-center justify-center relative overflow-hidden">
+                              {aiImageCompare.loadingPexels ? (
+                                <div className="flex flex-col items-center gap-2 text-emerald-600 p-4 text-center">
+                                  <Loader2 className="w-6 h-6 animate-spin" />
+                                  <span className="text-[10px] font-bold">Buscando foto real en Pexels...</span>
+                                </div>
+                              ) : aiImageCompare.pexels?.url ? (
+                                <img
+                                  src={aiImageCompare.pexels.url}
+                                  alt="Pexels Food"
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex flex-col items-center justify-center gap-2.5 p-5 text-center w-full h-full border-2 border-dashed border-slate-200 m-2 rounded-xl bg-white">
+                                  <ImageIcon className="w-7 h-7 text-emerald-500" />
+                                  <p className="text-[10px] text-slate-500 font-semibold leading-snug">
+                                    {aiImageCompare.pexels?.error || 'Aún no generada con Pexels'}
+                                  </p>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => handleGenerateAIImage('pexels')}
+                                    className="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-wider"
+                                  >
+                                    Generar con Pexels
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-2.5 mt-auto">
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={!aiImageCompare.pexels?.url || aiImageCompare.loadingPexels}
+                                onClick={() => {
+                                  setFormData((prev) => ({ ...prev, imagen_url: aiImageCompare.pexels.url }));
+                                  toast.success('Imagen de Pexels seleccionada');
+                                }}
+                                className={`w-full h-8 rounded-lg font-black text-[10px] uppercase tracking-wider ${
+                                  aiImageCompare.pexels?.url && formData.imagen_url === aiImageCompare.pexels.url
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                    : 'bg-slate-900 hover:bg-black text-white'
+                                }`}
+                              >
+                                {aiImageCompare.pexels?.url && formData.imagen_url === aiImageCompare.pexels.url
+                                  ? '✓ Seleccionada'
+                                  : 'Elegir Pexels'}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {formData.imagen_url && (
                       <div className="mt-2 relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 h-44 w-full">
@@ -1670,19 +1931,6 @@ export default function CatalogoPage() {
                         </p>
                       </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setBulkAssignCategory('all');
-                        setNewIngredientMenuCategories(formData.categoria ? [formData.categoria] : []);
-                        setIsIngredientsModalOpen(true);
-                      }}
-                      className="h-8 rounded-xl border-amber-200 bg-amber-50/70 text-amber-800 hover:bg-amber-100 text-[10px] font-black gap-1.5 px-3"
-                    >
-                      <Plus className="w-3 h-3" /> Gestionar Ingredientes
-                    </Button>
                   </div>
 
                   <div className="space-y-3">
@@ -1699,7 +1947,7 @@ export default function CatalogoPage() {
                               Aún no hay ingredientes creados para <span className="text-gray-900">{formData.categoria}</span>.
                             </p>
                             <p className="text-[10px] text-gray-400 mt-0.5">
-                              Haz clic en <b>+ Gestionar Ingredientes</b> para crear las opciones de esta categoría.
+                              Configúralos desde los ajustes de ingredientes en la pantalla principal del Menú.
                             </p>
                           </div>
                         );

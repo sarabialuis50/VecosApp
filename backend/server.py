@@ -4450,7 +4450,216 @@ async def get_ai_insights(negocio_id: str, business: Business = Depends(get_curr
 # --- AI IMAGE GENERATION ---
 class ProductImageRequest(BaseModel):
     nombre: str
-    descripcion: str
+    descripcion: Optional[str] = ""
+    provider: Optional[str] = "both"  # "openai" | "pexels" | "both"
+    pexels_page: Optional[int] = 1
+
+def _build_vecos_food_prompt(nombre: str, descripcion: str = "") -> str:
+    prompt_refinement = f"""
+        Actúa como director de fotografía gastronómica para Veco's Restaurante (cocina tradicional colombiana contemporánea).
+        Genera un prompt detallado en inglés para crear una fotografía hiperrealista del siguiente plato:
+        "{nombre}" — {descripcion if descripcion else 'Plato tradicional colombiano servido al momento'}
+
+        Estilo visual obligatorio de Veco's Restaurante:
+        1. Escribir el prompt 100% en inglés.
+        2. Comida colombiana tradicional auténtica, porciones generosas y apetitosas (texturas realistas: dorado al carbón o al horno, queso fundido, jugos naturales, hierbas frescas).
+        3. Servido en vajilla oscura artesanal de cerámica mate o gres negro/carbón, sobre mesa de madera rústica oscura.
+        4. Iluminación cálida ámbar de restaurante íntimo (moody warm studio lighting) con fondo suavemente desenfocado (bokeh).
+        5. Encuadre 45 grados de fotografía editorial gastronómica, colores naturales y vibrantes.
+        6. PROHIBIDO incluir texto, letras, menús, logos o marcas de agua.
+    """
+    enhanced_prompt = None
+    try:
+        enhanced_prompt, _ = ai_engine.complete_text(
+            system="You are a commercial Colombian food photography prompt writer. Reply only with the image prompt in English.",
+            user=prompt_refinement,
+            provider=ai_engine.PROVIDER_DEEPSEEK,
+        )
+    except Exception:
+        enhanced_prompt = None
+
+    if not enhanced_prompt:
+        enhanced_prompt = (
+            f"Editorial Colombian restaurant food photography of {nombre}, "
+            f"{descripcion or 'traditional Colombian homemade dish'}, "
+            f"served on dark matte artisanal ceramic stoneware plate on a rustic dark wood table, "
+            f"warm moody amber restaurant lighting, 45-degree angle, shallow depth of field bokeh, "
+            f"rich appetizing textures, fresh herbs, ultra-realistic, no text, no logos, no watermark."
+        )
+    return enhanced_prompt
+
+def _build_pexels_query(nombre: str, descripcion: str = "") -> str:
+    import unicodedata
+    combined_raw = f"{nombre or ''} {descripcion or ''}".strip()
+    norm_name = unicodedata.normalize("NFD", (nombre or "").lower())
+    norm_name = "".join(ch for ch in norm_name if unicodedata.category(ch) != "Mn")
+    norm_all = unicodedata.normalize("NFD", combined_raw.lower())
+    norm_all = "".join(ch for ch in norm_all if unicodedata.category(ch) != "Mn")
+
+    # 1. Prioridad máxima: tipo de plato (sopas/caldos/bebidas/picadas/arroces) ANTES que cortes de carne
+    dish_type_mappings = [
+        ("sancocho", "traditional beef vegetable soup bowl stew"),
+        ("mondongo", "traditional hearty tripe vegetable soup bowl"),
+        ("ajiaco", "creamy chicken corn potato soup bowl"),
+        ("cazuela", "latin bean stew bowl avocado"),
+        ("caldo", "hot beef broth soup bowl cilantro"),
+        ("sopa", "homemade traditional hot soup bowl"),
+        ("frijol", "red beans rice stew bowl"),
+        ("limonada de coco", "creamy coconut lemonade glass"),
+        ("limonada", "fresh iced lemonade glass"),
+        ("jugo", "fresh tropical fruit juice glass"),
+        ("bebida", "refreshing cold drink glass"),
+        ("gaseosa", "cold soda glass ice"),
+        ("cerveza", "cold beer glass"),
+        ("picada", "grilled meat platter sausage fries"),
+        ("hamburguesa", "gourmet cheeseburger fries"),
+        ("arroz", "latin fried rice chicken vegetables plate"),
+        ("vaquerito", "kids chicken nuggets french fries plate"),
+    ]
+    for keyword, eng in dish_type_mappings:
+        if keyword in norm_name or keyword in norm_all:
+            return eng
+
+    # 2. Usar DeepSeek para traducir nombre + descripción real a 3-5 palabras clave fotográficas en inglés
+    try:
+        q, _ = ai_engine.complete_text(
+            system="Convert this Spanish restaurant dish (name + description) into 3 to 5 simple, accurate English stock-photo search keywords for Pexels. Focus on the actual dish format (soup bowl, grilled plate, stew, drink, etc.). Reply ONLY with the English keywords, no punctuation.",
+            user=f"Nombre: {nombre}\nDescripción: {descripcion}",
+            provider=ai_engine.PROVIDER_DEEPSEEK,
+        )
+        if q and len(q.strip()) >= 3:
+            cleaned_q = q.strip().replace('"', '').replace("'", "")
+            return cleaned_q[:65]
+    except Exception:
+        pass
+
+    # 3. Respaldo por proteína / corte
+    protein_mappings = [
+        ("gratinad", "baked chicken breast melted cheese plate"),
+        ("pechuga", "grilled chicken breast plate rice salad"),
+        ("churrasco", "grilled steak chimichurri plate"),
+        ("punta de anca", "grilled ribeye steak plate"),
+        ("costilla", "bbq pork ribs plate"),
+        ("mojarra", "whole fried fish plate"),
+        ("tilapia", "grilled fish fillet plate"),
+        ("trucha", "grilled trout fish plate"),
+        ("salmon", "grilled salmon plate"),
+        ("chicharron", "crispy pork belly plate"),
+        ("sobrebarriga", "braised beef in tomato sauce plate"),
+        ("lomo", "grilled pork tenderloin plate"),
+        ("chuleta", "crispy breaded pork chop plate"),
+        ("pollo", "roasted chicken plate rice"),
+        ("carne", "grilled beef steak plate"),
+        ("cerdo", "grilled pork plate"),
+        ("pescado", "grilled fish plate"),
+    ]
+    for keyword, eng in protein_mappings:
+        if keyword in norm_name or keyword in norm_all:
+            return eng
+
+    return "grilled restaurant food plate dark table"
+
+async def _generate_openai_vecos_image(nombre: str, descripcion: str = "") -> Dict[str, Any]:
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        return {"url": None, "error": "OPENAI_API_KEY no configurada en el servidor"}
+
+    try:
+        enhanced_prompt = await asyncio.to_thread(_build_vecos_food_prompt, nombre, descripcion)
+        openai_client = OpenAI(api_key=api_key)
+        img_gen_res = await asyncio.to_thread(
+            openai_client.images.generate,
+            model="gpt-image-1-mini",
+            prompt=enhanced_prompt,
+            size="1024x1024",
+            quality="low",
+            n=1,
+        )
+
+        dalle_url = img_gen_res.data[0].url
+        b64_data = img_gen_res.data[0].b64_json
+
+        image_bytes = None
+        if b64_data:
+            import base64
+            image_bytes = base64.b64decode(b64_data)
+        elif dalle_url:
+            import httpx
+            async with httpx.AsyncClient() as http_client:
+                img_res = await http_client.get(dalle_url, timeout=30.0)
+                if img_res.status_code == 200:
+                    image_bytes = img_res.content
+
+        if not image_bytes:
+            return {"url": None, "error": "No se pudo obtener la imagen generada por OpenAI"}
+
+        unique_name = f"ai-{uuid.uuid4()}.png"
+        storage_path = f"demo/{unique_name}"
+
+        try:
+            supabase.storage.from_('menupro').upload(
+                path=storage_path,
+                file=image_bytes,
+                file_options={"content-type": "image/png"}
+            )
+            public_url = supabase.storage.from_('menupro').get_public_url(storage_path)
+            if public_url:
+                return {"url": public_url, "prompt": enhanced_prompt, "error": None}
+        except Exception as storage_err:
+            logger.warning(f"Supabase upload failed for AI image, saving locally: {storage_err}")
+
+        local_path = GENERATED_IMAGES_DIR / unique_name
+        with open(local_path, "wb") as f:
+            f.write(image_bytes)
+
+        return {"url": f"/api/generated-images/{unique_name}", "prompt": enhanced_prompt, "error": None}
+    except Exception as e:
+        logger.error(f"OpenAI image generation error: {e}")
+        return {"url": None, "error": str(e)}
+
+async def _search_pexels_food_image(nombre: str, descripcion: str = "", page: int = 1) -> Dict[str, Any]:
+    pexels_key = os.environ.get("PEXELS_API_KEY")
+    if not pexels_key:
+        return {"url": None, "options": [], "error": "PEXELS_API_KEY no configurada en el servidor"}
+
+    try:
+        import httpx
+        query = await asyncio.to_thread(_build_pexels_query, nombre, descripcion)
+        async with httpx.AsyncClient() as http_client:
+            res = await http_client.get(
+                "https://api.pexels.com/v1/search",
+                headers={"Authorization": pexels_key},
+                params={"query": query, "per_page": 6, "page": max(1, page)},
+                timeout=15.0,
+            )
+        if res.status_code != 200:
+            return {"url": None, "options": [], "error": f"Pexels devolvió HTTP {res.status_code}"}
+
+        payload = res.json()
+        photos = payload.get("photos") or []
+        if not photos:
+            return {"url": None, "options": [], "error": "No se encontraron fotos en Pexels para este plato"}
+
+        options = [
+            {
+                "url": p.get("src", {}).get("large2x") or p.get("src", {}).get("large") or p.get("src", {}).get("medium"),
+                "photographer": p.get("photographer", ""),
+                "alt": p.get("alt", ""),
+            }
+            for p in photos
+            if p.get("src")
+        ]
+        first = options[0] if options else {"url": None, "photographer": ""}
+        return {
+            "url": first["url"],
+            "photographer": first["photographer"],
+            "query": query,
+            "options": options,
+            "error": None,
+        }
+    except Exception as e:
+        logger.error(f"Pexels image search error: {e}")
+        return {"url": None, "options": [], "error": str(e)}
 
 @api_router.post("/ai/generate-product-image")
 async def generate_product_image_endpoint(req: ProductImageRequest, business: Business = Depends(get_current_business)):
@@ -4550,128 +4759,88 @@ async def serve_generated_image(filename: str):
 
 @api_router.post("/ai/demo-generate-product-image")
 async def demo_generate_product_image_endpoint(req: ProductImageRequest):
-    try:
-        prompt_refinement = f"""
-        Actúa como un experto en fotografía publicitaria de alimentos.
-        Genera un prompt detallado para generar una imagen profesional del siguiente producto:
-        "{req.nombre}" - {req.descripcion if req.descripcion else 'Un plato delicioso'}
+    provider = (req.provider or "both").lower()
+    nombre = req.nombre
+    descripcion = req.descripcion or ""
+    page = req.pexels_page or 1
 
-        El prompt debe:
-        1. Ser en inglés.
-        2. Describir la iluminación profesional de estudio.
-        3. Describir el fondo desenfocado (bokeh) de mesa de restaurante elegante.
-        4. Enfocarse en la frescura, colores vivos y textura apetitosa del plato.
-        5. NO incluir ningún texto, logos o marca de agua.
-        """
-
-        enhanced_prompt = None
-        try:
-            enhanced_prompt, _ = ai_engine.complete_text(
-                system="You are a commercial food photography prompt writer. Reply only with the image prompt in English.",
-                user=prompt_refinement,
-                provider=ai_engine.PROVIDER_DEEPSEEK,
-            )
-        except Exception:
-            enhanced_prompt = None
-
-        if not enhanced_prompt:
-            enhanced_prompt = f"Professional commercial food photography of {req.nombre}, {req.descripcion or 'delicious Latin American restaurant dish'}, appetizing presentation, warm studio lighting, shallow depth of field bokeh, high detail, no text, no watermark."
-
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            raise HTTPException(status_code=503, detail="OPENAI_API_KEY no configurada")
-
-        openai_client = OpenAI(api_key=api_key)
-        img_gen_res = openai_client.images.generate(
-            model="gpt-image-1-mini",
-            prompt=enhanced_prompt,
-            size="1024x1024",
-            quality="low",
-            n=1,
+    if provider == "openai":
+        openai_res = await _generate_openai_vecos_image(nombre, descripcion)
+        return {"openai": openai_res, "pexels": None, "url": openai_res.get("url")}
+    elif provider == "pexels":
+        pexels_res = await _search_pexels_food_image(nombre, descripcion, page=page)
+        return {"openai": None, "pexels": pexels_res, "url": pexels_res.get("url")}
+    else:
+        openai_res, pexels_res = await asyncio.gather(
+            _generate_openai_vecos_image(nombre, descripcion),
+            _search_pexels_food_image(nombre, descripcion, page=page),
         )
-
-        dalle_url = img_gen_res.data[0].url
-        b64_data = img_gen_res.data[0].b64_json
-
-        image_bytes = None
-        if b64_data:
-            import base64
-            image_bytes = base64.b64decode(b64_data)
-        elif dalle_url:
-            import httpx
-            async with httpx.AsyncClient() as http_client:
-                img_res = await http_client.get(dalle_url, timeout=30.0)
-                if img_res.status_code != 200:
-                    raise HTTPException(status_code=500, detail="Fallo al obtener la imagen de la IA")
-                image_bytes = img_res.content
-
-        if not image_bytes:
-            raise HTTPException(status_code=500, detail="No se pudo obtener el contenido de la imagen de la IA")
-
-        file_ext = "png"
-        unique_name = f"ai-{uuid.uuid4()}.{file_ext}"
-        storage_path = f"demo/{unique_name}"
-
-        # Try Supabase Storage first; fallback to local generated_images folder
-        try:
-            supabase.storage.from_('menupro').upload(
-                path=storage_path,
-                file=image_bytes,
-                file_options={"content-type": f"image/{file_ext}"}
-            )
-            public_url = supabase.storage.from_('menupro').get_public_url(storage_path)
-            if public_url:
-                return {"url": public_url}
-        except Exception as storage_err:
-            logger.warning(f"Supabase upload failed for demo AI image, saving locally: {storage_err}")
-
-        local_path = GENERATED_IMAGES_DIR / unique_name
-        with open(local_path, "wb") as f:
-            f.write(image_bytes)
-
-        return {"url": f"/api/generated-images/{unique_name}"}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error generating demo AI image: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Error en la generación de imagen: {str(e)}")
+        return {
+            "openai": openai_res,
+            "pexels": pexels_res,
+            "url": openai_res.get("url") or pexels_res.get("url"),
+        }
 
 class ProductDescriptionRequest(BaseModel):
     nombre: str
+    categoria: Optional[str] = ""
+
+def _build_product_description_prompt(nombre: str, categoria: str = "") -> str:
+    cat_hint = f"\n        Categoría del menú: {categoria}" if categoria else ""
+    return f"""
+        Actúa como chef y redactor gastronómico profesional para Veco's Restaurante (cocina colombiana contemporánea).
+        Te daré el nombre de un plato y debes escribir una descripción apetitosa, sensorial y natural que provoque pedirlo.
+
+        Requisitos estrictos:
+        - En español natural de Colombia.
+        - 1 o 2 frases cortas (máximo 25-35 palabras en total).
+        - PROHIBIDO repetir el nombre del plato ni empezar con el título del plato.
+        - PROHIBIDO mencionar acompañantes, guarniciones o extras externos (NO digas "se sirve con arroz", "con aguacate", "con ají", "con papas", "con ensalada", "acompañantes del día", "guarnición", ni bebidas). Cada plato ya tiene su propio selector de acompañantes aparte.
+        - Enfócate EXCLUSIVAMENTE en el plato principal: su cocción, textura, aroma, sazón, acabado (gratinado, asado, dorado, en caldo, en salsa) e ingredientes propios del plato.
+        - Si el plato es una sopa, caldo, sancocho, ajiaco, mondongo o cazuela, EMPIEZA describiendo el caldo/sopa/guiso de cocción lenta (ej. "Caldo sustancioso de cocción lenta...").
+        - Tono cálido, apetitoso y profesional, sin exageraciones artificiales ("el mejor del mundo", "increíble").
+
+        Ejemplos de estilo esperado:
+        Entrada: "Pechuga Gratinada"
+        Salida: "Filete de pollo jugoso, sazonado al punto y cubierto con una capa generosa de queso fundido y dorado al horno. Acabado cremoso por fuera y tierno por dentro."
+
+        Entrada: "Sancocho de Costilla"
+        Salida: "Caldo sustancioso de cocción lenta con costilla de res tierna que se desprende del hueso, papa, yuca suave y un toque aromático de cilantro fresco."
+
+        Responde SOLO con la descripción, sin comillas, sin título y sin texto adicional.
+
+        Nombre del plato: {nombre}{cat_hint}
+        """
+
+@api_router.post("/ai/demo-generate-product-description")
+async def demo_generate_product_description_endpoint(req: ProductDescriptionRequest):
+    try:
+        prompt = _build_product_description_prompt(req.nombre, req.categoria or "")
+        description, _ = ai_engine.complete_text(
+            system="Eres un chef y redactor gastronómico experto. Responde únicamente con la descripción en español, sin repetir el nombre del plato ni usar comillas.",
+            user=prompt,
+            provider=ai_engine.PROVIDER_DEEPSEEK,
+        )
+        cleaned = (description or "").strip().strip('"').strip("'")
+        return {"description": cleaned}
+    except Exception as e:
+        logger.warning(f"Demo AI description fallback triggered: {e}")
+        raise HTTPException(status_code=503, detail="Motor IA no disponible")
 
 @api_router.post("/ai/generate-product-description")
 async def generate_product_description_endpoint(req: ProductDescriptionRequest, business: Business = Depends(get_current_business)):
     # Deduct credit
     deduct_ai_credit(business.id, 'desc', business)
     try:
-        prompt = f"""
-        Actúa como redactor de menús para un restaurante.
-        Voy a darte solo el nombre de un producto y tú debes inventar una descripción corta y sencilla que explique claramente qué es el producto y qué incluye.
-
-        Requisitos de la descripción:
-        - En español.
-        - 1 sola frase, máximo 1 renglón.
-        - Tono simple y descriptivo, sin palabras rebuscadas.
-        - Menciona tipo de preparación y los ingredientes o componentes más probables según el nombre.
-        - No inventes características exageradas (no digas “el mejor”, “increíble”, etc.).
-        - No repitas el nombre del producto más de una vez.
-
-        Ejemplo de estilo de salida:
-        Entrada: “Hamburguesa de carne doble Pequeña”
-        Salida: “Hamburguesa con dos porciones pequeñas de carne 100% de res, jugosas y bien sazonadas, servidas en pan fresco con queso, vegetales frescos y salsas de la casa, ideal para quien busca gran sabor en un tamaño compacto.”
-
-        Ahora responde SOLO con la descripción, sin explicaciones ni texto adicional.
-
-        Nombre del producto: {req.nombre}
-        """
+        prompt = _build_product_description_prompt(req.nombre, req.categoria or "")
 
         description, _ = ai_engine.complete_text(
-            system="Eres un redactor gastronómico conciso. Responde solo con la descripción en español.",
+            system="Eres un chef y redactor gastronómico experto. Responde únicamente con la descripción en español, sin repetir el nombre del plato ni usar comillas.",
             user=prompt,
             provider=ai_engine.PROVIDER_DEEPSEEK,
         )
-        return {"description": description}
+        cleaned = (description or "").strip().strip('"').strip("'")
+        return {"description": cleaned}
     except Exception as e:
         logger.error(f"Error generating AI description: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Error en la generación de descripción: {str(e)}")

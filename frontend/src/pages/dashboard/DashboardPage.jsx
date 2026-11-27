@@ -121,7 +121,16 @@ export default function DashboardPage() {
       }
     };
     fetchData();
-    return () => { isMounted = false; };
+    const handleSync = () => fetchData();
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', handleSync);
+    window.addEventListener('vecos-data-updated', handleSync);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('vecos-data-updated', handleSync);
+    };
   }, [slug, api]);
 
   const formatCurrency = (value) => {
@@ -133,11 +142,15 @@ export default function DashboardPage() {
     }).format(Number(value));
   };
 
-  const chartData = analytics?.ultimos_7_dias?.slice().reverse().map(day => ({
-    fecha: new Date(day.fecha).toLocaleDateString('es-CO', { weekday: 'short' }),
-    ventas: day.total_ventas,
-    pedidos: day.total_pedidos
-  })) || [];
+  const chartData = analytics?.ultimos_7_dias
+    ? [...analytics.ultimos_7_dias]
+        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
+        .map(day => ({
+          fecha: new Date(day.fecha).toLocaleDateString('es-CO', { weekday: 'short' }),
+          ventas: day.total_ventas,
+          pedidos: day.total_pedidos
+        }))
+    : [];
 
   if (loading) {
     return (
