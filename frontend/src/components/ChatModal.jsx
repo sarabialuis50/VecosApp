@@ -362,7 +362,7 @@ export const ChatModal = ({ isOpen, onClose, businessName, slug, aiSaludo }) => 
                                 </button>
                             </form>
                             <p className="text-[9px] text-center text-[#618972] mt-4 font-black uppercase tracking-[0.2em] opacity-40">
-                                Powered by Fogón & Mesa
+                                Powered by Veco&apos;s Restaurante
                             </p>
                         </div>
                     )}

@@ -415,7 +415,7 @@ export default function LandingPage() {
     } catch (err) {
       console.warn('No se pudo registrar orden previa en cocina:', err);
     }
-    const text = `¡Hola Fogón & Mesa! Quiero pedir el Almuerzo del Día ($18.500):%0A• Sopa: ${selectedSoup}%0A• Proteína: ${selectedProtein}%0A• Acompañamientos: ${selectedSides.join(' + ')}%0A• Bebida: ${selectedDrink}`;
+    const text = `¡Hola Veco's Restaurante! Quiero pedir el Almuerzo del Día ($18.500):%0A• Sopa: ${selectedSoup}%0A• Proteína: ${selectedProtein}%0A• Acompañamientos: ${selectedSides.join(' + ')}%0A• Bebida: ${selectedDrink}`;
     window.open(`https://wa.me/573017810256?text=${text}`, '_blank', 'noopener,noreferrer');
   };
 
@@ -441,25 +441,21 @@ export default function LandingPage() {
             {/* Brand Identity (Single Business) */}
             <Link to="/" className="flex items-center gap-3 group">
               <div className="w-10 h-10 rounded-full bg-[#C86414] overflow-hidden flex items-center justify-center text-white shadow-md shadow-[#C86414]/20 group-hover:scale-105 transition-transform">
-                {(user?.logo_url || (typeof window !== 'undefined' && localStorage.getItem('fogon_mesa_logo'))) ? (
-                  <img
-                    src={user?.logo_url || localStorage.getItem('fogon_mesa_logo')}
-                    alt="Fogón & Mesa"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <Flame className="w-5 h-5" />
-                )}
+                <img
+                  src={user?.logo_url || (typeof window !== 'undefined' && localStorage.getItem('fogon_mesa_logo')) || '/images/vecos-logo.jpg'}
+                  alt="Veco's Restaurante"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div className="leading-none">
                 <span
                   className="block text-xl sm:text-2xl font-bold tracking-tight text-[#FBF9F5]"
                   style={{ fontFamily: "'Fraunces', Georgia, serif" }}
                 >
-                  Fogón & Mesa
+                  Veco&apos;s Restaurante
                 </span>
                 <span className="block text-[10px] uppercase tracking-[0.22em] text-[#D9B99B] font-semibold mt-0.5">
-                  Cocina de Almuerzos
+                  Sabor que te encanta
                 </span>
               </div>
             </Link>
@@ -1159,9 +1155,9 @@ export default function LandingPage() {
               className="text-base font-bold text-[#FBF9F5]"
               style={{ fontFamily: "'Fraunces', Georgia, serif" }}
             >
-              Fogón & Mesa
+              Veco&apos;s Restaurante
             </span>
-            <span>· Cocina de Almuerzos Artesanales</span>
+            <span>· Sabor que te encanta</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-6">
@@ -1175,7 +1171,7 @@ export default function LandingPage() {
             <Link to="/legal/autorizacion-datos" className="hover:text-white transition-colors">
               Política de Privacidad
             </Link>
-            <span>© 2026 Fogón & Mesa</span>
+            <span>© 2026 Veco&apos;s Restaurante</span>
           </div>
         </div>
       </footer>
@@ -1194,7 +1190,7 @@ export default function LandingPage() {
                 <span className="w-8 h-8 rounded-full bg-[#C86414] flex items-center justify-center">
                   <User className="w-4 h-4 text-white" />
                 </span>
-                Mi Cuenta — Fogón & Mesa
+                Mi Cuenta — Veco&apos;s Restaurante
               </DialogTitle>
               <DialogDescription className="text-xs text-[#C9C1B8]">
                 Un solo canal de acceso para clientes del restaurante y administración.
@@ -1307,16 +1303,16 @@ export default function LandingPage() {
               <form onSubmit={handleAdminLogin} className="space-y-4">
                 <div className="p-3 rounded-2xl bg-[#F2ECE1] border border-[#E5DCCD] flex items-center justify-between gap-3">
                   <div className="text-xs">
-                    <p className="font-bold text-[#1F1C1A]">Credenciales universales</p>
+                    <p className="font-bold text-[#1F1C1A]">Credenciales de acceso</p>
                     <p className="text-[#665E57]">
-                      Correo: <span className="font-semibold text-[#1F1C1A]">admin@fogonmesa.com</span> · Clave:{' '}
+                      Correo: <span className="font-semibold text-[#1F1C1A]">admin@vecosrestaurante.com</span> · Clave:{' '}
                       <span className="font-semibold text-[#1F1C1A]">admin123</span>
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => {
-                      setAdminEmail('admin@fogonmesa.com');
+                      setAdminEmail('admin@vecosrestaurante.com');
                       setAdminPassword('admin123');
                     }}
                     className="px-3 py-1.5 rounded-xl bg-[#2F5D46] text-white text-[11px] font-bold shrink-0 hover:bg-[#3A7256] transition-colors"
@@ -1334,7 +1330,7 @@ export default function LandingPage() {
                       id="admin-email"
                       type="email"
                       required
-                      placeholder="admin@fogonmesa.com"
+                      placeholder="admin@vecosrestaurante.com"
                       value={adminEmail}
                       onChange={(e) => setAdminEmail(e.target.value)}
                       className="pl-10 h-11 rounded-xl bg-white border-[#E5DCCD]"
@@ -1406,7 +1402,7 @@ export default function LandingPage() {
                   >
                     Tu Pedido
                   </h2>
-                  <p className="text-xs text-[#D9B99B]">Fogón & Mesa · Almuerzos</p>
+                  <p className="text-xs text-[#D9B99B]">Veco&apos;s Restaurante · Sabor que te encanta</p>
                 </div>
               </div>
               <button

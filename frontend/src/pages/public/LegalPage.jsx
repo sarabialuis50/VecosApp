@@ -9,8 +9,8 @@ export default function LegalPage() {
     const [activeSection, setActiveSection] = React.useState('autorizacion');
 
     const legalLinks = [
-        { id: 'terminos', title: 'Términos y Condiciones de Uso – Fogón & Mesa', icon: FileText },
-        { id: 'autorizacion', title: 'Autorización de Tratamiento de datos personales Usuarios – Fogón & Mesa', icon: Shield },
+        { id: 'terminos', title: "Términos y Condiciones de Uso – Veco's Restaurante", icon: FileText },
+        { id: 'autorizacion', title: "Autorización de Tratamiento de datos personales Usuarios – Veco's Restaurante", icon: Shield },
         { id: 'privacidad', title: 'Política de Tratamiento de Datos Personales (Política de Privacidad)', icon: Shield },
         { id: 'cookies', title: 'Política de Cookies – Colombia', icon: Cookie },
     ];
@@ -22,31 +22,31 @@ export default function LegalPage() {
                     <>
                         <p className="text-xs font-black uppercase tracking-widest text-[#C86414] mb-4">Legal & Términos</p>
                         <h1 className="text-3xl md:text-4xl font-black text-[#111814] mb-8 leading-tight">
-                            Términos y Condiciones de Uso – Fogón & Mesa
+                            Términos y Condiciones de Uso – Veco's Restaurante
                         </h1>
                         <div className="space-y-6 text-gray-600 leading-relaxed font-medium text-sm md:text-base">
                             <h2 className="text-xl font-black text-[#111814] mt-10">1. ASPECTOS GENERALES</h2>
                             <p>
-                                <strong>Fogón & Mesa</strong> es un establecimiento comercial gastronómico y plataforma digital constituida conforme a las leyes colombianas, quien para los efectos de los presentes Términos y Condiciones se denominará “Fogón & Mesa”.
+                                <strong>Veco's Restaurante</strong> es un establecimiento comercial gastronómico y plataforma digital constituida conforme a las leyes colombianas, quien para los efectos de los presentes Términos y Condiciones se denominará “Veco's Restaurante”.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">2. DEFINICIONES</h2>
                             <ul className="list-disc pl-6 space-y-3">
-                                <li><strong>Restaurante:</strong> Establecimiento gastronómico Fogón & Mesa que exhibe y comercializa sus productos.</li>
-                                <li><strong>Puntos de Fidelidad:</strong> Puntos o beneficios que el Usuario acumula en su cuenta para redimir en productos o beneficios en Fogón & Mesa.</li>
-                                <li><strong>Plataforma Fogón & Mesa:</strong> Ecosistema virtual compuesto por la página web y servicio de pedidos en línea.</li>
+                                <li><strong>Restaurante:</strong> Establecimiento gastronómico Veco's Restaurante que exhibe y comercializa sus productos.</li>
+                                <li><strong>Puntos de Fidelidad:</strong> Puntos o beneficios que el Usuario acumula en su cuenta para redimir en productos o beneficios en Veco's Restaurante.</li>
+                                <li><strong>Plataforma Veco's Restaurante:</strong> Ecosistema virtual compuesto por la página web y servicio de pedidos en línea.</li>
                                 <li><strong>Repartidor:</strong> Persona encargada de la entrega del pedido desde el restaurante hasta el domicilio del Usuario.</li>
-                                <li><strong>Usuario/Consumidor:</strong> Persona natural que utiliza la plataforma para adquirir productos y servicios comercializados por Fogón & Mesa.</li>
+                                <li><strong>Usuario/Consumidor:</strong> Persona natural que utiliza la plataforma para adquirir productos y servicios comercializados por Veco's Restaurante.</li>
                             </ul>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">3. OBJETO</h2>
                             <p>
-                                Los presentes Términos y Condiciones regulan el uso que otorga Fogón & Mesa a los Usuarios para que éstos ingresen a la Plataforma, se informen sobre los productos y realicen pedidos de manera digital.
+                                Los presentes Términos y Condiciones regulan el uso que otorga Veco's Restaurante a los Usuarios para que éstos ingresen a la Plataforma, se informen sobre los productos y realicen pedidos de manera digital.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">4. FUNCIONAMIENTO DE LA PLATAFORMA</h2>
                             <p>
-                                Fogón & Mesa ofrece su servicio de pedidos en línea y entrega a domicilio o consumo en el local a través de su plataforma tecnológica directa.
+                                Veco's Restaurante ofrece su servicio de pedidos en línea y entrega a domicilio o consumo en el local a través de su plataforma tecnológica directa.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">5. DEBERES DEL USUARIO</h2>
@@ -55,28 +55,28 @@ export default function LegalPage() {
                                 <li>Ingresar datos veraces al registrarse o realizar pedidos.</li>
                                 <li>Abstenerse de utilizar la plataforma para actos ilícitos o contrarios a la moral.</li>
                                 <li>Disponer de los fondos necesarios para el pago de los pedidos.</li>
-                                <li>Tratar de manera respetuosa al personal de Fogón & Mesa y Repartidores.</li>
+                                <li>Tratar de manera respetuosa al personal de Veco's Restaurante y Repartidores.</li>
                                 <li>Verificar los datos del pedido (productos y dirección) antes de finalizar la compra.</li>
                             </ul>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">6. PRECIOS Y TARIFAS</h2>
                             <p>
-                                Los precios son fijados por Fogón & Mesa y se informan claramente en el resumen antes de confirmar el pedido.
+                                Los precios son fijados por Veco's Restaurante y se informan claramente en el resumen antes de confirmar el pedido.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">7. PRODUCTOS DE USO RESTRINGIDO</h2>
                             <p>
-                                La adquisición de bebidas alcohólicas está estrictamente prohibida para menores de edad. Fogón & Mesa se reserva el derecho de exigir la identificación oficial al momento de la entrega.
+                                La adquisición de bebidas alcohólicas está estrictamente prohibida para menores de edad. Veco's Restaurante se reserva el derecho de exigir la identificación oficial al momento de la entrega.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">8. GARANTÍA Y RETRACTO</h2>
                             <p>
-                                Cualquier reclamación por calidad o estado de los productos debe tramitarse directamente con Fogón & Mesa, de conformidad con la Ley 1480 de 2011.
+                                Cualquier reclamación por calidad o estado de los productos debe tramitarse directamente con Veco's Restaurante, de conformidad con la Ley 1480 de 2011.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">9. INDEMNIDAD Y MODIFICACIONES</h2>
                             <p>
-                                Fogón & Mesa podrá modificar estos términos en cualquier momento para mejorar el servicio. El Usuario es responsable de revisar periódicamente las actualizaciones en esta sección.
+                                Veco's Restaurante podrá modificar estos términos en cualquier momento para mejorar el servicio. El Usuario es responsable de revisar periódicamente las actualizaciones en esta sección.
                             </p>
                         </div>
                     </>
@@ -86,25 +86,25 @@ export default function LegalPage() {
                     <>
                         <p className="text-xs font-black uppercase tracking-widest text-[#C86414] mb-4">Legal & Privacidad</p>
                         <h1 className="text-3xl md:text-4xl font-black text-[#111814] mb-8 leading-tight">
-                            Política de Cookies – Fogón & Mesa
+                            Política de Cookies – Veco's Restaurante
                         </h1>
                         <div className="space-y-6 text-gray-600 leading-relaxed font-medium text-sm md:text-base">
                             <section>
                                 <p>
-                                    <strong>Fogón & Mesa</strong> es un restaurante y plataforma digital constituida conforme a las leyes colombianas, con domicilio en la ciudad de Bogotá D.C., la cual administra y opera su ecosistema digital para la visualización de carta, pedidos y atención personalizada.
+                                    <strong>Veco's Restaurante</strong> es un restaurante y plataforma digital constituida conforme a las leyes colombianas, con domicilio en la ciudad de Bogotá D.C., la cual administra y opera su ecosistema digital para la visualización de carta, pedidos y atención personalizada.
                                 </p>
                                 <p className="mt-4">
                                     Por medio de la presente <strong>POLÍTICA DE COOKIES</strong> se da a conocer a los Usuarios/Consumidores el tratamiento que se le da a las cookies en su plataforma y a la información personal recolectada y almacenada por las mismas.
                                 </p>
                                 <p className="mt-4">
-                                    Se aclara que con el propósito de proteger la información personal recolectada y almacenada por las Cookies sobre los Usuarios/Consumidores que tengan relación con <strong>Fogón & Mesa</strong>, la presente Política de Cookies da cumplimiento estricto a la Política de Privacidad y a la Autorización de Tratamiento de Datos Personales de la plataforma.
+                                    Se aclara que con el propósito de proteger la información personal recolectada y almacenada por las Cookies sobre los Usuarios/Consumidores que tengan relación con <strong>Veco's Restaurante</strong>, la presente Política de Cookies da cumplimiento estricto a la Política de Privacidad y a la Autorización de Tratamiento de Datos Personales de la plataforma.
                                 </p>
                             </section>
 
                             <section>
                                 <h2 className="text-xl font-black text-[#111814] mb-4">NATURALEZA JURÍDICA</h2>
                                 <p>
-                                    Por medio de la presente Política de Cookies se identifican el tipo de Cookies que se usan en el ecosistema digital de <strong>Fogón & Mesa</strong> y el uso que se le dará a las mismas.
+                                    Por medio de la presente Política de Cookies se identifican el tipo de Cookies que se usan en el ecosistema digital de <strong>Veco's Restaurante</strong> y el uso que se le dará a las mismas.
                                 </p>
                             </section>
 
@@ -113,7 +113,7 @@ export default function LegalPage() {
                                 <ul className="space-y-4">
                                     <li><strong>Dato personal:</strong> Cualquier información concerniente o vinculada a personas naturales determinadas o determinables.</li>
                                     <li><strong>Base de datos personales:</strong> Conjunto organizado de datos personales que son objeto de tratamiento por una persona natural o jurídica.</li>
-                                    <li><strong>Cookies:</strong> Archivos que recolectan información sobre los hábitos de navegación e inclinaciones de consumo de un Usuario/Consumidor en el Sitio Web de <strong>Fogón & Mesa</strong> y eventualmente podrían conformar una base de datos. Las Cookies son recuperadas y almacenadas por Fogón & Mesa para la consulta de las actividades y preferencias de los Usuarios/Consumidores, permitiendo identificar cómo mejorar el servicio ofrecido.</li>
+                                    <li><strong>Cookies:</strong> Archivos que recolectan información sobre los hábitos de navegación e inclinaciones de consumo de un Usuario/Consumidor en el Sitio Web de <strong>Veco's Restaurante</strong> y eventualmente podrían conformar una base de datos. Las Cookies son recuperadas y almacenadas por Veco's Restaurante para la consulta de las actividades y preferencias de los Usuarios/Consumidores, permitiendo identificar cómo mejorar el servicio ofrecido.</li>
                                     <li><strong>Comercio Electrónico:</strong> Comprende el envío, transmisión, recepción, almacenamiento de mensajes de datos por vía electrónica (Ley 527 de 1999).</li>
                                     <li><strong>Sitio Web:</strong> Serie de páginas web interrelacionadas entre sí e identificadas por un mismo nombre de dominio, accesibles mediante un navegador de internet.</li>
                                     <li><strong>Mensajes de datos:</strong> La información generada, enviada, recibida, almacenada o comunicada por medios electrónicos u ópticos.</li>
@@ -123,7 +123,7 @@ export default function LegalPage() {
 
                             <section>
                                 <h2 className="text-xl font-black text-[#111814] mb-4">TIPOS DE COOKIES UTILIZADAS</h2>
-                                <p className="mb-4"><strong>Fogón & Mesa</strong> utiliza en su plataforma las siguientes Cookies:</p>
+                                <p className="mb-4"><strong>Veco's Restaurante</strong> utiliza en su plataforma las siguientes Cookies:</p>
                                 <ul className="list-disc pl-6 space-y-3">
                                     <li><strong>Cookies de Sesión:</strong> Recolectan información relativa al acceso y uso mientras el Usuario navega y se conservan únicamente durante ese tiempo.</li>
                                     <li><strong>Cookies Persistentes:</strong> Se almacenan durante un tiempo limitado en el navegador, aun cuando el Usuario ha finalizado de navegar.</li>
@@ -156,7 +156,7 @@ export default function LegalPage() {
                                     <a href="https://support.apple.com/es-es/guide/safari/sfri11471/mac" target="_blank" rel="noopener noreferrer" className="text-[#C86414] hover:underline font-bold">Safari</a>
                                 </div>
                                 <p className="mt-4 italic">
-                                    Nota: Si realiza modificaciones en la configuración de las Cookies, <strong>Fogón & Mesa</strong> no asegura el correcto funcionamiento de todas las funcionalidades de su Sitio Web.
+                                    Nota: Si realiza modificaciones en la configuración de las Cookies, <strong>Veco's Restaurante</strong> no asegura el correcto funcionamiento de todas las funcionalidades de su Sitio Web.
                                 </p>
                             </section>
 
@@ -181,13 +181,13 @@ export default function LegalPage() {
                     <>
                         <p className="text-xs font-black uppercase tracking-widest text-[#C86414] mb-4">Legal & Privacidad</p>
                         <h1 className="text-3xl md:text-4xl font-black text-[#111814] mb-8 leading-tight">
-                            Política de Tratamiento de Datos Personales – Fogón & Mesa
+                            Política de Tratamiento de Datos Personales – Veco's Restaurante
                         </h1>
                         <div className="space-y-6 text-gray-600 leading-relaxed font-medium text-sm md:text-base">
                             <section>
                                 <h2 className="text-xl font-black text-[#111814] mb-4">I. Introducción</h2>
                                 <p>
-                                    <strong>Fogón & Mesa</strong> es un restaurante y plataforma digital que tiene como actividad principal la preparación, comercialización y entrega de alimentos y bebidas tradicionales a través de su sitio web de pedidos.
+                                    <strong>Veco's Restaurante</strong> es un restaurante y plataforma digital que tiene como actividad principal la preparación, comercialización y entrega de alimentos y bebidas tradicionales a través de su sitio web de pedidos.
                                 </p>
                                 <p>
                                     Con la finalidad de dar cumplimiento estricto a la normatividad vigente de protección de Datos Personales, de acuerdo a lo establecido en la Ley 1581 de 2012 y el Decreto 1074 de 2015, presentamos esta Política con el propósito de proteger la información brindada por nuestros Titulares (clientes y colaboradores).
@@ -199,7 +199,7 @@ export default function LegalPage() {
                                 <ul className="list-disc pl-6 space-y-2">
                                     <li><strong>Autorización:</strong> Consentimiento previo, expreso e informado del Titular.</li>
                                     <li><strong>Dato Personal:</strong> Cualquier información vinculada a una persona natural.</li>
-                                    <li><strong>Responsable del Tratamiento:</strong> Fogón & Mesa, quien decide sobre el uso de los datos.</li>
+                                    <li><strong>Responsable del Tratamiento:</strong> Veco's Restaurante, quien decide sobre el uso de los datos.</li>
                                     <li><strong>Titular:</strong> Persona natural cuyos datos son objeto de tratamiento (Cliente o usuario).</li>
                                 </ul>
                             </section>
@@ -224,9 +224,9 @@ export default function LegalPage() {
 
                             <section>
                                 <h2 className="text-xl font-black text-[#111814] mb-4">V. Finalidades del Tratamiento</h2>
-                                <p>Los datos recolectados por Fogón & Mesa tienen como objetivos:</p>
+                                <p>Los datos recolectados por Veco's Restaurante tienen como objetivos:</p>
                                 <ul className="list-disc pl-6 space-y-2">
-                                    <li>Gestionar pedidos y pagos en Fogón & Mesa.</li>
+                                    <li>Gestionar pedidos y pagos en Veco's Restaurante.</li>
                                     <li>Operar el sistema de fidelidad, ruleta y puntos de recompensas.</li>
                                     <li>Enviar notificaciones operativas y de confirmación vía WhatsApp, SMS y Correo Electrónico.</li>
                                     <li>Mejorar la experiencia de usuario y atención al cliente.</li>
@@ -258,15 +258,15 @@ export default function LegalPage() {
                     <>
                         <p className="text-xs font-black uppercase tracking-widest text-[#C86414] mb-4">Legal & Privacidad</p>
                         <h1 className="text-3xl md:text-4xl font-black text-[#111814] mb-8 leading-tight">
-                            Autorización de Tratamiento de datos personales Usuarios – Fogón & Mesa
+                            Autorización de Tratamiento de datos personales Usuarios – Veco's Restaurante
                         </h1>
                         <div className="space-y-6 text-gray-600 leading-relaxed font-medium text-sm md:text-base">
                             <p>
-                                Para <strong>Fogón & Mesa</strong>, proteger la privacidad de sus usuarios es muy importante. Por lo tanto, <strong>Fogón & Mesa</strong> da estricto cumplimiento a lo dispuesto en la Ley Estatutaria 1581 de 2012, reglamentada parcialmente por los Decretos 1377 de 2013 y Decreto 886 de 2014, normas compiladas en el Decreto Único Nacional del Sector Comercio, Industria y Turismo 1074 de 2015 y aquellas normas que lo modifiquen.
+                                Para <strong>Veco's Restaurante</strong>, proteger la privacidad de sus usuarios es muy importante. Por lo tanto, <strong>Veco's Restaurante</strong> da estricto cumplimiento a lo dispuesto en la Ley Estatutaria 1581 de 2012, reglamentada parcialmente por los Decretos 1377 de 2013 y Decreto 886 de 2014, normas compiladas en el Decreto Único Nacional del Sector Comercio, Industria y Turismo 1074 de 2015 y aquellas normas que lo modifiquen.
                             </p>
 
                             <p>
-                                <strong>Fogón & Mesa</strong> le informa que sus datos serán tratados conforme a la <strong>POLÍTICA DE TRATAMIENTO DE DATOS PERSONALES</strong> que se encuentra publicada en nuestra plataforma. En este caso, Fogón & Mesa actúa como <strong>Responsable del Tratamiento</strong> de los Datos Personales, manteniendo su confidencialidad bajo altos estándares de seguridad tecnológica.
+                                <strong>Veco's Restaurante</strong> le informa que sus datos serán tratados conforme a la <strong>POLÍTICA DE TRATAMIENTO DE DATOS PERSONALES</strong> que se encuentra publicada en nuestra plataforma. En este caso, Veco's Restaurante actúa como <strong>Responsable del Tratamiento</strong> de los Datos Personales, manteniendo su confidencialidad bajo altos estándares de seguridad tecnológica.
                             </p>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">1. Datos Recolectados y Tratamiento</h2>
@@ -298,7 +298,7 @@ export default function LegalPage() {
                             </ul>
 
                             <h2 className="text-xl font-black text-[#111814] mt-10">4. Canales de Atención</h2>
-                            <p>Para ejercer sus derechos de "Habeas Data", Fogón & Mesa dispone de los siguientes medios:</p>
+                            <p>Para ejercer sus derechos de "Habeas Data", Veco's Restaurante dispone de los siguientes medios:</p>
                             <ul className="list-disc pl-6 space-y-2">
                                 <li><strong>Atención Electrónica:</strong> A través del soporte oficial en la plataforma o al correo <span className="text-[#C86414] font-bold">contacto@fogonmesa.com</span>.</li>
                                 <li><strong>SIC Facilita:</strong> El titular puede acudir al canal dispuesto por la Superintendencia de Industria y Comercio.</li>
@@ -321,7 +321,7 @@ export default function LegalPage() {
                 </Link>
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" onClick={() => navigate('/')} className="text-sm font-bold text-gray-700 hover:text-[#C86414]">
-                        Ir a Fogón & Mesa
+                        Ir a Veco's Restaurante
                     </Button>
                     <Button onClick={() => navigate('/')} className="bg-[#C86414] hover:bg-[#181615] text-white font-bold rounded-xl hidden sm:block transition-colors">
                         Ver Menú

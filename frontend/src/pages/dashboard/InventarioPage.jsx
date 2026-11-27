@@ -463,7 +463,7 @@ export default function InventarioPage() {
   const [formModal, setFormModal] = useState({ open: false, editingItem: null });
   const [sedeId, setSedeId] = useState(null);
 
-  const businessName = user?.nombre || 'Fogón & Mesa';
+  const businessName = user?.nombre || "Veco's Restaurante";
 
   const loadData = useCallback(async () => {
     setLoading(true);

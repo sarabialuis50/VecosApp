@@ -19,7 +19,7 @@ function getFogonExpertResponse(rawText) {
     const q = (rawText || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
     if (q.includes('recomen') || q.includes('especial') || q.includes('mejor') || q.includes('sugier') || q.includes('antoj') || q.includes('hoy')) {
-        return `¡Con gusto! Hoy en **Fogón & Mesa** los favoritos del chef son:\n\n🔥 **Churrasco a la Brasa (250g)** — **$22.000**\nCorte jugoso al carbón con chimichurri de la casa, arroz con cilantro, tajadas maduras y ensalada fresca.\n\n🍲 **Cazuela de Frijoles de la Casa** — **$24.000**\nFrijoles rojos cremosos con chicharrón carnudo, carne desmechada, maduritos, aguacate, arroz y arepa asada.\n\n🌿 **Pechuga al Romero y Limón** — **$18.500**\nMarinada 12 horas en finas hierbas con puré rústico al ajo y vegetales rostizados.\n\nTodos nuestros ejecutivos incluyen **sopa del día y bebida natural**. ¿Cuál te provoca más?`;
+        return `¡Con gusto! Hoy en **Veco's Restaurante** los favoritos del chef son:\n\n🔥 **Churrasco a la Brasa (250g)** — **$22.000**\nCorte jugoso al carbón con chimichurri de la casa, arroz con cilantro, tajadas maduras y ensalada fresca.\n\n🍲 **Cazuela de Frijoles de la Casa** — **$24.000**\nFrijoles rojos cremosos con chicharrón carnudo, carne desmechada, maduritos, aguacate, arroz y arepa asada.\n\n🌿 **Pechuga al Romero y Limón** — **$18.500**\nMarinada 12 horas en finas hierbas con puré rústico al ajo y vegetales rostizados.\n\nTodos nuestros ejecutivos incluyen **sopa del día y bebida natural**. ¿Cuál te provoca más?`;
     }
 
     if (q.includes('parrilla') || q.includes('carne') || q.includes('churrasco') || q.includes('punta') || q.includes('costilla') || q.includes('cerdo') || q.includes('asado')) {
@@ -39,7 +39,7 @@ function getFogonExpertResponse(rawText) {
     }
 
     if (q.includes('armar') || q.includes('ejecutivo') || q.includes('almuerzo del dia') || q.includes('precio') || q.includes('carta') || q.includes('menu')) {
-        return `En **Fogón & Mesa** puedes pedir de dos formas:\n\n1️⃣ **Arma tu Almuerzo del Día ($18.900):**\nEliges tu **Sopa** (Crema de Ahuyama, Consomé o Lentejas) + **Proteína** (Carne al Carbón, Pechuga al Romero, Sobrebarriga en Salsa o Pescado) + **2 Acompañamientos** + **Bebida Natural**.\n\n2️⃣ **Platos a la Carta ($18.500 a $32.000):**\nEjecutivos especiales, Cazuelas de Frijoles, Ajiaco, Sancocho, Punta de Anca, Costillas BBQ de Guayaba y Bowls.\n\n¡Puedes agregarlos directamente al carrito desde la pantalla!`;
+        return `En **Veco's Restaurante** puedes pedir de dos formas:\n\n1️⃣ **Arma tu Almuerzo del Día ($18.900):**\nEliges tu **Sopa** (Crema de Ahuyama, Consomé o Lentejas) + **Proteína** (Carne al Carbón, Pechuga al Romero, Sobrebarriga en Salsa o Pescado) + **2 Acompañamientos** + **Bebida Natural**.\n\n2️⃣ **Platos a la Carta ($18.500 a $32.000):**\nEjecutivos especiales, Cazuelas de Frijoles, Ajiaco, Sancocho, Punta de Anca, Costillas BBQ de Guayaba y Bowls.\n\n¡Puedes agregarlos directamente al carrito desde la pantalla!`;
     }
 
     if (q.includes('horario') || q.includes('hora') || q.includes('abierto') || q.includes('ubicacion') || q.includes('direccion') || q.includes('donde') || q.includes('domicilio') || q.includes('envio') || q.includes('pago')) {
@@ -47,10 +47,10 @@ function getFogonExpertResponse(rawText) {
     }
 
     if (q.includes('hola') || q.includes('buenos') || q.includes('buenas')) {
-        return `¡Hola! Qué alegría saludarte y bienvenido a **Fogón & Mesa** 🔥.\n\nHoy tenemos el fogón encendido con **Churrasco a la Brasa ($22.000)**, **Cazuela de Frijoles ($24.000)**, **Sobrebarriga Criolla ($19.500)** y la opción de **Armar tu Almuerzo completo por $18.900**.\n\n¿Te gustaría que te recomiende un plato según lo que te provoque hoy?`;
+        return `¡Hola! Qué alegría saludarte y bienvenido a **Veco's Restaurante** 🔥.\n\nHoy tenemos el fogón encendido con **Churrasco a la Brasa ($22.000)**, **Cazuela de Frijoles ($24.000)**, **Sobrebarriga Criolla ($19.500)** y la opción de **Armar tu Almuerzo completo por $18.900**.\n\n¿Te gustaría que te recomiende un plato según lo que te provoque hoy?`;
     }
 
-    return `En **Fogón & Mesa** preparamos cada día almuerzos caseros al carbón y cazuelas de cocción lenta.\n\n• **Ejecutivos del Día:** desde **$18.500** (incluyen sopa, proteína, acompañamientos y bebida).\n• **Arma tu Almuerzo:** completo a tu gusto por **$18.900**.\n• **Especialidades:** Cazuela de Frijoles (**$24.000**), Ajiaco Santafereño (**$23.000**), Punta de Anca (**$32.000**) y Costillas BBQ de Guayaba (**$28.000**).\n\n¿Quieres conocer los ingredientes de algún plato en especial o deseas una recomendación?`;
+    return `En **Veco's Restaurante** preparamos cada día almuerzos caseros al carbón y cazuelas de cocción lenta.\n\n• **Ejecutivos del Día:** desde **$18.500** (incluyen sopa, proteína, acompañamientos y bebida).\n• **Arma tu Almuerzo:** completo a tu gusto por **$18.900**.\n• **Especialidades:** Cazuela de Frijoles (**$24.000**), Ajiaco Santafereño (**$23.000**), Punta de Anca (**$32.000**) y Costillas BBQ de Guayaba (**$28.000**).\n\n¿Quieres conocer los ingredientes de algún plato en especial o deseas una recomendación?`;
 }
 
 export default function LandingAgent({ hidden = false }) {
@@ -71,7 +71,7 @@ export default function LandingAgent({ hidden = false }) {
     const [history, setHistory] = useState([
         {
             role: 'model',
-            content: '¡Hola! 👋 Soy el asistente experto de **Fogón & Mesa**. Conozco toda nuestra carta de almuerzos, ingredientes, cazuelas, cortes al carbón y tiempos de entrega. ¿Qué se te antoja almorzar hoy?',
+            content: "¡Hola! 👋 Soy el asistente experto de **Veco's Restaurante**. Conozco toda nuestra carta de almuerzos, ingredientes, cazuelas, cortes al carbón y tiempos de entrega. ¿Qué se te antoja almorzar hoy?",
             id: 'welcome'
         }
     ]);
@@ -369,7 +369,7 @@ export default function LandingAgent({ hidden = false }) {
             });
 
             const apiReply = response.data?.reply || '';
-            // If backend falls back to generic high-demand message (no live API key in local env), use local Fogón & Mesa expert knowledge
+            // If backend falls back to generic high-demand message (no live API key in local env), use local Veco's Restaurante expert knowledge
             const finalReply = (!apiReply || apiReply.includes('mucha demanda') || apiReply.includes('Menu.IA'))
                 ? getFogonExpertResponse(cleanMsg)
                 : apiReply;
@@ -412,11 +412,11 @@ export default function LandingAgent({ hidden = false }) {
                         <div className="bg-gradient-to-r from-[#181615] via-[#231F1D] to-[#C86414] p-5 flex items-center justify-between text-white shrink-0 border-b border-white/10">
                             <div className="flex items-center gap-3">
                                 <div className="w-11 h-11 rounded-full bg-[#181615] p-1 overflow-hidden border-2 border-[#F59E0B] shadow-md flex items-center justify-center">
-                                    <img src="/logos/logo agente.png?v=2" alt="Asistente Fogón & Mesa" className="w-full h-full object-contain object-center scale-110" />
+                                    <img src="/logos/logo agente.png?v=2" alt="Asistente Veco's Restaurante" className="w-full h-full object-contain object-center scale-110" />
                                 </div>
                                 <div>
                                     <h3 className="font-black text-sm tracking-tight text-[#FBF9F5] leading-none flex items-center gap-1.5">
-                                        Asistente Fogón & Mesa
+                                        Asistente Veco's Restaurante
                                         <Sparkles className="w-3.5 h-3.5 text-[#F59E0B]" />
                                     </h3>
                                     <div className="flex items-center gap-1.5 mt-1.5">
@@ -573,7 +573,7 @@ export default function LandingAgent({ hidden = false }) {
                         <div className="absolute inset-0 bg-[#C86414]/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
                         <img
                             src="/logos/logo agente.png?v=2"
-                            alt="Asistente Fogón & Mesa"
+                            alt="Asistente Veco's Restaurante"
                             className="w-12 h-12 object-contain object-center scale-110 relative z-10"
                         />
                     </>

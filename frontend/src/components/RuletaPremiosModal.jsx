@@ -87,7 +87,7 @@ export default function RuletaPremiosModal({
   open,
   onOpenChange,
   slug = 'demo-restaurante',
-  businessName = 'Fogón & Mesa',
+  businessName = "Veco's Restaurante",
   configOverride = null,
   previewMode = false,
   onSpinComplete = null,

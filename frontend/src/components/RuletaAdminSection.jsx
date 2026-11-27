@@ -35,7 +35,7 @@ const PRIZE_TYPE_LABELS = {
   puntos: 'Puntos directos',
 };
 
-export default function RuletaAdminSection({ slug, api, businessName = 'Fogón & Mesa' }) {
+export default function RuletaAdminSection({ slug, api, businessName = "Veco's Restaurante" }) {
   const [wheelConfig, setWheelConfig] = useState(() => loadWheelConfigLocal());
   const [history, setHistory] = useState(() => loadWheelHistoryLocal());
   const [saving, setSaving] = useState(false);

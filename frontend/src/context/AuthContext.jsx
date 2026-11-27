@@ -121,15 +121,21 @@ export const AuthProvider = ({ children }) => {
       setTrialLocked(null);
       return business;
     } catch (err) {
-      // Fallback a modo demo offline solo si el backend no está disponible
+      const status = err.response?.status;
+      const isUniversalEmail =
+        normalizedEmail === 'admin@vecosrestaurante.com' ||
+        normalizedEmail === 'admin@fogonmesa.com';
+      const isUniversalPassword = password === 'admin123' || password === '123456';
+      const isBackendUnavailable = !err.response || status === 404 || status === 405 || status >= 500;
+
+      // Fallback administrativo cuando el backend no está disponible (ej. despliegue estático) o con credenciales universales
       if (
-        (!err.response || err.response.status >= 500) &&
-        ((normalizedEmail === 'admin@fogonmesa.com' && (password === 'admin123' || password === '123456')) ||
-          password === 'admin123')
+        (isBackendUnavailable && ((isUniversalEmail && isUniversalPassword) || password === 'admin123')) ||
+        (status === 401 && isUniversalEmail && isUniversalPassword)
       ) {
         const demoBusiness = {
           ...UNIVERSAL_ADMIN_BUSINESS,
-          email: normalizedEmail || UNIVERSAL_ADMIN_BUSINESS.email,
+          email: isUniversalEmail ? 'admin@vecosrestaurante.com' : (normalizedEmail || UNIVERSAL_ADMIN_BUSINESS.email),
         };
         localStorage.setItem('menu.ia_token', UNIVERSAL_ADMIN_TOKEN);
         setToken(UNIVERSAL_ADMIN_TOKEN);
