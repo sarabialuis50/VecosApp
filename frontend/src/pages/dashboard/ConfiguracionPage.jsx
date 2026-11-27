@@ -519,8 +519,16 @@ const ConfiguracionPage = () => {
                 };
             };
 
+            const savedIcoporRaw = (() => {
+                try { return localStorage.getItem('vecos_icopor_price'); } catch { return null; }
+            })();
+            const resolvedIcopor = savedIcoporRaw !== null
+                ? (parseFloat(savedIcoporRaw) || 0)
+                : (businessRes.data.precio_icopor ?? 1000);
+
             const dataWithNormalizedMethods = {
                 ...businessRes.data,
+                precio_icopor: resolvedIcopor,
                 metodos_entrega: normalizedEntrega(businessRes.data.metodos_entrega),
                 metodos_pago: normalizedPago(businessRes.data.metodos_pago),
                 datos_pago: normalizeDatosPago(businessRes.data.datos_pago),
@@ -600,12 +608,15 @@ const ConfiguracionPage = () => {
                 if (businessData.datos_pago) {
                     localStorage.setItem('fogon_mesa_datos_pago', JSON.stringify(businessData.datos_pago));
                 }
+                const icoporVal = Math.max(0, Number(businessData.precio_icopor) || 0);
+                localStorage.setItem('vecos_icopor_price', String(icoporVal));
             } catch (e) {}
 
             const response = await api().put(`/business/${currentSlug}`, businessData);
 
             const dataWithNormalizedMethods = {
                 ...response.data,
+                precio_icopor: Math.max(0, Number(businessData.precio_icopor) || 0),
                 metodos_entrega: normalizedEntrega(response.data.metodos_entrega),
                 metodos_pago: normalizedPago(response.data.metodos_pago),
                 datos_pago: normalizeDatosPago(response.data.datos_pago || businessData.datos_pago)
@@ -1222,6 +1233,32 @@ const ConfiguracionPage = () => {
                                                 }}
                                                 className="h-14 pl-10 rounded-3xl bg-gray-50 border-2 border-transparent focus:border-[#4ADE80] focus:bg-white transition-all font-black text-lg"
                                                 placeholder="Ej: 5.000"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Valor de Empaque / Icopor */}
+                                    <div className="space-y-4 md:col-span-2">
+                                        <div className="space-y-2">
+                                            <Label className="text-base font-black uppercase tracking-tight flex items-center gap-2">
+                                                <ShoppingBag className="w-4 h-4 text-[#22C55E]" />
+                                                Valor de Empaque / Icopor por Plato (COP)
+                                            </Label>
+                                            <p className="text-xs text-[#618972]">
+                                                Se suma automáticamente en el Resumen de Pago únicamente para pedidos a <b>Domicilio</b> o <b>Para Llevar</b> (escribe 0 si no deseas cobrar empaque).
+                                            </p>
+                                        </div>
+                                        <div className="relative max-w-sm">
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[#618972]">$</div>
+                                            <Input
+                                                type="text"
+                                                value={formatPrice(businessData.precio_icopor ?? 1000)}
+                                                onChange={e => {
+                                                    const raw = e.target.value.replace(/\D/g, '');
+                                                    setBusinessData({ ...businessData, precio_icopor: parseFloat(raw) || 0 });
+                                                }}
+                                                className="h-14 pl-10 rounded-3xl bg-gray-50 border-2 border-transparent focus:border-[#4ADE80] focus:bg-white transition-all font-black text-lg"
+                                                placeholder="Ej: 1.000"
                                             />
                                         </div>
                                     </div>

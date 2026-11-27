@@ -76,7 +76,7 @@ const DEMO_BUSINESS = {
     slogan: "Sabor que te encanta — Ejecutivos, Preparados del Día, Asados al carbón, Vaqueritos y Picadas.",
     banner_tag: "Sabor que te encanta",
     banner_title: "Nuestro Menú",
-    banner_description: "Ejecutivos, Preparados del Día, Asados al carbón, Vaqueritos y Picadas. Valor de icopor por almuerzo: $1.000.",
+    banner_description: "Ejecutivos, Preparados del Día, Asados al carbón, Vaqueritos, Picadas y Bebidas.",
     slug: "demo-restaurante"
 };
 
@@ -604,8 +604,11 @@ export default function DemoRestaurante() {
         nombre: '',
         direccion: '',
         telefono: '',
-        metodo: 'WhatsApp'
+        tipo_servicio: 'domicilio', // 'domicilio' | 'llevar' | 'mesa'
+        mesa_numero: '',
+        metodo_pago: 'efectivo', // 'efectivo' | 'nequi' | 'daviplata' | 'transferencia'
     });
+    const [lastOrderNumber, setLastOrderNumber] = useState('VEC-1001');
     const [checkoutErrors, setCheckoutErrors] = useState({});
     const [couponCodeInput, setCouponCodeInput] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -646,10 +649,25 @@ export default function DemoRestaurante() {
 
     const removeFromCart = (id) => setCart(prev => prev.filter(item => item.id !== id));
 
+    const loadIcoporPrice = () => {
+        try {
+            const raw = localStorage.getItem('vecos_icopor_price');
+            if (raw !== null) {
+                const parsed = parseFloat(raw);
+                if (!isNaN(parsed) && parsed >= 0) return parsed;
+            }
+        } catch {}
+        return 1000;
+    };
+    const [icoporPrice, setIcoporPrice] = useState(loadIcoporPrice);
+
     const cartTotal = cart.reduce((acc, item) => acc + (item.precio * item.quantity), 0);
     const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-    const ICOPOR_PER_ITEM = 1000;
-    const icoporTotal = cartCount * ICOPOR_PER_ITEM;
+    const needsIcopor = checkoutData.tipo_servicio === 'domicilio' || checkoutData.tipo_servicio === 'llevar';
+    const icoporEligibleCount = cart
+        .filter((item) => item.categoria !== 'Bebidas')
+        .reduce((acc, item) => acc + item.quantity, 0);
+    const icoporTotal = needsIcopor && icoporPrice > 0 ? icoporEligibleCount * icoporPrice : 0;
 
     const discountAmount = appliedCoupon?.coupon?.premio_tipo === 'descuento'
         ? Math.round((cartTotal * Number(appliedCoupon.coupon.premio_valor || 0)) / 100)
@@ -731,6 +749,7 @@ export default function DemoRestaurante() {
         const syncMenu = () => {
             setMenuProducts(loadClientMenuProducts());
             setMenuIngredients(loadMenuIngredientsLocal());
+            setIcoporPrice(loadIcoporPrice());
         };
         window.addEventListener('storage', syncMenu);
         window.addEventListener('focus', syncMenu);
@@ -778,9 +797,13 @@ export default function DemoRestaurante() {
                 newErrors.nombre = 'Falta tu nombre';
                 missingLabels.push('tu nombre');
             }
-            if (!checkoutData.direccion || !checkoutData.direccion.trim()) {
+            if (checkoutData.tipo_servicio === 'domicilio' && (!checkoutData.direccion || !checkoutData.direccion.trim())) {
                 newErrors.direccion = 'Falta la dirección de entrega';
                 missingLabels.push('la dirección de entrega');
+            }
+            if (checkoutData.tipo_servicio === 'mesa' && (!checkoutData.mesa_numero || !checkoutData.mesa_numero.trim())) {
+                newErrors.mesa_numero = 'Falta el número de mesa';
+                missingLabels.push('el número de mesa');
             }
             if (!checkoutData.telefono || !checkoutData.telefono.trim()) {
                 newErrors.telefono = 'Falta el número de WhatsApp / teléfono';
@@ -815,6 +838,7 @@ export default function DemoRestaurante() {
             }
 
             setCheckoutErrors({});
+            setLastOrderNumber(`VEC-${Math.floor(1000 + Math.random() * 9000)}`);
 
             if (appliedCoupon?.coupon?.codigo_cupon) {
                 markCouponAsUsed(appliedCoupon.coupon.codigo_cupon);
@@ -874,6 +898,7 @@ export default function DemoRestaurante() {
             id: selectedProduct.id + Date.now(),
             productId: selectedProduct.id,
             nombre: selectedProduct.nombre,
+            categoria: selectedProduct.categoria,
             precio: finalUnitPrice,
             quantity: qty,
             imagen: selectedProduct.imagen || selectedProduct.imagen_url || '/images/hero-almuerzo.jpg',
@@ -896,7 +921,12 @@ export default function DemoRestaurante() {
         setIsCartOpen(false);
         setAppliedCoupon(null);
         setCouponCodeInput('');
-        setCheckoutData({ nombre: '', direccion: '', telefono: '', metodo: 'WhatsApp' });
+        setCheckoutData((prev) => ({
+            ...prev,
+            mesa_numero: '',
+            tipo_servicio: 'domicilio',
+            metodo_pago: 'efectivo',
+        }));
     };
 
     const handleProductClick = (product, preselectedSize = null) => {
@@ -1456,9 +1486,40 @@ export default function DemoRestaurante() {
 
                                 {step === 'checkout' && (
                                     <div className="space-y-6">
-                                        <div className="p-4 bg-[#C86414]/10 border border-[#C86414]/20 rounded-2xl">
-                                            <p className="text-[10px] font-black text-[#C86414] uppercase tracking-widest mb-1">Información de Entrega</p>
-                                            <p className="text-xs font-medium text-[#1F1C1A]/70">Completa tus datos para simular el envío del pedido.</p>
+                                        {/* 1. Tipo de Servicio */}
+                                        <div className="space-y-2.5">
+                                            <p className="text-xs font-black text-gray-500 uppercase tracking-wider">
+                                                ¿Cómo deseas recibir tu pedido?
+                                            </p>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {[
+                                                    { id: 'domicilio', label: 'Domicilio', emoji: '🛵' },
+                                                    { id: 'llevar', label: 'Para Llevar', emoji: '🛍️' },
+                                                    { id: 'mesa', label: 'En Mesa', emoji: '🍽️' },
+                                                ].map((opt) => {
+                                                    const active = checkoutData.tipo_servicio === opt.id;
+                                                    return (
+                                                        <button
+                                                            key={opt.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setCheckoutData((prev) => ({ ...prev, tipo_servicio: opt.id }));
+                                                                setCheckoutErrors((prev) => ({ ...prev, direccion: undefined, mesa_numero: undefined }));
+                                                            }}
+                                                            className={`p-3 rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 ${
+                                                                active
+                                                                    ? 'bg-[#C86414]/10 border-[#C86414] shadow-sm'
+                                                                    : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                                                            }`}
+                                                        >
+                                                            <span className="text-lg leading-none">{opt.emoji}</span>
+                                                            <span className={`text-[11px] font-black ${active ? 'text-[#C86414]' : 'text-gray-800'}`}>
+                                                                {opt.label}
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
 
                                         <div className="space-y-4">
@@ -1504,47 +1565,101 @@ export default function DemoRestaurante() {
                                                 )}
                                             </div>
 
-                                            {/* Dirección */}
-                                            <div className="space-y-1.5">
-                                                <label
-                                                    htmlFor="checkout-input-direccion"
-                                                    className={`text-xs font-black uppercase tracking-wider flex items-center justify-between transition-colors ${
-                                                        checkoutErrors.direccion ? 'text-red-600' : 'text-gray-500'
-                                                    }`}
-                                                >
-                                                    <span className="flex items-center gap-2">
-                                                        <MapPin className="w-3.5 h-3.5" /> Dirección de Entrega <span className="text-red-500">*</span>
-                                                    </span>
-                                                    {checkoutErrors.direccion && (
-                                                        <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
-                                                            <AlertCircle className="w-3 h-3" /> Requerido
+                                            {/* Dirección (solo Domicilio) */}
+                                            {checkoutData.tipo_servicio === 'domicilio' && (
+                                                <div className="space-y-1.5">
+                                                    <label
+                                                        htmlFor="checkout-input-direccion"
+                                                        className={`text-xs font-black uppercase tracking-wider flex items-center justify-between transition-colors ${
+                                                            checkoutErrors.direccion ? 'text-red-600' : 'text-gray-500'
+                                                        }`}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <MapPin className="w-3.5 h-3.5" /> Dirección de Entrega <span className="text-red-500">*</span>
                                                         </span>
+                                                        {checkoutErrors.direccion && (
+                                                            <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                                                                <AlertCircle className="w-3 h-3" /> Requerido
+                                                            </span>
+                                                        )}
+                                                    </label>
+                                                    <input
+                                                        id="checkout-input-direccion"
+                                                        type="text"
+                                                        value={checkoutData.direccion}
+                                                        onChange={(e) => {
+                                                            setCheckoutData({ ...checkoutData, direccion: e.target.value });
+                                                            if (checkoutErrors.direccion) {
+                                                                setCheckoutErrors(prev => ({ ...prev, direccion: undefined }));
+                                                            }
+                                                        }}
+                                                        placeholder="Ej: Carrera 1 g # 91-58"
+                                                        className={`w-full h-12 rounded-xl px-4 text-sm font-bold outline-none transition-all ${
+                                                            checkoutErrors.direccion
+                                                                ? 'bg-red-50/60 border-2 border-red-500 text-red-950 placeholder-red-300 ring-2 ring-red-200'
+                                                                : 'bg-gray-50 border border-gray-200 focus:border-[#C86414] focus:bg-white text-gray-900'
+                                                        }`}
+                                                    />
+                                                    {checkoutErrors.direccion && (
+                                                        <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1 pl-1">
+                                                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                            {checkoutErrors.direccion}
+                                                        </p>
                                                     )}
-                                                </label>
-                                                <input
-                                                    id="checkout-input-direccion"
-                                                    type="text"
-                                                    value={checkoutData.direccion}
-                                                    onChange={(e) => {
-                                                        setCheckoutData({ ...checkoutData, direccion: e.target.value });
-                                                        if (checkoutErrors.direccion) {
-                                                            setCheckoutErrors(prev => ({ ...prev, direccion: undefined }));
-                                                        }
-                                                    }}
-                                                    placeholder="Ej: Carrera 1 g # 91-58"
-                                                    className={`w-full h-12 rounded-xl px-4 text-sm font-bold outline-none transition-all ${
-                                                        checkoutErrors.direccion
-                                                            ? 'bg-red-50/60 border-2 border-red-500 text-red-950 placeholder-red-300 ring-2 ring-red-200'
-                                                            : 'bg-gray-50 border border-gray-200 focus:border-[#C86414] focus:bg-white text-gray-900'
-                                                    }`}
-                                                />
-                                                {checkoutErrors.direccion && (
-                                                    <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1 pl-1">
-                                                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                                        {checkoutErrors.direccion}
-                                                    </p>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
+
+                                            {/* Número de Mesa (solo En Mesa) */}
+                                            {checkoutData.tipo_servicio === 'mesa' && (
+                                                <div className="space-y-1.5">
+                                                    <label
+                                                        htmlFor="checkout-input-mesa_numero"
+                                                        className={`text-xs font-black uppercase tracking-wider flex items-center justify-between transition-colors ${
+                                                            checkoutErrors.mesa_numero ? 'text-red-600' : 'text-gray-500'
+                                                        }`}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <UtensilsCrossed className="w-3.5 h-3.5" /> Número de Mesa <span className="text-red-500">*</span>
+                                                        </span>
+                                                        {checkoutErrors.mesa_numero && (
+                                                            <span className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                                                                <AlertCircle className="w-3 h-3" /> Requerido
+                                                            </span>
+                                                        )}
+                                                    </label>
+                                                    <input
+                                                        id="checkout-input-mesa_numero"
+                                                        type="text"
+                                                        value={checkoutData.mesa_numero}
+                                                        onChange={(e) => {
+                                                            setCheckoutData({ ...checkoutData, mesa_numero: e.target.value });
+                                                            if (checkoutErrors.mesa_numero) {
+                                                                setCheckoutErrors(prev => ({ ...prev, mesa_numero: undefined }));
+                                                            }
+                                                        }}
+                                                        placeholder="Ej: Mesa 4"
+                                                        className={`w-full h-12 rounded-xl px-4 text-sm font-bold outline-none transition-all ${
+                                                            checkoutErrors.mesa_numero
+                                                                ? 'bg-red-50/60 border-2 border-red-500 text-red-950 placeholder-red-300 ring-2 ring-red-200'
+                                                                : 'bg-gray-50 border border-gray-200 focus:border-[#C86414] focus:bg-white text-gray-900'
+                                                        }`}
+                                                    />
+                                                    {checkoutErrors.mesa_numero && (
+                                                        <p className="text-[11px] font-bold text-red-600 flex items-center gap-1 mt-1 pl-1">
+                                                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                            {checkoutErrors.mesa_numero}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Aviso Para Llevar */}
+                                            {checkoutData.tipo_servicio === 'llevar' && (
+                                                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-2">
+                                                    <span>🛍️</span>
+                                                    <span>Recoges tu pedido listo para llevar directamente en Veco&apos;s Restaurante.</span>
+                                                </div>
+                                            )}
 
                                             {/* WhatsApp / Teléfono */}
                                             <div className="space-y-1.5">
@@ -1586,6 +1701,39 @@ export default function DemoRestaurante() {
                                                         {checkoutErrors.telefono}
                                                     </p>
                                                 )}
+                                            </div>
+                                        </div>
+
+                                        {/* 2. Medios de Pago */}
+                                        <div className="space-y-2.5 pt-1">
+                                            <p className="text-xs font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                                                <CreditCard className="w-3.5 h-3.5 text-[#C86414]" />
+                                                Medio de Pago
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {[
+                                                    { id: 'efectivo', label: 'Efectivo', emoji: '💵' },
+                                                    { id: 'nequi', label: 'Nequi', emoji: '💜' },
+                                                    { id: 'daviplata', label: 'Daviplata', emoji: '🔴' },
+                                                    { id: 'transferencia', label: 'Transferencia', emoji: '🏦' },
+                                                ].map((pm) => {
+                                                    const active = checkoutData.metodo_pago === pm.id;
+                                                    return (
+                                                        <button
+                                                            key={pm.id}
+                                                            type="button"
+                                                            onClick={() => setCheckoutData((prev) => ({ ...prev, metodo_pago: pm.id }))}
+                                                            className={`px-3 py-2.5 rounded-xl border-2 text-xs font-black flex items-center gap-2 transition-all ${
+                                                                active
+                                                                    ? 'bg-[#C86414]/10 border-[#C86414] text-[#C86414] shadow-sm'
+                                                                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-gray-300'
+                                                            }`}
+                                                        >
+                                                            <span>{pm.emoji}</span>
+                                                            <span>{pm.label}</span>
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
 
@@ -1664,9 +1812,9 @@ export default function DemoRestaurante() {
                                             <p className="text-xs font-black text-gray-400 uppercase tracking-wider mb-3">Resumen de Pago</p>
                                             <div className="p-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200 space-y-2">
                                                 <div className="flex justify-between text-sm font-medium"><span>Subtotal</span><span>{formatCurrency(cartTotal)}</span></div>
-                                                {icoporTotal > 0 && (
+                                                {needsIcopor && icoporTotal > 0 && (
                                                     <div className="flex justify-between text-sm font-medium text-gray-600">
-                                                        <span>Empaque icopor ($1.000 × {cartCount})</span>
+                                                        <span>Empaque icopor ({formatCurrency(icoporPrice)} × {icoporEligibleCount})</span>
                                                         <span>{formatCurrency(icoporTotal)}</span>
                                                     </div>
                                                 )}
@@ -1683,7 +1831,9 @@ export default function DemoRestaurante() {
                                                         </div>
                                                     )
                                                 )}
-                                                <div className="flex justify-between text-sm font-medium"><span>Envío</span><span className="text-[#C86414]">GRATIS</span></div>
+                                                {checkoutData.tipo_servicio === 'domicilio' && (
+                                                    <div className="flex justify-between text-sm font-medium"><span>Envío</span><span className="text-[#C86414]">GRATIS</span></div>
+                                                )}
                                                 <div className="pt-2 border-t border-gray-200 flex justify-between text-lg font-black text-gray-900"><span>Total</span><span>{formatCurrency(finalTotal)}</span></div>
                                             </div>
                                         </div>
@@ -1693,15 +1843,29 @@ export default function DemoRestaurante() {
                                 {step === 'success' && (
                                     <div className="h-full flex flex-col items-center justify-center text-center px-4">
                                         <div className="size-24 bg-[#C86414] rounded-full flex items-center justify-center mb-6 shadow-2xl shadow-[#C86414]/40 scale-110">
-                                            <ChefHat className="w-12 h-12 text-[#1F1C1A]" />
+                                            <ChefHat className="w-12 h-12 text-white" />
                                         </div>
-                                        <h3 className="text-3xl font-black text-gray-900 mb-4 tracking-tighter">¡Pedido Recibido!</h3>
-                                        <p className="text-gray-500 font-medium mb-8 leading-relaxed">
-                                            Este es un <span className="text-[#C86414] font-bold">simulacro funcional</span>. En la vida real, el restaurante recibiría este pedido al instante por WhatsApp y su panel de control.
+                                        <h3 className="text-3xl font-black text-gray-900 mb-3 tracking-tighter">¡Pedido Recibido!</h3>
+                                        <p className="text-gray-500 font-medium mb-6 leading-relaxed text-sm">
+                                            Tu pedido fue enviado a cocina de <span className="text-[#C86414] font-bold">Veco&apos;s Restaurante</span>. Te confirmaremos por WhatsApp al instante.
                                         </p>
                                         <div className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 mb-8 space-y-2 text-left">
                                             <div className="flex justify-between text-xs font-bold"><span>Cliente</span><span className="text-gray-900">{checkoutData.nombre}</span></div>
-                                            <div className="flex justify-between text-xs font-bold"><span>Orden #</span><span className="text-gray-900">DEMO-001</span></div>
+                                            <div className="flex justify-between text-xs font-bold"><span>Orden #</span><span className="text-gray-900">{lastOrderNumber}</span></div>
+                                            <div className="flex justify-between text-xs font-bold">
+                                                <span>Servicio</span>
+                                                <span className="text-gray-900">
+                                                    {checkoutData.tipo_servicio === 'domicilio'
+                                                        ? '🛵 Domicilio'
+                                                        : checkoutData.tipo_servicio === 'llevar'
+                                                            ? '🛍️ Para Llevar'
+                                                            : `🍽️ En Mesa (${checkoutData.mesa_numero})`}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between text-xs font-bold">
+                                                <span>Medio de pago</span>
+                                                <span className="text-gray-900 capitalize">{checkoutData.metodo_pago}</span>
+                                            </div>
                                             {appliedCoupon && (
                                                 <div className="flex justify-between text-xs font-bold text-emerald-700">
                                                     <span>Premio redimido</span>
