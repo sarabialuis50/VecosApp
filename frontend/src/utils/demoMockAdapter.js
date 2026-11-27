@@ -34,7 +34,7 @@ const DEFAULT_BUSINESS = {
   id: 'vecos-restaurante-id',
   nombre: "Veco's Restaurante",
   slug: 'vecos',
-  email: 'admin@vecosrestaurante.com',
+  email: 'sarabialuis50@gmail.com',
   plan: 'pro',
   telefono: '3017810256',
   direccion: "Zona Gastronómica — Veco's Restaurante",

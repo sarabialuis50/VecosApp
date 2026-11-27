@@ -1329,25 +1329,6 @@ export default function LandingPage() {
               </div>
             ) : (
               <form onSubmit={handleAdminLogin} className="space-y-4">
-                <div className="p-3 rounded-2xl bg-[#F2ECE1] border border-[#E5DCCD] flex items-center justify-between gap-3">
-                  <div className="text-xs">
-                    <p className="font-bold text-[#1F1C1A]">Credenciales de acceso</p>
-                    <p className="text-[#665E57]">
-                      Correo: <span className="font-semibold text-[#1F1C1A]">admin@vecosrestaurante.com</span> · Clave:{' '}
-                      <span className="font-semibold text-[#1F1C1A]">admin123</span>
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAdminEmail('admin@vecosrestaurante.com');
-                      setAdminPassword('admin123');
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-[#2F5D46] text-white text-[11px] font-bold shrink-0 hover:bg-[#3A7256] transition-colors"
-                  >
-                    Usar
-                  </button>
-                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="admin-email" className="text-xs font-bold text-[#1F1C1A]">
                     Correo del Administrador
@@ -1358,7 +1339,7 @@ export default function LandingPage() {
                       id="admin-email"
                       type="email"
                       required
-                      placeholder="admin@vecosrestaurante.com"
+                      placeholder="correo@ejemplo.com"
                       value={adminEmail}
                       onChange={(e) => setAdminEmail(e.target.value)}
                       className="pl-10 h-11 rounded-xl bg-white border-[#E5DCCD]"

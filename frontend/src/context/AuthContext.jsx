@@ -23,7 +23,7 @@ const UNIVERSAL_ADMIN_BUSINESS = {
   id: 'vecos-restaurante-id',
   nombre: "Veco's Restaurante",
   slug: 'vecos',
-  email: 'admin@vecosrestaurante.com',
+  email: 'sarabialuis50@gmail.com',
   plan: 'pro',
   telefono: '3017810256',
   direccion: "Zona Gastronómica — Veco's Restaurante",
@@ -121,26 +121,21 @@ export const AuthProvider = ({ children }) => {
       return business;
     } catch (err) {
       const status = err.response?.status;
-      const isUniversalEmail =
-        normalizedEmail === 'admin@vecosrestaurante.com' ||
-        normalizedEmail === 'admin@fogonmesa.com';
-      const isUniversalPassword = password === 'admin123' || password === '123456';
+      const isAuthorizedAdmin =
+        normalizedEmail === 'sarabialuis50@gmail.com' && password === 'Luisar777+';
       const isBackendUnavailable = !err.response || status === 404 || status === 405 || status >= 500;
 
-      // Fallback administrativo cuando el backend no está disponible (ej. despliegue estático) o con credenciales universales
-      if (
-        (isBackendUnavailable && ((isUniversalEmail && isUniversalPassword) || password === 'admin123')) ||
-        (status === 401 && isUniversalEmail && isUniversalPassword)
-      ) {
-        const demoBusiness = {
+      // Fallback administrativo únicamente para el administrador oficial cuando el backend no está disponible (despliegue estático)
+      if (isBackendUnavailable && isAuthorizedAdmin) {
+        const adminBusiness = {
           ...UNIVERSAL_ADMIN_BUSINESS,
-          email: isUniversalEmail ? 'admin@vecosrestaurante.com' : (normalizedEmail || UNIVERSAL_ADMIN_BUSINESS.email),
+          email: 'sarabialuis50@gmail.com',
         };
         localStorage.setItem('menu.ia_token', UNIVERSAL_ADMIN_TOKEN);
         setToken(UNIVERSAL_ADMIN_TOKEN);
-        setUser(demoBusiness);
+        setUser(adminBusiness);
         setTrialLocked(null);
-        return demoBusiness;
+        return adminBusiness;
       }
       throw err;
     }
