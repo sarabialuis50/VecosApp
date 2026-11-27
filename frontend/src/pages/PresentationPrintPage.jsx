@@ -103,7 +103,7 @@ const slides = [
           {[
             { icon: <Database />, title: "Base de Clientes", desc: "Directorio automático de todos tus clientes, su historial de compras y preferencias." },
             { icon: <Gift />, title: "Fidelidad", desc: "Sistema de puntos y recompensas automáticas para premiar a los clientes frecuentes." },
-            { icon: <MessageSquare />, title: "WhatsApp Hub", desc: "Envío de campañas masivas por WhatsApp para promociones y reactivación de clientes." }
+            { icon: <MessageSquare />, title: "Marketing", desc: "Envío de campañas masivas por WhatsApp para promociones y reactivación de clientes." }
           ].map((item, i) => (
             <div key={i} className="bg-[#1A1A1A] border border-gray-800 p-8 rounded-[2rem]">
               <div className="w-16 h-16 bg-yellow-400/10 text-yellow-400 rounded-2xl flex items-center justify-center mb-6">

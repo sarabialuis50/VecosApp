@@ -125,7 +125,7 @@ function AppRoutes() {
       <Route path="/empleados" element={<ProtectedRoute><EmpleadosPage /></ProtectedRoute>} />
       <Route path="/fidelidad" element={<ProtectedRoute><FidelidadPage /></ProtectedRoute>} />
       <Route path="/fidelidad/historial" element={<ProtectedRoute><FidelidadHistoryPage /></ProtectedRoute>} />
-      <Route path="/consultor" element={<ProtectedRoute><GeminiConsultantPage /></ProtectedRoute>} />
+      <Route path="/consultor" element={<Navigate to="/dashboard?tab=consultor" replace />} />
       <Route path="/marketing" element={<ProtectedRoute><WhatsappHubPage /></ProtectedRoute>} />
       <Route path="/perfil" element={<ProtectedRoute><MiPerfilPage /></ProtectedRoute>} />
       <Route path="/configuracion" element={<ProtectedRoute><ConfiguracionPage /></ProtectedRoute>} />
@@ -151,7 +151,7 @@ function AppRoutes() {
       <Route path="/dashboard/:slug/empleados" element={<Navigate to="/empleados" replace />} />
       <Route path="/dashboard/:slug/fidelidad" element={<Navigate to="/fidelidad" replace />} />
       <Route path="/dashboard/:slug/fidelidad/historial" element={<Navigate to="/fidelidad/historial" replace />} />
-      <Route path="/dashboard/:slug/consultor" element={<Navigate to="/consultor" replace />} />
+      <Route path="/dashboard/:slug/consultor" element={<Navigate to="/dashboard?tab=consultor" replace />} />
       <Route path="/dashboard/:slug/marketing" element={<Navigate to="/marketing" replace />} />
       <Route path="/dashboard/:slug/perfil" element={<Navigate to="/perfil" replace />} />
       <Route path="/dashboard/:slug/configuracion" element={<Navigate to="/configuracion" replace />} />

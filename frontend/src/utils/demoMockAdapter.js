@@ -421,6 +421,7 @@ function computeRealAnalytics() {
   const tables = loadTables();
   const customers = loadCustomers();
   const products = loadProductsFromStorage();
+  const inventory = loadInventory();
 
   const validOrders = orders.filter((o) => o.estado !== 'cancelado');
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -429,12 +430,79 @@ function computeRealAnalytics() {
   const ventasTotal = validOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
   const pedidosTotal = validOrders.length;
   const domiciliosTotal = validOrders.filter((o) => o.tipo === 'delivery' || o.tipo_servicio === 'domicilio').length;
+  const mesaPedidosTotal = validOrders.filter((o) => o.tipo === 'mesa' || o.tipo_servicio === 'mesa').length;
+  const llevarPedidosTotal = validOrders.filter((o) => o.tipo === 'takeaway' || o.tipo_servicio === 'recoger' || o.tipo_servicio === 'llevar').length;
   const ventasHoy = todayOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
   const pedidosHoy = todayOrders.length;
   const pedidosActivos = orders.filter((o) => o.estado !== 'entregado' && o.estado !== 'cancelado').length;
   const mesasOcupadas = tables.filter((t) => t.estado === 'ocupada').length;
   const puntosTotal = customers.reduce((acc, c) => acc + Number(c.puntos_disponibles ?? c.puntos ?? 0), 0);
   const productosAgotados = products.filter((p) => p.disponible === false || p.available === false).length;
+
+  // Accounting breakdown (Icopor, Discounts, Inventory Value, Payment Methods, Channels, Top Dishes, Categories)
+  const icoporRecaudado = validOrders.reduce((acc, o) => acc + Number(o.icopor_total || 0), 0);
+  const descuentosCupones = validOrders.reduce((acc, o) => acc + Number(o.descuento_cupon || 0), 0);
+  const valorInventario = inventory.reduce((acc, i) => acc + Number(i.stock_actual || 0) * Number(i.costo_unitario || 0), 0);
+  const insumosStockBajo = inventory.filter((i) => Number(i.stock_actual || 0) <= Number(i.stock_minimo || 5) && Number(i.stock_minimo || 0) > 0).length;
+
+  const paymentMap = { efectivo: 0, nequi: 0, daviplata: 0, transferencia: 0 };
+  const paymentCountMap = { efectivo: 0, nequi: 0, daviplata: 0, transferencia: 0 };
+  const channelSalesMap = { domicilio: 0, mesa: 0, llevar: 0 };
+  const productSalesMap = {};
+  const categoryLookup = {};
+  products.forEach((p) => {
+    if (p.nombre) categoryLookup[p.nombre.toLowerCase()] = p.categoria || 'General';
+  });
+  const categorySalesMap = {};
+  const hourBuckets = {};
+
+  validOrders.forEach((o) => {
+    const tot = Number(o.total || 0);
+    const mp = String(o.metodo_pago || 'efectivo').toLowerCase();
+    const keyMp = paymentMap[mp] !== undefined ? mp : 'efectivo';
+    paymentMap[keyMp] += tot;
+    paymentCountMap[keyMp] += 1;
+
+    if (o.tipo === 'mesa' || o.tipo_servicio === 'mesa') {
+      channelSalesMap.mesa += tot;
+    } else if (o.tipo === 'takeaway' || o.tipo_servicio === 'recoger' || o.tipo_servicio === 'llevar') {
+      channelSalesMap.llevar += tot;
+    } else {
+      channelSalesMap.domicilio += tot;
+    }
+
+    if (o.created_at) {
+      const hr = new Date(o.created_at).getHours();
+      const label = `${String(hr).padStart(2, '0')}:00`;
+      hourBuckets[label] = (hourBuckets[label] || 0) + 1;
+    }
+
+    (o.items || []).forEach((it) => {
+      const name = it.nombre || 'Plato';
+      const qty = Number(it.cantidad || 1);
+      const unit = Number(it.precio_unitario || it.precio || 0);
+      const lineTotal = qty * unit;
+      if (!productSalesMap[name]) {
+        productSalesMap[name] = { nombre: name, unidades: 0, ingresos: 0 };
+      }
+      productSalesMap[name].unidades += qty;
+      productSalesMap[name].ingresos += lineTotal;
+
+      const baseName = name.split(' (')[0].toLowerCase();
+      const cat = categoryLookup[name.toLowerCase()] || categoryLookup[baseName] || 'Ejecutivos';
+      if (!categorySalesMap[cat]) {
+        categorySalesMap[cat] = { categoria: cat, unidades: 0, ingresos: 0 };
+      }
+      categorySalesMap[cat].unidades += qty;
+      categorySalesMap[cat].ingresos += lineTotal;
+    });
+  });
+
+  const topPlatos = Object.values(productSalesMap)
+    .sort((a, b) => b.ingresos - a.ingresos)
+    .slice(0, 8);
+
+  const ventasPorCategoria = Object.values(categorySalesMap).sort((a, b) => b.ingresos - a.ingresos);
 
   const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
   const ultimos7Dias = [];
@@ -461,6 +529,8 @@ function computeRealAnalytics() {
     ventas_total: ventasTotal,
     pedidos_total: pedidosTotal,
     domicilios_total: domiciliosTotal,
+    mesa_pedidos_total: mesaPedidosTotal,
+    llevar_pedidos_total: llevarPedidosTotal,
     mesas_ocupadas: mesasOcupadas,
     mesas_totales: tables.length,
     clientes_total: customers.length,
@@ -468,6 +538,16 @@ function computeRealAnalytics() {
     mensajes_total: pedidosTotal,
     ticket_promedio_total: pedidosTotal > 0 ? Math.round(ventasTotal / pedidosTotal) : 0,
     productos_agotados: productosAgotados,
+    insumos_stock_bajo: insumosStockBajo,
+    valor_inventario: valorInventario,
+    icopor_recaudado: icoporRecaudado,
+    descuentos_cupones: descuentosCupones,
+    pagos_desglose: paymentMap,
+    pagos_conteo: paymentCountMap,
+    canales_ventas: channelSalesMap,
+    top_platos: topPlatos,
+    ventas_por_categoria: ventasPorCategoria,
+    horas_pico: hourBuckets,
     ventas_hoy: ventasHoy,
     pedidos_hoy: pedidosHoy,
     pedidos_activos: pedidosActivos,
@@ -1011,10 +1091,87 @@ export async function demoMockAdapter(config) {
   } else if (path.match(/^\/ai\/consultant\/chat\//) && method === 'post') {
     const stats = computeRealAnalytics();
     const inv = loadInventory();
-    const lowStock = inv.filter((i) => Number(i.stock_actual || 0) <= Number(i.stock_minimo || 5));
-    data = {
-      reply: `📊 **Estado actual de Veco's Restaurante:**\n\n• **Ventas totales:** $${stats.ventas_total.toLocaleString('es-CO')} (${stats.pedidos_total} pedidos)\n• **Ventas de hoy:** $${stats.ventas_hoy.toLocaleString('es-CO')} (${stats.pedidos_hoy} pedidos)\n• **Pedidos en cocina:** ${stats.pedidos_activos}\n• **Mesas ocupadas:** ${stats.mesas_ocupadas} de ${stats.mesas_totales}\n• **Clientes registrados:** ${stats.clientes_total} (${stats.puntos_total} pts totales)\n${lowStock.length > 0 ? `• **Insumos bajos:** ${lowStock.map((i) => i.nombre).join(', ')}\n` : ''}\n¿Sobre qué área (ventas, menú, inventario o fidelidad) quieres que profundicemos?`,
-    };
+    const orders = loadOrders().filter((o) => o.estado !== 'cancelado');
+    const lowStock = inv.filter((i) => Number(i.stock_actual || 0) <= Number(i.stock_minimo || 5) && Number(i.stock_minimo || 0) > 0);
+    const bodyMsg = String(body.message || '').toLowerCase();
+
+    // 1. Arqueo / Medios de pago / Caja / Efectivo / Nequi
+    if (bodyMsg.includes('arqueo') || bodyMsg.includes('caja') || bodyMsg.includes('nequi') || bodyMsg.includes('efectivo') || bodyMsg.includes('daviplata') || bodyMsg.includes('pago')) {
+      const pMap = { efectivo: 0, nequi: 0, daviplata: 0, transferencia: 0 };
+      orders.forEach((o) => {
+        const mp = String(o.metodo_pago || 'efectivo').toLowerCase();
+        const key = pMap[mp] !== undefined ? mp : 'efectivo';
+        pMap[key] += Number(o.total || 0);
+      });
+      const tot = Object.values(pMap).reduce((a, b) => a + b, 0);
+      const efPct = tot > 0 ? Math.round((pMap.efectivo / tot) * 100) : 0;
+      const nqPct = tot > 0 ? Math.round((pMap.nequi / tot) * 100) : 0;
+      const dvPct = tot > 0 ? Math.round((pMap.daviplata / tot) * 100) : 0;
+      const trPct = tot > 0 ? Math.round((pMap.transferencia / tot) * 100) : 0;
+
+      data = {
+        reply: `💰 **Arqueo de Caja y Medios de Pago (Veco's Restaurante):**\n\n• **Efectivo Físico en Caja:** $${pMap.efectivo.toLocaleString('es-CO')} (${efPct}%)\n• **Nequi:** $${pMap.nequi.toLocaleString('es-CO')} (${nqPct}%)\n• **Daviplata:** $${pMap.daviplata.toLocaleString('es-CO')} (${dvPct}%)\n• **Transferencia Bancaria:** $${pMap.transferencia.toLocaleString('es-CO')} (${trPct}%)\n• **Total Recaudado:** $${tot.toLocaleString('es-CO')}\n\n💡 **Recomendación Contable:** Los canales digitales (Nequi/Daviplata) representan el ${nqPct + dvPct + trPct}% del ingreso. Asegúrate de verificar los comprobantes en el celular de caja antes de entregar los pedidos.`,
+      };
+    }
+    // 2. Platos / Menú / Rentables / Margen
+    else if (bodyMsg.includes('plato') || bodyMsg.includes('rentab') || bodyMsg.includes('menu') || bodyMsg.includes('menú') || bodyMsg.includes('margen')) {
+      const itemMap = {};
+      orders.forEach((o) => {
+        (o.items || []).forEach((it) => {
+          const name = it.nombre || it.name || 'Plato';
+          const price = Number(it.precio || it.price || 0);
+          const qty = Number(it.cantidad || it.quantity || 1);
+          if (!itemMap[name]) itemMap[name] = { name, count: 0, revenue: 0, price };
+          itemMap[name].count += qty;
+          itemMap[name].revenue += price * qty;
+        });
+      });
+      const sorted = Object.values(itemMap).sort((a, b) => b.revenue - a.revenue);
+      const top3 = sorted.slice(0, 3);
+
+      const topText = top3.length > 0
+        ? top3.map((p, idx) => `${idx + 1}. **${p.name}**: ${p.count} vendidos — $${p.revenue.toLocaleString('es-CO')} (Margen estimado: ~68%)`).join('\n')
+        : '• Aún no hay ventas suficientes para determinar el ranking.';
+
+      data = {
+        reply: `🍽️ **Análisis de Rentabilidad y Menú:**\n\n${topText}\n\n💡 **Estrategia para el Admin:** Platos estrella como el *Sancocho de Costilla* y los *Asados* tienen excelente rotación. Te recomiendo ofrecer siempre un combo con bebida o postre adicional para incrementar el ticket promedio en un 15% a 20%.`,
+      };
+    }
+    // 3. Inventario / Insumos / Stock / Agotados
+    else if (bodyMsg.includes('inventario') || bodyMsg.includes('insumo') || bodyMsg.includes('stock') || bodyMsg.includes('agotado') || bodyMsg.includes('merma')) {
+      const totalInvVal = inv.reduce((acc, i) => acc + Number(i.stock_actual || 0) * Number(i.costo_unitario || 0), 0);
+      data = {
+        reply: `📦 **Auditoría de Inventario en Tiempo Real:**\n\n• **Valorización de Stock:** $${totalInvVal.toLocaleString('es-CO')}\n• **Total Insumos Registrados:** ${inv.length}\n• **Insumos en Alerta Crítica (Stock Bajo):** ${lowStock.length}\n${lowStock.length > 0 ? `\n⚠️ **Insumos que debes reponer urgentemente:**\n${lowStock.map((i) => `• ${i.nombre}: ${i.stock_actual} ${i.unidad || 'und'} (Mínimo requerido: ${i.stock_minimo})`).join('\n')}` : '\n✅ Todos los insumos tienen niveles saludables de existencias.'}\n\n💡 **Tip de Ahorro:** Revisa las mermas semanales para evitar sobrecostos en carnes y verduras.`,
+      };
+    }
+    // 4. Domicilio vs Mesa vs Llevar / Icopor
+    else if (bodyMsg.includes('domicilio') || bodyMsg.includes('mesa') || bodyMsg.includes('llevar') || bodyMsg.includes('canal') || bodyMsg.includes('icopor')) {
+      const cMap = { domicilio: 0, mesa: 0, llevar: 0 };
+      let icoporTotal = 0;
+      orders.forEach((o) => {
+        const tot = Number(o.total || 0);
+        icoporTotal += Number(o.icopor_total || 0);
+        if (o.tipo === 'mesa' || o.tipo_servicio === 'mesa') cMap.mesa += tot;
+        else if (o.tipo === 'takeaway' || o.tipo_servicio === 'recoger' || o.tipo_servicio === 'llevar') cMap.llevar += tot;
+        else cMap.domicilio += tot;
+      });
+      data = {
+        reply: `🛵 **Distribución por Canales de Venta & Empaque:**\n\n• **En Mesa (Salón):** $${cMap.mesa.toLocaleString('es-CO')}\n• **Domicilios:** $${cMap.domicilio.toLocaleString('es-CO')}\n• **Para Llevar (Takeaway):** $${cMap.llevar.toLocaleString('es-CO')}\n• **Recaudo por Empaque Icopor:** $${icoporTotal.toLocaleString('es-CO')}\n\n💡 **Control:** El recaudo de icopor ($1.000 por empaque) cubre el costo del recipiente térmico y la bolsa, protegiendo el margen neto de la comida.`,
+      };
+    }
+    // 5. Ticket promedio / Ventas generales
+    else if (bodyMsg.includes('ticket') || bodyMsg.includes('promedio') || bodyMsg.includes('subir') || bodyMsg.includes('estrategia')) {
+      const ticketProm = stats.pedidos_total > 0 ? Math.round(stats.ventas_total / stats.pedidos_total) : 0;
+      data = {
+        reply: `📈 **Estrategia de Ticket Promedio & Crecimiento:**\n\n• **Ticket Promedio Actual:** $${ticketProm.toLocaleString('es-CO')} por pedido.\n• **Ventas Totales:** $${stats.ventas_total.toLocaleString('es-CO')} en ${stats.pedidos_total} órdenes.\n\n🎯 **3 Acciones Inmediatas para Subir Ventas:**\n1. **Venta Cruzada en Mesa:** Entrenar a los meseros para ofrecer entrada (Picada pequeña) o postre en mesa.\n2. **Fidelidad & Ruleta:** Promover el giro de la ruleta después del pago para incentivar la visita en menos de 48 horas.\n3. **Bebidas en Combo:** Crear precios especiales de almuerzo ejecutivo + limonada natural.`,
+      };
+    }
+    // 6. Resumen general
+    else {
+      data = {
+        reply: `📊 **Reporte Gerencial & Contable (Veco's Restaurante):**\n\n• **Ventas Acumuladas:** $${stats.ventas_total.toLocaleString('es-CO')} (${stats.pedidos_total} órdenes)\n• **Ventas de Hoy:** $${stats.ventas_hoy.toLocaleString('es-CO')} (${stats.pedidos_hoy} pedidos)\n• **Ticket Promedio:** $${(stats.pedidos_total > 0 ? Math.round(stats.ventas_total / stats.pedidos_total) : 0).toLocaleString('es-CO')}\n• **Estado Cocina:** ${stats.pedidos_activos} pedidos en preparación\n• **Mesas Ocupadas:** ${stats.mesas_ocupadas} de ${stats.mesas_totales}\n• **Insumos en Alerta:** ${lowStock.length > 0 ? `${lowStock.length} insumos requieren pedido` : 'Stock al día'}\n\n¿Deseas que auditemos **arqueo de caja**, **platos rentables**, **inventario** o **estrategias de venta**?`,
+      };
+    }
   }
 
   // 8. Loyalty & Customers (100% persisted and interlocked)
