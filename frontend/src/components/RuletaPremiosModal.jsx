@@ -110,6 +110,7 @@ export default function RuletaPremiosModal({
   const [rotation, setRotation] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [winResult, setWinResult] = useState(null);
+  const [pendingDeliveryRecord, setPendingDeliveryRecord] = useState(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
   // Notify floating widgets (e.g. LandingAgent) when the wheel modal opens/closes
@@ -291,9 +292,10 @@ export default function RuletaPremiosModal({
 
     setIsSpinning(true);
     setWinResult(null);
+    setPendingDeliveryRecord(null);
     setRotation(nextRotation);
 
-    const couponCode = segment.tipo === 'puntos' ? null : generateCouponCode(segment);
+    const couponCode = generateCouponCode(segment);
     const expiresAt = new Date(Date.now() + (cfg.vigencia_horas || 48) * 3600 * 1000).toISOString();
 
     const record = {
@@ -306,10 +308,11 @@ export default function RuletaPremiosModal({
       premio_emoji: segment.emoji,
       premio_tipo: segment.tipo,
       premio_valor: segment.valor,
+      regalo_detalle: segment.tipo === 'regalo' ? (cfg.regalo_sorpresa_detalle || 'Regalo sorpresa de Veco\'s') : '',
       codigo_cupon: couponCode,
       modo: usePoints ? 'puntos' : 'gratis',
       puntos_usados: usePoints ? costPoints : 0,
-      compra_minima: segment.tipo === 'puntos' ? 0 : (cfg.compra_minima_cupon || 0),
+      compra_minima: ['puntos', 'nada', 'reintento'].includes(segment.tipo) ? 0 : (cfg.compra_minima_cupon || 0),
       expira_en: expiresAt,
       fecha_dia: today,
       created_at: new Date().toISOString(),
@@ -318,6 +321,21 @@ export default function RuletaPremiosModal({
     // Wait for wheel spin animation (4.4s) to finish before revealing prize
     setTimeout(() => {
       setIsSpinning(false);
+
+      // Caso especial: Domicilio Gratis -> preguntar si lo acepta o si está en mesa (otra oportunidad)
+      if (segment.tipo === 'domicilio_gratis') {
+        setPendingDeliveryRecord({ record, usePoints, costPoints, cleanPhone, cfg });
+        setWinResult(record);
+        return;
+      }
+
+      // Caso especial: Un intento más -> NO consume el giro ni puntos
+      if (segment.tipo === 'reintento') {
+        setWinResult(record);
+        toast.success('🔄 ¡Ganaste un intento más! Puedes girar de nuevo gratis.');
+        return;
+      }
+
       setWinResult(record);
 
       if (!previewMode) {
@@ -327,6 +345,22 @@ export default function RuletaPremiosModal({
 
         try {
           localStorage.setItem(`fogon_mesa_pts_${cleanPhone}`, String(nextPoints));
+          // Sincronizar puntos reales con vecos_customers si existe
+          const custRaw = localStorage.getItem('vecos_customers');
+          if (custRaw) {
+            const custs = JSON.parse(custRaw);
+            const idx = custs.findIndex((c) => String(c.telefono || c.phone || '').replace(/\D/g, '') === cleanPhone);
+            if (idx >= 0) {
+              custs[idx].puntos = nextPoints;
+              custs[idx].points = nextPoints;
+              custs[idx].puntos_disponibles = nextPoints;
+              if (segment.tipo === 'puntos') {
+                custs[idx].puntos_totales = Number(custs[idx].puntos_totales || 0) + Number(segment.valor || 5);
+              }
+              localStorage.setItem('vecos_customers', JSON.stringify(custs));
+              window.dispatchEvent(new CustomEvent('vecos-data-updated', { detail: { key: 'vecos_customers' } }));
+            }
+          }
         } catch {}
 
         const updatedHistory = [record, ...history];
@@ -335,15 +369,49 @@ export default function RuletaPremiosModal({
         if (onSpinComplete) onSpinComplete(record);
       }
 
-      try {
-        confetti({
-          particleCount: 85,
-          spread: 70,
-          origin: { y: 0.55 },
-          colors: ['#4ADE80', '#F59E0B', '#3B82F6', '#EC4899', '#FFFFFF'],
-        });
-      } catch {}
+      if (segment.tipo !== 'nada') {
+        try {
+          confetti({
+            particleCount: 85,
+            spread: 70,
+            origin: { y: 0.55 },
+            colors: ['#4ADE80', '#F59E0B', '#3B82F6', '#EC4899', '#FFFFFF'],
+          });
+        } catch {}
+      }
     }, 4500);
+  };
+
+  const handleAcceptDeliveryPrize = () => {
+    if (!pendingDeliveryRecord) return;
+    const { record, usePoints, costPoints, cleanPhone, cfg } = pendingDeliveryRecord;
+    if (!previewMode) {
+      let nextPoints = customerStatus.puntos_disponibles;
+      if (usePoints) nextPoints = Math.max(0, nextPoints - costPoints);
+      try {
+        localStorage.setItem(`fogon_mesa_pts_${cleanPhone}`, String(nextPoints));
+      } catch {}
+      const updatedHistory = [record, ...loadWheelHistoryLocal()];
+      saveWheelHistoryLocal(updatedHistory);
+      refreshLocalCustomerStatus(cleanPhone, cfg);
+      if (onSpinComplete) onSpinComplete(record);
+    }
+    setPendingDeliveryRecord(null);
+    toast.success('🛵 ¡Domicilio Gratis activado! Usa tu cupón en el checkout.');
+    try {
+      confetti({
+        particleCount: 85,
+        spread: 70,
+        origin: { y: 0.55 },
+        colors: ['#14B8A6', '#4ADE80', '#F59E0B', '#FFFFFF'],
+      });
+    } catch {}
+  };
+
+  const handleRejectDeliveryPrize = () => {
+    setPendingDeliveryRecord(null);
+    setWinResult(null);
+    toast.info('🔄 ¡Perfecto! Como estás en mesa, tienes otra oportunidad para girar.');
   };
 
   const handleCopyCoupon = (code) => {
@@ -493,23 +561,16 @@ export default function RuletaPremiosModal({
                       const endAngle = startAngle + sliceAngle;
                       const midAngle = startAngle + sliceAngle / 2;
                       const emojiPos = polarToCartesian(150, 150, 131, midAngle);
-                      const textPos = polarToCartesian(150, 150, 79, midAngle);
-                      const displayLabel =
-                        seg.label === 'Papas o acompañ.'
-                          ? 'Papas o acompañamiento'
-                          : seg.label;
-                      const labelLines = wrapWheelLabel(displayLabel);
-                      const maxLineLen = Math.max(...labelLines.map((l) => l.length));
+                      const textPos = polarToCartesian(150, 150, 81, midAngle);
+                      const displayLabel = String(seg.label || '').trim();
                       const labelFontSize =
-                        labelLines.length === 1
-                          ? maxLineLen > 11
-                            ? '8.8'
-                            : '9.5'
-                          : maxLineLen > 12
-                          ? '7.4'
-                          : maxLineLen > 10
-                          ? '8'
-                          : '8.5';
+                        displayLabel.length > 16
+                          ? '7.2'
+                          : displayLabel.length > 13
+                            ? '7.9'
+                            : displayLabel.length > 10
+                              ? '8.6'
+                              : '9.4';
 
                       return (
                         <g key={seg.id || i}>
@@ -532,25 +593,14 @@ export default function RuletaPremiosModal({
                           <text
                             x={textPos.x}
                             y={textPos.y}
-                            fill={seg.textColor || '#FFFFFF'}
+                            fill="#FFFFFF"
                             fontSize={labelFontSize}
                             fontWeight="900"
                             textAnchor="middle"
                             dominantBaseline="central"
                             transform={`rotate(${midAngle - 90}, ${textPos.x}, ${textPos.y})`}
                           >
-                            {labelLines.length === 1 ? (
-                              labelLines[0]
-                            ) : (
-                              <>
-                                <tspan x={textPos.x} dy="-0.5em">
-                                  {labelLines[0]}
-                                </tspan>
-                                <tspan x={textPos.x} dy="1.15em">
-                                  {labelLines[1]}
-                                </tspan>
-                              </>
-                            )}
+                            {displayLabel}
                           </text>
                         </g>
                       );
@@ -587,24 +637,86 @@ export default function RuletaPremiosModal({
                   initial={{ opacity: 0, scale: 0.9, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  className="p-4 rounded-3xl bg-gradient-to-r from-[#4ADE80]/20 via-emerald-500/15 to-amber-400/20 border-2 border-[#4ADE80]/50 text-center space-y-3"
+                  className={`p-4 rounded-3xl border-2 text-center space-y-3 ${
+                    winResult.premio_tipo === 'nada'
+                      ? 'bg-slate-800/90 border-slate-600'
+                      : winResult.premio_tipo === 'reintento'
+                        ? 'bg-amber-500/15 border-amber-400/60'
+                        : 'bg-gradient-to-r from-[#4ADE80]/20 via-emerald-500/15 to-amber-400/20 border-[#4ADE80]/50'
+                  }`}
                 >
                   <div className="flex items-center justify-center gap-3 w-full px-1">
                     <span className="text-3xl shrink-0">{winResult.premio_emoji}</span>
                     <div className="text-left min-w-0">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#4ADE80]">
-                        ¡Felicidades, ganaste!
+                      <p className={`text-[10px] font-black uppercase tracking-widest ${
+                        winResult.premio_tipo === 'nada'
+                          ? 'text-slate-400'
+                          : winResult.premio_tipo === 'reintento'
+                            ? 'text-amber-300'
+                            : 'text-[#4ADE80]'
+                      }`}>
+                        {winResult.premio_tipo === 'nada'
+                          ? '¡Suerte para la próxima!'
+                          : winResult.premio_tipo === 'reintento'
+                            ? '¡Nueva oportunidad!'
+                            : '¡Felicidades, ganaste!'}
                       </p>
                       <p className="text-lg sm:text-xl font-black text-white leading-snug break-words">
-                        {winResult.premio_label === 'Papas o acompañ.'
-                          ? 'Papas o acompañamiento'
-                          : winResult.premio_label}
+                        {winResult.premio_label}
                       </p>
                     </div>
                   </div>
 
-                  {winResult.codigo_cupon ? (
+                  {winResult.premio_tipo === 'nada' ? (
+                    <p className="text-xs font-medium text-slate-300">
+                      Ya usaste tu intento gratis de hoy. Vuelve mañana o compra otro intento usando tus puntos acumulados.
+                    </p>
+                  ) : winResult.premio_tipo === 'reintento' ? (
                     <div className="space-y-2">
+                      <p className="text-xs font-bold text-amber-200">
+                        Este giro no consumió tu intento. ¡Vuelve a girar ahora mismo!
+                      </p>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          setWinResult(null);
+                          handleSpin(false);
+                        }}
+                        className="w-full h-10 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs uppercase tracking-wider"
+                      >
+                        🔄 Girar de nuevo ahora
+                      </Button>
+                    </div>
+                  ) : pendingDeliveryRecord ? (
+                    <div className="space-y-2.5">
+                      <p className="text-xs font-medium text-slate-200">
+                        ¿Vas a pedir a domicilio o estás comiendo en mesa? Si estás en mesa puedes rechazarlo y girar otra vez.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <Button
+                          type="button"
+                          onClick={handleAcceptDeliveryPrize}
+                          className="h-10 rounded-xl bg-[#4ADE80] hover:bg-[#22C55E] text-[#0F172A] font-black text-[11px] uppercase tracking-wider"
+                        >
+                          ✅ Aceptar Domicilio
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleRejectDeliveryPrize}
+                          className="h-10 rounded-xl border-amber-400/60 bg-amber-400/10 hover:bg-amber-400/20 text-amber-200 font-black text-[11px] uppercase tracking-wider"
+                        >
+                          🔄 Estoy en mesa (Girar)
+                        </Button>
+                      </div>
+                    </div>
+                  ) : winResult.codigo_cupon ? (
+                    <div className="space-y-2">
+                      {winResult.premio_tipo === 'regalo' && winResult.regalo_detalle && (
+                        <p className="text-xs font-bold text-amber-200 bg-amber-500/10 border border-amber-400/30 rounded-xl px-3 py-1.5">
+                          🎁 Regalo asignado: {winResult.regalo_detalle}
+                        </p>
+                      )}
                       <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-[#0F172A]/80 border border-white/15">
                         <div className="flex items-center gap-2">
                           <Ticket className="w-4 h-4 text-amber-300 shrink-0" />

@@ -876,6 +876,9 @@ export default function DemoRestaurante() {
                 : checkoutData.tipo_servicio === 'mesa'
                     ? 'mesa'
                     : 'takeaway';
+            const couponNote = appliedCoupon?.coupon
+                ? `🎁 CUPÓN RULETA (${appliedCoupon.coupon.codigo_cupon}): ${appliedCoupon.coupon.premio_label}${appliedCoupon.giftDetail ? ` — ${appliedCoupon.giftDetail}` : ''}`
+                : '';
             const newOrderRecord = {
                 id: orderNum,
                 numero_orden: orderNum,
@@ -889,6 +892,10 @@ export default function DemoRestaurante() {
                 estado: 'pendiente',
                 total: finalTotal,
                 icopor_total: icoporTotal,
+                descuento_cupon: appliedCoupon?.discountAmount || 0,
+                domicilio_gratis: Boolean(appliedCoupon?.freeDelivery),
+                cupon_ruleta: appliedCoupon?.coupon?.codigo_cupon || null,
+                notas: couponNote,
                 metodo_pago: checkoutData.metodo_pago,
                 created_at: new Date().toISOString(),
                 items: cart.map((item) => ({

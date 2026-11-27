@@ -28,11 +28,15 @@ import {
 } from '@/utils/wheelDefaults';
 
 const PRIZE_TYPE_LABELS = {
-  producto: 'Producto gratis',
+  puntos: 'Puntos directos',
+  regalo: 'Regalo sorpresa',
+  nada: 'Inténtalo mañana',
   descuento: 'Descuento %',
+  domicilio_gratis: 'Domicilio gratis',
+  reintento: 'Un intento más',
+  producto: 'Producto gratis',
   multiplicador: 'Doble puntos',
   upgrade: 'Upgrade',
-  puntos: 'Puntos directos',
 };
 
 export default function RuletaAdminSection({ slug, api, businessName = "Veco's Restaurante" }) {
@@ -309,15 +313,34 @@ export default function RuletaAdminSection({ slug, api, businessName = "Veco's R
           </div>
         </div>
 
-        {/* 8 Segments Editor */}
+        {/* Regalo Sorpresa Configurable por el Admin */}
+        <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <p className="text-xs font-black text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+              🎉 Regalo Sorpresa Actual
+            </p>
+            <p className="text-[11px] text-emerald-700 font-medium">
+              Define qué premio recibirá el cliente cuando caiga en la casilla <b>Regalo sorpresa</b> (ej. Postre del día, Limonada natural, Papas).
+            </p>
+          </div>
+          <Input
+            type="text"
+            value={wheelConfig.regalo_sorpresa_detalle || ''}
+            onChange={(e) => setWheelConfig({ ...wheelConfig, regalo_sorpresa_detalle: e.target.value })}
+            placeholder="Ej: Postre o bebida del día"
+            className="h-10 rounded-xl bg-white border-emerald-200 text-xs font-bold sm:w-72"
+          />
+        </div>
+
+        {/* 7 Segments Editor */}
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">
-                Estructura de los 8 Segmentos y Probabilidades
+                Estructura de los 7 Segmentos y Probabilidades
               </h3>
               <p className="text-[11px] text-gray-500">
-                Ninguna casilla es "perdiste": el segmento 8 entrega puntos para mantener alta motivación.
+                Premios absolutos: +5 Puntos, Regalo sorpresa, Inténtalo mañana, 10% y 15% descuento, Domicilio Gratis y Un intento más.
               </p>
             </div>
             <Badge

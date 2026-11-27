@@ -1,92 +1,10 @@
 // Default configuration & helpers for the Temu-style Rewards Wheel (Ruleta de Recompensas)
 
+export const WHEEL_CONFIG_VERSION = 'vecos_wheel_v3';
+
 export const DEFAULT_WHEEL_SEGMENTS = [
   {
     id: 1,
-    label: 'Bebida gratis',
-    emoji: '🥤',
-    tipo: 'producto',
-    valor: 0,
-    probabilidad: 5,
-    limite_diario: 5,
-    color: '#10B981',
-    textColor: '#FFFFFF',
-    costo_aprox: 'Bajo',
-  },
-  {
-    id: 2,
-    label: 'Postre gratis',
-    emoji: '🍮',
-    tipo: 'producto',
-    valor: 0,
-    probabilidad: 5,
-    limite_diario: 5,
-    color: '#F59E0B',
-    textColor: '#111814',
-    costo_aprox: 'Bajo',
-  },
-  {
-    id: 3,
-    label: 'Papas o acompañamiento',
-    emoji: '🍟',
-    tipo: 'producto',
-    valor: 0,
-    probabilidad: 10,
-    limite_diario: 10,
-    color: '#EF4444',
-    textColor: '#FFFFFF',
-    costo_aprox: 'Bajo',
-  },
-  {
-    id: 4,
-    label: '10% de descuento',
-    emoji: '🏷️',
-    tipo: 'descuento',
-    valor: 10,
-    probabilidad: 20,
-    limite_diario: 30,
-    color: '#3B82F6',
-    textColor: '#FFFFFF',
-    costo_aprox: 'Variable',
-  },
-  {
-    id: 5,
-    label: '15% de descuento',
-    emoji: '🔥',
-    tipo: 'descuento',
-    valor: 15,
-    probabilidad: 10,
-    limite_diario: 15,
-    color: '#8B5CF6',
-    textColor: '#FFFFFF',
-    costo_aprox: 'Variable',
-  },
-  {
-    id: 6,
-    label: 'Doble puntos',
-    emoji: '⚡',
-    tipo: 'multiplicador',
-    valor: 2,
-    probabilidad: 20,
-    limite_diario: 30,
-    color: '#EC4899',
-    textColor: '#FFFFFF',
-    costo_aprox: 'Bajo',
-  },
-  {
-    id: 7,
-    label: 'Upgrade bebida/plato',
-    emoji: '⭐',
-    tipo: 'upgrade',
-    valor: 0,
-    probabilidad: 10,
-    limite_diario: 10,
-    color: '#14B8A6',
-    textColor: '#FFFFFF',
-    costo_aprox: 'Bajo-medio',
-  },
-  {
-    id: 8,
     label: '+5 Puntos',
     emoji: '🎁',
     tipo: 'puntos',
@@ -97,12 +15,86 @@ export const DEFAULT_WHEEL_SEGMENTS = [
     textColor: '#FFFFFF',
     costo_aprox: 'Muy bajo',
   },
+  {
+    id: 2,
+    label: 'Regalo sorpresa',
+    emoji: '🎉',
+    tipo: 'regalo',
+    valor: 0,
+    probabilidad: 10,
+    limite_diario: 10,
+    color: '#10B981',
+    textColor: '#FFFFFF',
+    costo_aprox: 'Bajo',
+  },
+  {
+    id: 3,
+    label: 'Inténtalo mañana',
+    emoji: '🥴',
+    tipo: 'nada',
+    valor: 0,
+    probabilidad: 20,
+    limite_diario: 999,
+    color: '#64748B',
+    textColor: '#FFFFFF',
+    costo_aprox: 'Sin costo',
+  },
+  {
+    id: 4,
+    label: '10% descuento',
+    emoji: '🏷️',
+    tipo: 'descuento',
+    valor: 10,
+    probabilidad: 15,
+    limite_diario: 30,
+    color: '#3B82F6',
+    textColor: '#FFFFFF',
+    costo_aprox: 'Variable',
+  },
+  {
+    id: 5,
+    label: 'Domicilio Gratis',
+    emoji: '🛵',
+    tipo: 'domicilio_gratis',
+    valor: 0,
+    probabilidad: 10,
+    limite_diario: 20,
+    color: '#14B8A6',
+    textColor: '#FFFFFF',
+    costo_aprox: 'Bajo-medio',
+  },
+  {
+    id: 6,
+    label: '15% descuento',
+    emoji: '🔥',
+    tipo: 'descuento',
+    valor: 15,
+    probabilidad: 10,
+    limite_diario: 15,
+    color: '#8B5CF6',
+    textColor: '#FFFFFF',
+    costo_aprox: 'Variable',
+  },
+  {
+    id: 7,
+    label: 'Un intento más',
+    emoji: '🔄',
+    tipo: 'reintento',
+    valor: 0,
+    probabilidad: 15,
+    limite_diario: 999,
+    color: '#EAB308',
+    textColor: '#FFFFFF',
+    costo_aprox: 'Sin costo',
+  },
 ];
 
 export const DEFAULT_WHEEL_CONFIG = {
+  version: WHEEL_CONFIG_VERSION,
   activo: true,
   titulo: 'Ruleta del Día',
   subtitulo: '¡Gira y gana premios instantáneos para tu próximo pedido!',
+  regalo_sorpresa_detalle: 'Postre o bebida del día (definido por Veco\'s)',
   // Opción A: Tiro diario gratis
   tiros_gratis_dia: 1,
   // Opción B: Tiros adicionales usando puntos
@@ -127,19 +119,16 @@ export function loadWheelConfigLocal() {
     const raw = localStorage.getItem(WHEEL_STORAGE_KEYS.CONFIG);
     if (raw) {
       const parsed = JSON.parse(raw);
-      const rawSegs =
-        Array.isArray(parsed.segmentos) && parsed.segmentos.length === 8
-          ? parsed.segmentos
-          : DEFAULT_WHEEL_SEGMENTS;
-      const normalizedSegs = rawSegs.map((s) =>
-        s.label === 'Papas o acompañ.'
-          ? { ...s, label: 'Papas o acompañamiento' }
-          : s
-      );
+      const isCurrentVersion =
+        parsed.version === WHEEL_CONFIG_VERSION &&
+        Array.isArray(parsed.segmentos) &&
+        parsed.segmentos.length === 7;
+      const rawSegs = isCurrentVersion ? parsed.segmentos : DEFAULT_WHEEL_SEGMENTS;
       return {
         ...DEFAULT_WHEEL_CONFIG,
         ...parsed,
-        segmentos: normalizedSegs,
+        version: WHEEL_CONFIG_VERSION,
+        segmentos: rawSegs,
       };
     }
   } catch (e) {
@@ -183,16 +172,16 @@ export function getTodayDateStr() {
 }
 
 export function generateCouponCode(segment) {
+  if (!segment || ['puntos', 'nada', 'reintento'].includes(segment.tipo)) return null;
   const prefixMap = {
-    producto: 'PREMIO',
+    regalo: 'REGALO',
+    producto: 'REGALO',
     descuento: `DTO${segment.valor || 10}`,
-    multiplicador: 'DOBLEPTS',
-    upgrade: 'UPGRADE',
-    puntos: 'PUNTOS',
+    domicilio_gratis: 'ENVIO',
   };
-  const prefix = prefixMap[segment.tipo] || 'FOGON';
+  const prefix = prefixMap[segment.tipo] || 'VECOS';
   const rand = Math.floor(1000 + Math.random() * 9000);
-  return `FM-${prefix}-${rand}`;
+  return `VEC-${prefix}-${rand}`;
 }
 
 export function pickWeightedSegment(segments, todayHistory = []) {
@@ -316,6 +305,9 @@ export function validateCouponCode(rawCode, subtotal = 0) {
       premio_label: normalizePrizeLabel(match.premio_label),
     },
     discountAmount,
+    freeDelivery: match.premio_tipo === 'domicilio_gratis',
+    isGift: match.premio_tipo === 'regalo' || match.premio_tipo === 'producto',
+    giftDetail: match.regalo_detalle || '',
   };
 }
 
