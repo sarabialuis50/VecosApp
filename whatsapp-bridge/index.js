@@ -62,7 +62,7 @@ async function startWhatsApp() {
     version,
     auth: authState,
     logger: pino({ level: 'silent' }),
-    browser: ['Fogón & Mesa', 'Chrome', '1.0.0'],
+    browser: ["Veco's Restaurante", 'Chrome', '1.0.0'],
     syncFullHistory: false,
   });
 
@@ -249,6 +249,16 @@ function renderHtml() {
 }
 
 const server = http.createServer(async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
   if (req.url === '/status') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
@@ -257,6 +267,8 @@ const server = http.createServer(async (req, res) => {
       connectedName: state.connectedName,
       messagesHandled: state.messagesHandled,
       hasQr: Boolean(state.qrDataUrl),
+      qrDataUrl: state.qrDataUrl,
+      lastError: state.lastError,
     }));
     return;
   }
@@ -269,9 +281,15 @@ const server = http.createServer(async (req, res) => {
     state.status = 'reconnecting';
     state.qrDataUrl = null;
     state.connectedPhone = null;
+    state.connectedName = null;
     setTimeout(() => startWhatsApp().catch(console.error), 1000);
-    res.writeHead(302, { Location: '/' });
-    res.end();
+    if ((req.headers.accept || '').includes('application/json')) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    } else {
+      res.writeHead(302, { Location: '/' });
+      res.end();
+    }
     return;
   }
 

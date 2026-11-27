@@ -341,24 +341,39 @@ export async function demoMockAdapter(config) {
     }
   }
 
-  // Orders
+  // Orders (persistidos en localStorage 'vecos_orders' para sincronizar /menu -> /pedidos y /cocina)
   else if (path.match(/^\/orders\/[^/]+\/active$/)) {
+    try {
+      const savedOrders = localStorage.getItem('vecos_orders');
+      if (savedOrders) demoStore.orders = JSON.parse(savedOrders);
+    } catch (e) {}
     data = demoStore.orders.filter((o) => o.estado !== 'entregado' && o.estado !== 'cancelado');
   } else if (path.match(/^\/orders\/[^/]+$/)) {
+    try {
+      const savedOrders = localStorage.getItem('vecos_orders');
+      if (savedOrders) demoStore.orders = JSON.parse(savedOrders);
+    } catch (e) {}
     if (method === 'post') {
       const newOrder = { id: `${Date.now()}`, estado: 'nuevo', created_at: new Date().toISOString(), ...body };
       demoStore.orders.unshift(newOrder);
+      try { localStorage.setItem('vecos_orders', JSON.stringify(demoStore.orders)); } catch (e) {}
       data = newOrder;
     } else {
       data = demoStore.orders;
     }
   } else if (path.match(/^\/orders\/[^/]+\/[^/]+$/)) {
+    try {
+      const savedOrders = localStorage.getItem('vecos_orders');
+      if (savedOrders) demoStore.orders = JSON.parse(savedOrders);
+    } catch (e) {}
     const orderId = path.split('/').pop();
     if (method === 'put' || method === 'patch') {
       demoStore.orders = demoStore.orders.map((o) => (o.id === orderId ? { ...o, ...body } : o));
+      try { localStorage.setItem('vecos_orders', JSON.stringify(demoStore.orders)); } catch (e) {}
       data = demoStore.orders.find((o) => o.id === orderId) || { ok: true };
     } else if (method === 'delete') {
       demoStore.orders = demoStore.orders.filter((o) => o.id !== orderId);
+      try { localStorage.setItem('vecos_orders', JSON.stringify(demoStore.orders)); } catch (e) {}
       data = { deleted: true };
     }
   }

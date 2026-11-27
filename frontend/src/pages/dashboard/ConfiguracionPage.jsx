@@ -608,6 +608,12 @@ const ConfiguracionPage = () => {
                 if (businessData.datos_pago) {
                     localStorage.setItem('fogon_mesa_datos_pago', JSON.stringify(businessData.datos_pago));
                 }
+                if (businessData.metodos_pago) {
+                    localStorage.setItem('vecos_metodos_pago', JSON.stringify(normalizedPago(businessData.metodos_pago)));
+                }
+                if (businessData.telefono) {
+                    localStorage.setItem('vecos_restaurant_phone', String(businessData.telefono));
+                }
                 const icoporVal = Math.max(0, Number(businessData.precio_icopor) || 0);
                 localStorage.setItem('vecos_icopor_price', String(icoporVal));
             } catch (e) {}

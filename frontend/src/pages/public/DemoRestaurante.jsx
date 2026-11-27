@@ -25,7 +25,8 @@ import {
     Heart,
     Clock,
     Ticket,
-    AlertCircle
+    AlertCircle,
+    Copy
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -609,7 +610,29 @@ export default function DemoRestaurante() {
         metodo_pago: 'efectivo', // 'efectivo' | 'nequi' | 'daviplata' | 'transferencia'
     });
     const [lastOrderNumber, setLastOrderNumber] = useState('VEC-1001');
+    const [lastOrderSnapshot, setLastOrderSnapshot] = useState(null);
     const [checkoutErrors, setCheckoutErrors] = useState({});
+
+    const loadPaymentDetails = () => {
+        try {
+            const raw = localStorage.getItem('fogon_mesa_datos_pago');
+            if (raw) return JSON.parse(raw);
+        } catch {}
+        return {
+            nequi: { numero: '', qr_url: '' },
+            daviplata: { numero: '', qr_url: '' },
+            transferencia: { banco: '', numero_cuenta: '' },
+        };
+    };
+    const loadRestaurantPhone = () => {
+        try {
+            const raw = localStorage.getItem('vecos_restaurant_phone');
+            if (raw && raw.trim()) return raw.replace(/\D/g, '');
+        } catch {}
+        return '3017810256';
+    };
+    const [paymentDetails, setPaymentDetails] = useState(loadPaymentDetails);
+    const [restaurantPhone, setRestaurantPhone] = useState(loadRestaurantPhone);
     const [couponCodeInput, setCouponCodeInput] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [availableCoupons, setAvailableCoupons] = useState([]);
@@ -750,6 +773,8 @@ export default function DemoRestaurante() {
             setMenuProducts(loadClientMenuProducts());
             setMenuIngredients(loadMenuIngredientsLocal());
             setIcoporPrice(loadIcoporPrice());
+            setPaymentDetails(loadPaymentDetails());
+            setRestaurantPhone(loadRestaurantPhone());
         };
         window.addEventListener('storage', syncMenu);
         window.addEventListener('focus', syncMenu);
@@ -838,7 +863,47 @@ export default function DemoRestaurante() {
             }
 
             setCheckoutErrors({});
-            setLastOrderNumber(`VEC-${Math.floor(1000 + Math.random() * 9000)}`);
+            const orderNum = `VEC-${Math.floor(1000 + Math.random() * 9000)}`;
+            setLastOrderNumber(orderNum);
+
+            // Guardar pedido real en 'vecos_orders' para que aparezca de inmediato en /pedidos y /cocina
+            const mappedTipo = checkoutData.tipo_servicio === 'domicilio'
+                ? 'delivery'
+                : checkoutData.tipo_servicio === 'mesa'
+                    ? 'mesa'
+                    : 'takeaway';
+            const newOrderRecord = {
+                id: orderNum,
+                numero_orden: orderNum,
+                cliente_nombre: checkoutData.nombre.trim(),
+                cliente_telefono: checkoutData.telefono.trim(),
+                tipo: mappedTipo,
+                tipo_pedido: mappedTipo,
+                tipo_servicio: checkoutData.tipo_servicio === 'llevar' ? 'recoger' : checkoutData.tipo_servicio,
+                direccion: checkoutData.tipo_servicio === 'domicilio' ? checkoutData.direccion.trim() : '',
+                mesa_numero: checkoutData.tipo_servicio === 'mesa' ? checkoutData.mesa_numero.trim() : null,
+                estado: 'pendiente',
+                total: finalTotal,
+                icopor_total: icoporTotal,
+                metodo_pago: checkoutData.metodo_pago,
+                created_at: new Date().toISOString(),
+                items: cart.map((item) => ({
+                    nombre: item.nombre,
+                    cantidad: item.quantity,
+                    precio_unitario: item.precio,
+                    notas: item.notas || '',
+                    modificadores: item.modificadores_visual || [],
+                })),
+            };
+            setLastOrderSnapshot(newOrderRecord);
+            try {
+                const existingRaw = localStorage.getItem('vecos_orders');
+                const existing = existingRaw ? JSON.parse(existingRaw) : [];
+                const nextOrders = [newOrderRecord, ...(Array.isArray(existing) ? existing : [])];
+                localStorage.setItem('vecos_orders', JSON.stringify(nextOrders));
+            } catch (e) {
+                console.warn('Error guardando pedido local:', e);
+            }
 
             if (appliedCoupon?.coupon?.codigo_cupon) {
                 markCouponAsUsed(appliedCoupon.coupon.codigo_cupon);
@@ -1735,6 +1800,82 @@ export default function DemoRestaurante() {
                                                     );
                                                 })}
                                             </div>
+
+                                            {/* Tarjeta dinámica con Código QR y datos reales de pago desde Configuración */}
+                                            {['nequi', 'daviplata', 'transferencia'].includes(checkoutData.metodo_pago) && (() => {
+                                                const pm = checkoutData.metodo_pago;
+                                                const info = paymentDetails?.[pm] || {};
+                                                const accountNum = pm === 'transferencia' ? info.numero_cuenta : info.numero;
+                                                const bankName = pm === 'transferencia' ? info.banco : (pm === 'nequi' ? 'Nequi' : 'Daviplata');
+                                                const qrUrl = info.qr_url;
+                                                const hasInfo = Boolean(accountNum || qrUrl || info.banco);
+
+                                                return (
+                                                    <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-200/80 space-y-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-[11px] font-black uppercase tracking-wider text-purple-900">
+                                                                Datos para pagar con {bankName || pm}
+                                                            </p>
+                                                            <span className="text-xs font-black text-[#C86414]">
+                                                                {formatCurrency(finalTotal)}
+                                                            </span>
+                                                        </div>
+
+                                                        {hasInfo ? (
+                                                            <>
+                                                                {qrUrl && (
+                                                                    <div className="flex flex-col items-center gap-1.5 py-2">
+                                                                        <div className="p-2.5 bg-white rounded-2xl border border-purple-100 shadow-sm">
+                                                                            <img
+                                                                                src={qrUrl}
+                                                                                alt={`Código QR ${bankName}`}
+                                                                                className="w-40 h-40 object-contain rounded-xl"
+                                                                            />
+                                                                        </div>
+                                                                        <span className="text-[10px] font-bold text-purple-700">
+                                                                            Escanea este código QR desde tu app
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+
+                                                                {pm === 'transferencia' && info.banco && (
+                                                                    <div className="flex items-center justify-between text-xs font-bold text-gray-700 px-1">
+                                                                        <span className="text-gray-500">Banco:</span>
+                                                                        <span>{info.banco}</span>
+                                                                    </div>
+                                                                )}
+
+                                                                {accountNum && (
+                                                                    <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white border border-purple-200/70">
+                                                                        <div className="min-w-0">
+                                                                            <p className="text-[9px] font-bold uppercase text-gray-400">
+                                                                                {pm === 'transferencia' ? 'Número de cuenta' : `Número ${bankName}`}
+                                                                            </p>
+                                                                            <p className="text-sm font-mono font-black text-gray-900 truncate">
+                                                                                {accountNum}
+                                                                            </p>
+                                                                        </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                navigator.clipboard?.writeText(String(accountNum));
+                                                                                toast.success(`Número ${accountNum} copiado`);
+                                                                            }}
+                                                                            className="px-3 py-1.5 rounded-lg bg-[#181615] hover:bg-[#C86414] text-white text-[10px] font-black uppercase flex items-center gap-1 transition-colors shrink-0"
+                                                                        >
+                                                                            <Copy className="w-3 h-3" /> Copiar
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <p className="text-[11px] font-medium text-purple-800/80 leading-relaxed">
+                                                                Puedes confirmar tu pedido ahora y te enviaremos el QR / número de {bankName} por WhatsApp (el administrador puede cargarlo en <b>Configuración → Pagos</b>).
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
 
                                         <div className="pt-2 space-y-3">
@@ -1872,8 +2013,58 @@ export default function DemoRestaurante() {
                                                     <span>{appliedCoupon.coupon.premio_emoji} {appliedCoupon.coupon.premio_label} ({appliedCoupon.coupon.codigo_cupon})</span>
                                                 </div>
                                             )}
-                                            <div className="flex justify-between text-xs font-bold"><span>Total</span><span className="text-[#C86414] font-black">{formatCurrency(finalTotal)}</span></div>
+                                            <div className="flex justify-between text-xs font-bold"><span>Total</span><span className="text-[#C86414] font-black">{formatCurrency(lastOrderSnapshot?.total ?? finalTotal)}</span></div>
                                         </div>
+
+                                        {/* QR + Botón de Comprobante WhatsApp si pagó por medio digital */}
+                                        {['nequi', 'daviplata', 'transferencia'].includes(checkoutData.metodo_pago) && (() => {
+                                            const pm = checkoutData.metodo_pago;
+                                            const info = paymentDetails?.[pm] || {};
+                                            const accountNum = pm === 'transferencia' ? info.numero_cuenta : info.numero;
+                                            const qrUrl = info.qr_url;
+                                            const waPhone = restaurantPhone.startsWith('57') ? restaurantPhone : `57${restaurantPhone}`;
+                                            const waMsg = encodeURIComponent(
+                                                `Hola Veco's Restaurante! Acabo de realizar el pedido *${lastOrderNumber}* a nombre de *${checkoutData.nombre}* por *${formatCurrency(lastOrderSnapshot?.total ?? finalTotal)}* (${pm.toUpperCase()}). Adjunto mi comprobante de pago.`
+                                            );
+
+                                            return (
+                                                <div className="w-full p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 mb-6 space-y-3 text-center">
+                                                    {qrUrl && (
+                                                        <div className="flex justify-center">
+                                                            <div className="p-2 bg-white rounded-2xl border border-emerald-100 shadow-sm">
+                                                                <img src={qrUrl} alt={`QR ${pm}`} className="w-36 h-36 object-contain rounded-xl" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {accountNum && (
+                                                        <div className="flex items-center justify-center gap-2 text-xs font-mono font-black text-gray-900">
+                                                            <span className="uppercase text-emerald-700">{pm}:</span>
+                                                            <span>{accountNum}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    navigator.clipboard?.writeText(String(accountNum));
+                                                                    toast.success(`Número ${accountNum} copiado`);
+                                                                }}
+                                                                className="p-1 rounded-md bg-white border border-gray-200 hover:border-[#C86414]"
+                                                                title="Copiar número"
+                                                            >
+                                                                <Copy className="w-3 h-3" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    <a
+                                                        href={`https://wa.me/${waPhone}?text=${waMsg}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="w-full py-2.5 px-4 rounded-xl bg-[#22C55E] hover:bg-[#16A34A] text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all"
+                                                    >
+                                                        <Send className="w-3.5 h-3.5" />
+                                                        Enviar comprobante por WhatsApp
+                                                    </a>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 )}
                             </div>

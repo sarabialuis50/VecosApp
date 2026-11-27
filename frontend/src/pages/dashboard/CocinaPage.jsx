@@ -53,7 +53,7 @@ export default function CocinaPage() {
       const incomingIds = new Set(incomingOrders.map(o => o.id));
       if (!isFirstLoadRef.current) {
         const newPendingOrders = incomingOrders.filter(o =>
-          !previousOrdersRef.current.has(o.id) && o.estado === 'pendiente'
+          !previousOrdersRef.current.has(o.id) && (o.estado === 'pendiente' || o.estado === 'nuevo')
         );
         if (newPendingOrders.length > 0) {
           toast.success(`¡Tienes ${newPendingOrders.length} pedido(s) nuevo(s)!`, { duration: 5000, position: 'top-center' });
@@ -74,8 +74,15 @@ export default function CocinaPage() {
   useEffect(() => {
     if (isSuperAdmin || kitchenType || !cocinasDualesActivo) {
       fetchOrders();
-      const interval = setInterval(fetchOrders, 30000);
-      return () => clearInterval(interval);
+      const interval = setInterval(fetchOrders, 5000);
+      const handleSync = () => fetchOrders();
+      window.addEventListener('storage', handleSync);
+      window.addEventListener('focus', handleSync);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('storage', handleSync);
+        window.removeEventListener('focus', handleSync);
+      };
     }
   }, [fetchOrders, isSuperAdmin, kitchenType, cocinasDualesActivo]);
 
@@ -178,7 +185,7 @@ export default function CocinaPage() {
             </Button>
             <Button
               variant="ghost" size="icon"
-              onClick={() => kitchenType ? navigate(`/dashboard/${slug}/cocina`) : navigate(`/dashboard/${slug}`)}
+              onClick={() => kitchenType ? navigate('/cocina') : navigate('/dashboard')}
               className="text-gray-400 hover:text-red-500 hover:bg-red-500/10 ml-2"
               data-testid="exit-kitchen-btn"
               title={kitchenType ? 'Cambiar cocina' : 'Salir al Dashboard'}
@@ -324,7 +331,7 @@ function OrderCard({ order, onUpdateStatus, sedeColorMap = {}, isSuperAdmin }) {
   const sedeInfo = order.sede_slug ? sedeColorMap[order.sede_slug] : null;
 
   let config;
-  if (order.estado === 'pendiente' || order.estado === 'aceptado') {
+  if (order.estado === 'pendiente' || order.estado === 'nuevo' || order.estado === 'aceptado') {
     config = { label: 'Nuevo', color: 'border-blue-400 bg-blue-50', headerColor: 'bg-blue-500', nextAction: 'ACEPTAR', nextStatus: 'preparando', btnColor: 'bg-blue-500 hover:bg-blue-600 font-black' };
   } else if (order.estado === 'preparando') {
     config = { label: 'Preparando', color: 'border-yellow-400 bg-yellow-50', headerColor: 'bg-yellow-500', nextAction: 'LISTO', nextStatus: 'listo', btnColor: 'bg-green-500 hover:bg-green-600 font-black' };
@@ -358,9 +365,21 @@ function OrderCard({ order, onUpdateStatus, sedeColorMap = {}, isSuperAdmin }) {
         <div className="flex justify-between items-start mb-3">
           <div className="flex flex-col gap-1">
             <h3 className="font-heading font-bold text-xl text-gray-900 leading-tight">
-              {order.mesa_numero ? `Mesa ${order.mesa_numero}` : (order.tipo === 'delivery' || order.tipo_pedido === 'delivery' ? '🛵 Domicilio' : '🛍️ Para Recoger')}
+              {order.mesa_numero
+                ? `🍽️ Mesa ${order.mesa_numero}`
+                : (order.tipo === 'delivery' || order.tipo_pedido === 'delivery' || order.tipo_servicio === 'domicilio'
+                    ? '🛵 Domicilio'
+                    : '🛍️ Para Llevar')}
             </h3>
             <p className="text-xs font-bold text-gray-500 line-clamp-1">Cliente: {order.cliente_nombre || 'N/A'}</p>
+            {order.direccion && (
+              <p className="text-[11px] font-semibold text-gray-500 line-clamp-1">📍 {order.direccion}</p>
+            )}
+            {order.metodo_pago && (
+              <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-md bg-white/80 border border-gray-200 text-[10px] font-black uppercase text-gray-700">
+                💳 {order.metodo_pago}
+              </span>
+            )}
           </div>
           <div className="flex flex-col items-end shrink-0 ml-2">
             <span className="text-[11px] font-black text-blue-700 leading-tight">ID: {order.numero_secuencial ? String(order.numero_secuencial).padStart(8, '0') : order.id?.slice(0, 8).toUpperCase()}</span>

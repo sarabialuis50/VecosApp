@@ -171,8 +171,15 @@ export default function PedidosPage() {
         const interval = setInterval(() => {
             fetchOrders();
             fetchMonthlyAnalytics();
-        }, 30000);
-        return () => clearInterval(interval);
+        }, 5000);
+        const handleSync = () => fetchOrders();
+        window.addEventListener('storage', handleSync);
+        window.addEventListener('focus', handleSync);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('storage', handleSync);
+            window.removeEventListener('focus', handleSync);
+        };
     }, [slug, api]);
 
     const fetchRepartidores = async () => {

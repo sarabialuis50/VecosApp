@@ -46,6 +46,63 @@ export default function WhatsappHubPage() {
     // Lock overlay state
     const [dismissedLockOverlay, setDismissedLockOverlay] = useState(false);
 
+    // WhatsApp Bridge (QR & Conexión en vivo)
+    const BRIDGE_URL = (import.meta.env?.VITE_WHATSAPP_BRIDGE_URL || 'http://localhost:3005').replace(/\/+$/, '');
+    const [bridgeState, setBridgeState] = useState({
+        status: 'loading', // loading | offline | starting | qr | connected | reconnecting
+        qrDataUrl: null,
+        connectedPhone: null,
+        connectedName: null,
+        messagesHandled: 0,
+        lastError: null,
+    });
+    const [loggingOutBridge, setLoggingOutBridge] = useState(false);
+
+    const fetchBridgeStatus = async () => {
+        try {
+            const resp = await fetch(`${BRIDGE_URL}/status`, { cache: 'no-store' });
+            if (!resp.ok) throw new Error('Bridge HTTP error');
+            const json = await resp.json();
+            setBridgeState({
+                status: json.status || 'starting',
+                qrDataUrl: json.qrDataUrl || null,
+                connectedPhone: json.connectedPhone || null,
+                connectedName: json.connectedName || null,
+                messagesHandled: json.messagesHandled || 0,
+                lastError: json.lastError || null,
+            });
+        } catch {
+            setBridgeState((prev) => ({
+                ...prev,
+                status: 'offline',
+                qrDataUrl: null,
+            }));
+        }
+    };
+
+    useEffect(() => {
+        fetchBridgeStatus();
+        const timer = setInterval(fetchBridgeStatus, 3000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const handleDisconnectWhatsApp = async () => {
+        if (!window.confirm('¿Desvincular este número de WhatsApp y generar un nuevo código QR?')) return;
+        setLoggingOutBridge(true);
+        try {
+            await fetch(`${BRIDGE_URL}/logout`, {
+                method: 'POST',
+                headers: { Accept: 'application/json' },
+            });
+            toast.success('Desvinculado. Generando nuevo código QR...');
+            setTimeout(fetchBridgeStatus, 1500);
+        } catch {
+            toast.error('No se pudo desvincular el puente de WhatsApp');
+        } finally {
+            setLoggingOutBridge(false);
+        }
+    };
+
     const getAISuggestion = async (type = 'template') => {
         setAiType(type);
         setIsAILoading(true);
@@ -750,6 +807,108 @@ export default function WhatsappHubPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Conexión de WhatsApp en Vivo (Código QR) */}
+                <Card className="rounded-[2rem] border-2 border-emerald-200/80 shadow-lg bg-white overflow-hidden">
+                    <CardContent className="p-6 md:p-8">
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div className="space-y-3 flex-1 text-center md:text-left">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border bg-emerald-50 text-emerald-700 border-emerald-200">
+                                    <span className={`size-2 rounded-full ${
+                                        bridgeState.status === 'connected'
+                                            ? 'bg-emerald-500 animate-pulse'
+                                            : bridgeState.status === 'qr'
+                                                ? 'bg-amber-500 animate-pulse'
+                                                : 'bg-red-500'
+                                    }`} />
+                                    {bridgeState.status === 'connected'
+                                        ? 'WhatsApp Conectado'
+                                        : bridgeState.status === 'qr'
+                                            ? 'Esperando escaneo QR'
+                                            : bridgeState.status === 'offline'
+                                                ? 'Servicio WhatsApp desconectado'
+                                                : 'Generando código QR...'}
+                                </div>
+
+                                <h2 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight flex items-center justify-center md:justify-start gap-2">
+                                    <Smartphone className="w-6 h-6 text-[#22C55E]" />
+                                    Vincular WhatsApp para Pedidos
+                                </h2>
+
+                                {bridgeState.status === 'connected' ? (
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-bold text-emerald-700">
+                                            Número activo: <span className="font-mono text-gray-900">+{bridgeState.connectedPhone}</span> ({bridgeState.connectedName})
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            Tu WhatsApp está vinculado y respondiendo pedidos en vivo. Mensajes atendidos en esta sesión: <b>{bridgeState.messagesHandled}</b>.
+                                        </p>
+                                        <div className="pt-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={handleDisconnectWhatsApp}
+                                                disabled={loggingOutBridge}
+                                                className="h-9 rounded-xl border-red-200 text-red-600 hover:bg-red-50 font-black text-[11px] uppercase tracking-wider"
+                                            >
+                                                {loggingOutBridge ? 'Desvinculando...' : 'Desvincular número y generar nuevo QR'}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : bridgeState.status === 'offline' ? (
+                                    <div className="space-y-2">
+                                        <p className="text-xs text-gray-500 max-w-lg">
+                                            No se detectó el puente local de WhatsApp en <code className="font-mono bg-gray-100 px-1.5 py-0.5 rounded">{BRIDGE_URL}</code>. Asegúrate de que el servicio esté encendido y pulsa reintentar.
+                                        </p>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={fetchBridgeStatus}
+                                            className="h-9 rounded-xl border-gray-300 font-black text-[11px] uppercase tracking-wider"
+                                        >
+                                            Reintentar conexión
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <ol className="text-xs text-gray-600 space-y-1.5 text-left max-w-md mx-auto md:mx-0 list-decimal pl-4 font-medium">
+                                        <li>Abre <b>WhatsApp</b> en el celular del restaurante.</li>
+                                        <li>Toca el menú <b>⋮</b> (o Configuración) → <b>Dispositivos vinculados</b> → <b>Vincular un dispositivo</b>.</li>
+                                        <li>Escanea este <b>Código QR</b> (se actualiza automáticamente cada pocos segundos).</li>
+                                    </ol>
+                                )}
+                            </div>
+
+                            {/* Panel derecho: QR o Check Conectado */}
+                            <div className="shrink-0">
+                                {bridgeState.status === 'connected' ? (
+                                    <div className="w-48 h-48 rounded-3xl bg-emerald-50 border-2 border-emerald-200 flex flex-col items-center justify-center gap-2 text-emerald-600">
+                                        <CheckCircle className="w-14 h-14" />
+                                        <span className="text-xs font-black uppercase tracking-wider">En Línea</span>
+                                    </div>
+                                ) : bridgeState.qrDataUrl ? (
+                                    <div className="p-3 bg-white rounded-3xl border-2 border-gray-200 shadow-md flex flex-col items-center gap-1.5">
+                                        <img
+                                            src={bridgeState.qrDataUrl}
+                                            alt="Código QR para vincular WhatsApp"
+                                            className="w-48 h-48 object-contain rounded-xl"
+                                        />
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                                            Escanea con WhatsApp
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div className="w-48 h-48 rounded-3xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 text-gray-400 text-center p-4">
+                                        <div className="w-8 h-8 border-2 border-[#22C55E] border-t-transparent rounded-full animate-spin" />
+                                        <span className="text-[11px] font-bold">
+                                            {bridgeState.status === 'offline' ? 'Puente apagado' : 'Cargando QR...'}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Modal de Confirmación de Campaña */}
