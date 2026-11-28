@@ -438,18 +438,18 @@ export default function RuletaPremiosModal({
 
   return (
     <Dialog open={open} onOpenChange={(val) => !isSpinning && onOpenChange(val)}>
-      <DialogContent className="sm:max-w-lg rounded-[2rem] p-0 overflow-hidden border-none bg-gradient-to-b from-[#0F172A] via-[#131F35] to-[#0F172A] text-white max-h-[94vh] overflow-y-auto">
+      <DialogContent className="w-[94vw] sm:max-w-md md:max-w-lg rounded-[2rem] p-0 overflow-hidden border-none bg-gradient-to-b from-[#0F172A] via-[#131F35] to-[#0F172A] text-white max-h-[92dvh] overflow-y-auto">
         {/* Top Glowing Banner */}
-        <div className="relative px-6 pt-6 pb-3 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-[10px] font-black uppercase tracking-widest mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
+        <div className="relative px-4 pt-4 pb-1.5 sm:px-6 sm:pt-6 sm:pb-3 text-center">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-1 sm:mb-2">
+            <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             {previewMode ? 'Modo Vista Previa (Admin)' : `${businessName} • Premios Diarios`}
           </div>
-          <DialogHeader className="space-y-1">
-            <DialogTitle className="text-2xl md:text-3xl font-black text-center tracking-tight bg-gradient-to-r from-amber-300 via-yellow-200 to-[#4ADE80] bg-clip-text text-transparent">
+          <DialogHeader className="space-y-0.5 sm:space-y-1">
+            <DialogTitle className="text-xl sm:text-2xl md:text-3xl font-black text-center tracking-tight bg-gradient-to-r from-amber-300 via-yellow-200 to-[#4ADE80] bg-clip-text text-transparent">
               {wheelConfig?.titulo || 'Ruleta del Día'}
             </DialogTitle>
-            <DialogDescription className="text-xs text-slate-300 text-center font-medium">
+            <DialogDescription className="text-[11px] sm:text-xs text-slate-300 text-center font-medium max-w-xs mx-auto">
               {wheelConfig?.subtitulo || '¡Gira y gana premios instantáneos para tu próximo pedido!'}
             </DialogDescription>
           </DialogHeader>
@@ -457,20 +457,20 @@ export default function RuletaPremiosModal({
 
         {/* Step 1: Require Registered Account (Customer Mode) */}
         {checkingAuth && !previewMode ? (
-          <div className="px-6 py-12 flex flex-col items-center justify-center gap-3 text-slate-300">
+          <div className="px-6 py-10 flex flex-col items-center justify-center gap-3 text-slate-300">
             <RotateCw className="w-6 h-6 animate-spin text-[#4ADE80]" />
             <p className="text-xs font-semibold">Cargando tu cuenta...</p>
           </div>
         ) : !identified && !previewMode ? (
-          <div className="px-6 pb-8 pt-2 space-y-5">
-            <div className="p-5 rounded-3xl bg-white/5 border border-white/10 space-y-4">
+          <div className="px-4 pb-6 pt-1 space-y-4">
+            <div className="p-4 sm:p-5 rounded-3xl bg-white/5 border border-white/10 space-y-3.5">
               <div className="flex items-center gap-3">
-                <div className="size-11 rounded-2xl bg-[#4ADE80]/20 text-[#4ADE80] flex items-center justify-center shrink-0">
+                <div className="size-10 sm:size-11 rounded-2xl bg-[#4ADE80]/20 text-[#4ADE80] flex items-center justify-center shrink-0">
                   <LogIn className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-white">Inicia sesión para girar la ruleta</p>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-xs sm:text-sm font-black text-white">Inicia sesión para girar la ruleta</p>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400">
                     Tienes <strong className="text-[#4ADE80]">{wheelConfig.tiros_gratis_dia || 1} tiro gratis hoy</strong>. Tus premios y puntos se guardan automáticamente en tu perfil.
                   </p>
                 </div>
@@ -479,7 +479,7 @@ export default function RuletaPremiosModal({
               <Button
                 type="button"
                 onClick={handleGoToAccount}
-                className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#4ADE80] to-[#22C55E] hover:brightness-110 text-[#0F172A] font-black text-sm uppercase tracking-wider shadow-lg shadow-[#4ADE80]/30"
+                className="w-full h-11 sm:h-12 rounded-2xl bg-gradient-to-r from-[#4ADE80] to-[#22C55E] hover:brightness-110 text-[#0F172A] font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-[#4ADE80]/30"
               >
                 <Gift className="w-4 h-4 mr-2" />
                 Iniciar sesión / Crear cuenta
@@ -492,21 +492,21 @@ export default function RuletaPremiosModal({
             </div>
           </div>
         ) : (
-          <div className="px-5 pb-6 space-y-5">
+          <div className="px-4 pb-4 sm:px-5 sm:pb-6 space-y-3 sm:space-y-4">
             {/* Customer Balance & Spins Bar */}
-            <div className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs">
+            <div className="flex items-center justify-between gap-2 px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs">
               <div className="flex items-center gap-2">
-                <Coins className="w-4 h-4 text-amber-400" />
-                <span className="text-slate-300 font-medium">Tus puntos:</span>
-                <span className="font-black text-amber-300">{customerStatus.puntos_disponibles} pts</span>
+                <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+                <span className="text-slate-300 font-medium text-[11px] sm:text-xs">Tus puntos:</span>
+                <span className="font-black text-amber-300 text-xs sm:text-sm">{customerStatus.puntos_disponibles} pts</span>
               </div>
               <div className="flex items-center gap-1.5">
                 {customerStatus.tiros_gratis_restantes > 0 ? (
-                  <Badge className="bg-[#4ADE80]/20 text-[#4ADE80] border border-[#4ADE80]/30 text-[10px] font-black">
+                  <Badge className="bg-[#4ADE80]/20 text-[#4ADE80] border border-[#4ADE80]/30 text-[9px] sm:text-[10px] font-black py-0.5 px-2">
                     {customerStatus.tiros_gratis_restantes} Giro Gratis Hoy
                   </Badge>
                 ) : (
-                  <Badge className="bg-white/10 text-slate-300 border-none text-[10px] font-bold">
+                  <Badge className="bg-white/10 text-slate-300 border-none text-[9px] sm:text-[10px] font-bold py-0.5 px-2">
                     Giro gratis usado
                   </Badge>
                 )}
@@ -514,10 +514,10 @@ export default function RuletaPremiosModal({
             </div>
 
             {/* THE WHEEL */}
-            <div className="relative flex items-center justify-center py-2">
+            <div className="relative flex items-center justify-center py-1 sm:py-2">
               {/* Top Pointer Arrow */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
-                <svg width="34" height="38" viewBox="0 0 34 38">
+                <svg width="28" height="32" viewBox="0 0 34 38" className="sm:w-[34px] sm:h-[38px]">
                   <polygon
                     points="17,36 2,4 32,4"
                     fill="#FACC15"
@@ -530,28 +530,10 @@ export default function RuletaPremiosModal({
               </div>
 
               {/* Outer Glowing Rim */}
-              <div className="relative p-3 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-300 to-amber-500 shadow-[0_0_40px_rgba(250,204,21,0.3)]">
-                {/* Decorative Rim Lights */}
-                {Array.from({ length: 16 }).map((_, i) => {
-                  const angle = (i * 360) / 16;
-                  return (
-                    <span
-                      key={i}
-                      className={`absolute w-2 h-2 rounded-full ${
-                        i % 2 === 0 ? 'bg-white animate-pulse' : 'bg-[#4ADE80]'
-                      }`}
-                      style={{
-                        top: '50%',
-                        left: '50%',
-                        transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-150px)`,
-                      }}
-                    />
-                  );
-                })}
-
+              <div className="relative p-2 sm:p-2.5 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-300 to-amber-500 shadow-[0_0_35px_rgba(250,204,21,0.25)] flex items-center justify-center">
                 {/* Spinning SVG Wheel */}
                 <div
-                  className="w-[280px] h-[280px] sm:w-[292px] sm:h-[292px] rounded-full overflow-hidden border-4 border-[#0F172A]"
+                  className="w-[225px] h-[225px] xs:w-[255px] xs:h-[255px] sm:w-[290px] sm:h-[290px] rounded-full overflow-hidden border-[3px] sm:border-4 border-[#0F172A]"
                   style={{
                     transform: `rotate(${rotation}deg)`,
                     transition: isSpinning
@@ -624,10 +606,10 @@ export default function RuletaPremiosModal({
                         customerStatus.puntos_disponibles < customerStatus.costo_tiro_puntos))
                   }
                   onClick={() => handleSpin(customerStatus.tiros_gratis_restantes <= 0 && !previewMode)}
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-gradient-to-b from-[#0F172A] to-slate-900 border-4 border-amber-300 shadow-xl flex flex-col items-center justify-center text-amber-300 hover:scale-105 active:scale-95 transition-transform disabled:opacity-60 z-10"
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-12 sm:size-16 rounded-full bg-gradient-to-b from-[#0F172A] to-slate-900 border-2 sm:border-4 border-amber-300 shadow-xl flex flex-col items-center justify-center text-amber-300 hover:scale-105 active:scale-95 transition-transform disabled:opacity-60 z-10"
                 >
-                  <RotateCw className={`w-5 h-5 ${isSpinning ? 'animate-spin' : ''}`} />
-                  <span className="text-[8px] font-black uppercase tracking-widest mt-0.5">
+                  <RotateCw className={`w-3.5 h-3.5 sm:w-5 sm:h-5 ${isSpinning ? 'animate-spin' : ''}`} />
+                  <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest mt-0.5">
                     {isSpinning ? '...' : 'GIRAR'}
                   </span>
                 </button>

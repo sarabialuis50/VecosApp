@@ -1602,17 +1602,17 @@ export default function DemoRestaurante() {
                 {isCartOpen && (
                     <>
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={resetAll} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]" />
-                        <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white text-[#181615] z-[70] shadow-2xl flex flex-col">
+                        <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white text-[#181615] z-[70] shadow-2xl flex flex-col h-[100dvh] max-h-[100dvh]">
 
-                            <div className="p-6 border-b flex items-center justify-between">
+                            <div className="p-4 sm:p-6 border-b flex items-center justify-between shrink-0">
                                 <div>
-                                    <h2 className="text-2xl font-black text-gray-900">{step === 'cart' ? 'Tu Pedido' : (step === 'checkout' ? 'Finalizar Pedido' : '¡Pedido Éxito!')}</h2>
-                                    {step !== 'success' && <p className="text-xs font-bold text-[#665E57] uppercase tracking-wider">{cartCount} productos seleccionados</p>}
+                                    <h2 className="text-xl sm:text-2xl font-black text-gray-900">{step === 'cart' ? 'Tu Pedido' : (step === 'checkout' ? 'Finalizar Pedido' : '¡Pedido Éxito!')}</h2>
+                                    {step !== 'success' && <p className="text-[10px] sm:text-xs font-bold text-[#665E57] uppercase tracking-wider">{cartCount} productos seleccionados</p>}
                                 </div>
-                                <button onClick={resetAll} className="p-2 border border-[#181615] text-[#181615] hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                                <button onClick={resetAll} className="p-1.5 sm:p-2 border border-[#181615] text-[#181615] hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5" /></button>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-6">
+                            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                                 {step === 'cart' && (
                                     <div className="space-y-4">
                                         {cart.length === 0 ? (
@@ -2226,30 +2226,30 @@ export default function DemoRestaurante() {
                                 )}
                             </div>
 
-                            <div className="p-6 border-t mt-auto">
+                            <div className="p-4 sm:p-6 pb-6 sm:pb-6 border-t mt-auto bg-white/95 backdrop-blur-md shrink-0">
                                 {step !== 'success' ? (
                                     <>
                                         {step === 'checkout' && Object.keys(checkoutErrors).some(k => !!checkoutErrors[k]) && (
-                                            <div className="mb-3.5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold flex items-center gap-2">
+                                            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold flex items-center gap-2">
                                                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                                                 <span>Faltan datos obligatorios. Completa los campos marcados en rojo.</span>
                                             </div>
                                         )}
                                         <button
                                             onClick={cart.length === 0 ? resetAll : handleConfirmOrder}
-                                            className="w-full h-14 bg-[#C86414] text-white rounded-2xl font-black text-lg shadow-xl shadow-[#C86414]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                                            className="w-full h-13 sm:h-14 bg-[#C86414] hover:bg-[#a9520e] text-white rounded-2xl font-black text-base sm:text-lg shadow-xl shadow-[#C86414]/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                                         >
                                             {step === 'cart' ? (cart.length === 0 ? 'Ver menu para hacer pedido' : 'Continuar Compra') : 'Confirmar Pedido'}
-                                            {cart.length > 0 && <Send className="w-5 h-5" />}
+                                            {cart.length > 0 && <Send className="w-4 h-4 sm:w-5 sm:h-5" />}
                                         </button>
                                         {step === 'checkout' && (
-                                            <button onClick={() => setStep('cart')} className="w-full mt-4 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-900 transition-colors">Volver al carrito</button>
+                                            <button onClick={() => setStep('cart')} className="w-full mt-3 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-900 transition-colors">Volver al carrito</button>
                                         )}
                                     </>
                                 ) : (
                                     <button
                                         onClick={resetAll}
-                                        className="w-full h-14 bg-gray-900 text-white rounded-2xl font-black text-lg shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
+                                        className="w-full h-13 sm:h-14 bg-gray-900 text-white rounded-2xl font-black text-base sm:text-lg shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
                                     >
                                         Volver al Menú
                                     </button>
@@ -2271,7 +2271,7 @@ export default function DemoRestaurante() {
                     {selectedProduct && (
                         <div className="flex flex-col md:flex-row h-full max-h-[90vh] md:max-h-[85vh]">
                             {/* Left Side: Product Image */}
-                            <div className="relative w-full md:w-[45%] h-64 md:h-auto overflow-hidden bg-gray-50 flex-shrink-0">
+                            <div className="relative w-full md:w-[45%] h-52 sm:h-64 md:h-auto overflow-hidden bg-gray-50 flex-shrink-0">
                                 <img
                                     src={selectedProduct.imagen || selectedProduct.imagen_url || "/images/hero-almuerzo.jpg"}
                                     alt={selectedProduct.nombre}
@@ -2557,24 +2557,25 @@ export default function DemoRestaurante() {
                                 </div>
 
                                 {/* Footer Sticky Actions */}
-                                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-50">
-                                    <div className="max-w-2xl mx-auto flex items-center gap-4">
-                                        <div className="flex items-center gap-4 bg-gray-100 p-2 rounded-2xl border border-gray-200">
-                                            <button onClick={() => setQty(Math.max(1, qty - 1))} className="size-10 rounded-xl bg-white flex items-center justify-center text-gray-600 hover:text-[#C86414] shadow-sm"><Minus className="w-5 h-5" /></button>
-                                            <span className="text-xl font-black text-[#1F1C1A] w-6 text-center">{qty}</span>
-                                            <button onClick={() => setQty(qty + 1)} className="size-10 rounded-xl bg-white flex items-center justify-center text-gray-600 hover:text-[#C86414] shadow-sm"><Plus className="w-5 h-5" /></button>
+                                <div className="absolute bottom-0 left-0 right-0 p-3.5 sm:p-5 md:p-8 pb-5 sm:pb-6 md:pb-8 bg-white/95 backdrop-blur-xl border-t border-gray-100 z-50">
+                                    <div className="max-w-2xl mx-auto flex items-center gap-2.5 sm:gap-4">
+                                        <div className="flex items-center gap-1.5 sm:gap-3 bg-gray-100 p-1 sm:p-2 rounded-2xl border border-gray-200 shrink-0">
+                                            <button type="button" onClick={() => setQty(Math.max(1, qty - 1))} className="size-8 sm:size-10 rounded-xl bg-white flex items-center justify-center text-gray-600 hover:text-[#C86414] shadow-sm active:scale-95 transition-all"><Minus className="w-4 h-4 sm:w-5 sm:h-5" /></button>
+                                            <span className="text-base sm:text-xl font-black text-[#1F1C1A] w-5 sm:w-6 text-center">{qty}</span>
+                                            <button type="button" onClick={() => setQty(qty + 1)} className="size-8 sm:size-10 rounded-xl bg-white flex items-center justify-center text-gray-600 hover:text-[#C86414] shadow-sm active:scale-95 transition-all"><Plus className="w-4 h-4 sm:w-5 sm:h-5" /></button>
                                         </div>
                                         <Button
+                                            type="button"
                                             onClick={addToCartAndConfirm}
-                                            className="flex-1 h-16 bg-[#C86414] hover:bg-[#C86414] text-white rounded-2xl font-black text-xl shadow-xl shadow-[#C86414]/20 flex items-center justify-between px-8 group transition-all"
+                                            className="flex-1 min-w-0 h-13 sm:h-14 md:h-16 bg-[#C86414] hover:bg-[#a9520e] text-white rounded-2xl font-black shadow-xl shadow-[#C86414]/25 flex items-center justify-between px-3.5 sm:px-6 group transition-all"
                                         >
-                                            <div className="flex flex-col items-start leading-none">
-                                                <span className="text-[10px] uppercase tracking-widest opacity-60">Agregar</span>
-                                                <span>{formatCurrency(computeProductUnitPrice(selectedProduct, selectedModifiers) * qty)}</span>
+                                            <div className="flex flex-col items-start leading-tight min-w-0 pr-2">
+                                                <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-white/80 font-bold">Agregar</span>
+                                                <span className="text-sm sm:text-base md:text-lg font-black truncate">{formatCurrency(computeProductUnitPrice(selectedProduct, selectedModifiers) * qty)}</span>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-base">Confirmar</span>
-                                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                                                <span className="text-xs sm:text-sm md:text-base font-black uppercase tracking-wider">Confirmar</span>
+                                                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
                                             </div>
                                         </Button>
                                     </div>
@@ -2613,7 +2614,7 @@ export default function DemoRestaurante() {
             />
 
             {/* Agente Experto Flotante de Fogón & Mesa */}
-            <LandingAgent hidden={isWheelOpen || isCartOpen} />
+            <LandingAgent hidden={isWheelOpen || isCartOpen || Boolean(selectedProduct)} />
         </div>
     );
 }
