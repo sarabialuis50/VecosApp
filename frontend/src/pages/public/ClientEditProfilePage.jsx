@@ -57,26 +57,31 @@ export default function ClientEditProfilePage() {
     }, [token, slug]);
 
     const fetchProfile = async () => {
-        if (token === 'universal-client-token') {
-            const saved = localStorage.getItem('universal_client_profile');
-            const profileData = saved
-                ? JSON.parse(saved)
-                : {
-                    nombre: "Cliente de Prueba",
-                    email: "cliente@fogonmesa.com",
-                    telefono: "+57 300 123 4567",
-                    avatar_url: ""
-                };
+        if (token && token.startsWith('vecos-client-session:')) {
+            const last10 = token.replace('vecos-client-session:', '');
+            let customers = [];
+            try {
+                customers = JSON.parse(localStorage.getItem('vecos_customers') || '[]');
+            } catch {}
+            const match = (Array.isArray(customers) ? customers : []).find((c) => {
+                const d = String(c.telefono || c.phone || '').replace(/\D/g, '');
+                return d.slice(-10) === last10;
+            });
+            const profileData = {
+                nombre: match?.nombre || match?.name || "",
+                email: match?.email || "",
+                telefono: match?.telefono || last10,
+                avatar_url: match?.avatar_url || ""
+            };
             setFormData(profileData);
             setInitialData(profileData);
             setLoading(false);
             return;
         }
         try {
-            // First get business ID from slug to have context
             try {
                 const businessRes = await axios.get(`${API_BASE}/business/${slug}`);
-                setBusinessId(businessRes.data.id);
+                if (businessRes.data?.id) setBusinessId(businessRes.data.id);
             } catch (err) {
                 console.error("Could not fetch business context:", err);
             }
@@ -95,7 +100,7 @@ export default function ClientEditProfilePage() {
         } catch (error) {
             console.error(error);
             if (error.response?.status === 401) {
-                navigate(`/${slug}/mi-cuenta`);
+                navigate('/mi-cuenta');
             }
         } finally {
             setLoading(false);
@@ -106,11 +111,42 @@ export default function ClientEditProfilePage() {
         e.preventDefault();
         setSaving(true);
 
-        if (token === 'universal-client-token') {
-            localStorage.setItem('universal_client_profile', JSON.stringify(formData));
+        if (token && token.startsWith('vecos-client-session:')) {
+            const last10 = token.replace('vecos-client-session:', '');
+            try {
+                let customers = JSON.parse(localStorage.getItem('vecos_customers') || '[]');
+                if (!Array.isArray(customers)) customers = [];
+                let found = false;
+                customers = customers.map((c) => {
+                    const d = String(c.telefono || c.phone || '').replace(/\D/g, '');
+                    if (d.slice(-10) === last10) {
+                        found = true;
+                        return { ...c, nombre: formData.nombre, name: formData.nombre, email: formData.email, avatar_url: formData.avatar_url };
+                    }
+                    return c;
+                });
+                if (!found) {
+                    customers.unshift({
+                        id: `cli-${last10}`,
+                        nombre: formData.nombre || `Cliente ${last10.slice(-4)}`,
+                        name: formData.nombre || `Cliente ${last10.slice(-4)}`,
+                        telefono: last10,
+                        phone: last10,
+                        email: formData.email || '',
+                        avatar_url: formData.avatar_url || '',
+                        puntos: 0,
+                        puntos_totales: 0,
+                        total_gastado: 0,
+                        pedidos_count: 0,
+                        created_at: new Date().toISOString(),
+                    });
+                }
+                localStorage.setItem('vecos_customers', JSON.stringify(customers));
+                window.dispatchEvent(new Event('vecos-data-updated'));
+            } catch {}
             toast.success("Perfil actualizado correctamente");
             setSaving(false);
-            navigate(`/${slug}/mi-cuenta`);
+            navigate('/mi-cuenta');
             return;
         }
 
@@ -119,7 +155,7 @@ export default function ClientEditProfilePage() {
                 headers: { Authorization: `Bearer ${token}` }
             });
             toast.success("Perfil actualizado correctamente");
-            navigate(`/${slug}/mi-cuenta`);
+            navigate('/mi-cuenta');
         } catch (error) {
             toast.error("Error al actualizar perfil");
         } finally {

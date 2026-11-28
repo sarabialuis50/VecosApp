@@ -1191,13 +1191,13 @@ export default function ClientProfilePage() {
                     </div>
 
                     <h2 className="text-2xl font-black text-[#181615] mt-3 tracking-tight text-center">
-                        {user.nombre || 'Luis Sarabia'}
+                        {user.nombre || 'Mi Cuenta'}
                     </h2>
 
-                    {(user.telefono || '+57 300 123 4567') && (
+                    {user.telefono && (
                         <div className="flex items-center justify-center gap-1.5 mt-1 text-xs font-semibold text-gray-500">
                             <Phone className="w-3.5 h-3.5 text-[#C86414]" />
-                            <span>{user.telefono || '+57 300 123 4567'}</span>
+                            <span>{user.telefono}</span>
                         </div>
                     )}
                 </div>

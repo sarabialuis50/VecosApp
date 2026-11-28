@@ -167,17 +167,10 @@ export default function RuletaPremiosModal({
         return;
       }
 
-      if (token === 'universal-client-token') {
-        let profilePhone = '+57 300 123 4567';
-        try {
-          const savedProfile = localStorage.getItem('universal_client_profile');
-          if (savedProfile) {
-            const parsed = JSON.parse(savedProfile);
-            if (parsed.telefono) profilePhone = parsed.telefono;
-          }
-        } catch {}
-        setPhone(profilePhone);
-        refreshLocalCustomerStatus(profilePhone, cfg);
+      if (token && token.startsWith('vecos-client-session:')) {
+        const last10 = token.replace('vecos-client-session:', '');
+        setPhone(last10);
+        refreshLocalCustomerStatus(last10, cfg);
         setIdentified(true);
         setCheckingAuth(false);
         return;

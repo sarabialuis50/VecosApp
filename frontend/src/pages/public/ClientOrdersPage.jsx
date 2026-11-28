@@ -49,25 +49,18 @@ export default function ClientOrdersPage() {
     };
 
     const fetchOrders = async () => {
-        if (token === 'universal-client-token') {
-            const demoOrders = [
-                {
-                    id: 'PED-1042',
-                    estado: 'entregado',
-                    total: 22000,
-                    created_at: new Date().toISOString(),
-                    items: [{ nombre: 'Churrasco a la Brasa (250g)', cantidad: 1, precio_unitario: 22000 }],
-                },
-                {
-                    id: 'PED-1039',
-                    estado: 'entregado',
-                    total: 18500,
-                    created_at: new Date(Date.now() - 86400000).toISOString(),
-                    items: [{ nombre: 'Almuerzo Ejecutivo: Pechuga al Romero', cantidad: 1, precio_unitario: 18500 }],
-                },
-            ];
-            setOrders(demoOrders);
-            markOrdersAsSeen(demoOrders);
+        if (token && token.startsWith('vecos-client-session:')) {
+            const last10 = token.replace('vecos-client-session:', '');
+            let realOrders = [];
+            try {
+                const all = JSON.parse(localStorage.getItem('vecos_orders') || '[]');
+                realOrders = (Array.isArray(all) ? all : []).filter((o) => {
+                    const d = String(o.cliente_telefono || '').replace(/\D/g, '');
+                    return d.slice(-10) === last10;
+                });
+            } catch {}
+            setOrders(realOrders);
+            markOrdersAsSeen(realOrders);
             setLoading(false);
             return;
         }
@@ -79,14 +72,16 @@ export default function ClientOrdersPage() {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            // Assuming /client/orders returns all orders for the authenticated user
             const res = await api.get('/client/orders');
-            setOrders(res.data);
-            markOrdersAsSeen(res.data);
+            const list = Array.isArray(res.data) ? res.data : [];
+            setOrders(list);
+            markOrdersAsSeen(list);
         } catch (error) {
             console.error(error);
             if (error.response?.status === 401) {
-                navigate(`/${slug}/mi-cuenta`);
+                navigate('/mi-cuenta');
+            } else {
+                setOrders([]);
             }
         } finally {
             setLoading(false);
