@@ -791,10 +791,23 @@ export default function PedidosPage() {
                                 <h4 className="text-lg font-black text-gray-900">Orden {selectedOrder?.numero_secuencial ? String(selectedOrder.numero_secuencial).padStart(8, '0') : selectedOrder?.id?.slice(0, 8).toUpperCase()}</h4>
                             </div>
                             <div className="space-y-1">
-                                <p className="text-sm font-bold text-gray-500">Cliente: <span className="text-gray-900">{selectedOrder?.cliente_nombre || 'Usuario de Prueba'}</span></p>
-                                <p className="text-sm font-bold text-gray-500">Teléfono: <span className="text-gray-900">123456789</span></p>
-                                <p className="text-sm font-bold text-gray-900">Total: {selectedOrder ? formatCurrency(selectedOrder.total + 28562) : '$0'}</p>
+                                <p className="text-sm font-bold text-gray-500">Cliente: <span className="text-gray-900">{selectedOrder?.cliente_nombre || 'Cliente'}</span></p>
+                                <p className="text-sm font-bold text-gray-500">Teléfono: <span className="text-gray-900">{selectedOrder?.cliente_telefono || 'Sin teléfono'}</span></p>
+                                <p className="text-sm font-bold text-gray-500">Medio de pago: <span className="text-gray-900 uppercase">{selectedOrder?.metodo_pago || 'Efectivo'}</span></p>
+                                <p className="text-sm font-bold text-gray-900">Total: {selectedOrder ? formatCurrency(selectedOrder.total || 0) : '$0'}</p>
                             </div>
+                            {selectedOrder?.comprobante_pago && (
+                                <div className="pt-2 border-t border-gray-100 space-y-2">
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">📎 Soporte de pago adjunto:</p>
+                                    <a href={selectedOrder.comprobante_pago} target="_blank" rel="noopener noreferrer" className="block">
+                                        <img
+                                            src={selectedOrder.comprobante_pago}
+                                            alt="Comprobante de pago"
+                                            className="w-full max-h-56 object-contain rounded-2xl border border-emerald-200 bg-gray-50"
+                                        />
+                                    </a>
+                                </div>
+                            )}
                             <div className="pt-2">
                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Productos:</p>
                                 <div className="space-y-1">

@@ -1,6 +1,6 @@
 ﻿import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Loader2, Minimize2, Mic, Square, Play, Sparkles, UtensilsCrossed } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Minimize2, Mic, Square, Play, Sparkles, UtensilsCrossed, Copy, Upload, CheckCircle2, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -14,6 +14,43 @@ const QUICK_SUGGESTIONS = [
     '🥗 Opciones saludables o ligeras',
     '🕐 Horarios y domicilios'
 ];
+
+function detectDigitalPaymentMethod(rawText) {
+    const q = (rawText || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (q.includes('nequi')) return 'nequi';
+    if (q.includes('daviplata')) return 'daviplata';
+    if (q.includes('transferencia') || q.includes('bancolombia') || q.includes('cuenta bancaria')) return 'transferencia';
+    if (q.includes('codigo qr') || q.includes('qr') || q.includes('pagar digital') || q.includes('medio digital')) return 'nequi';
+    return null;
+}
+
+function loadLocalPaymentCard(method) {
+    let datos = {};
+    let phone = '3017810256';
+    try {
+        const raw = localStorage.getItem('fogon_mesa_datos_pago');
+        if (raw) datos = JSON.parse(raw);
+        const bizRaw = localStorage.getItem('vecos_business_config');
+        if (bizRaw) {
+            const biz = JSON.parse(bizRaw);
+            if (!datos || Object.keys(datos).length === 0) datos = biz?.datos_pago || {};
+            if (biz?.telefono) phone = String(biz.telefono).replace(/\D/g, '');
+        }
+        const savedPhone = localStorage.getItem('vecos_restaurant_phone');
+        if (savedPhone) phone = savedPhone.replace(/\D/g, '');
+    } catch {}
+    const info = datos?.[method] || {};
+    const label = method === 'nequi' ? 'Nequi' : method === 'daviplata' ? 'Daviplata' : (info.banco || 'Transferencia Bancaria');
+    const accountNum = method === 'transferencia' ? (info.numero_cuenta || '') : (info.numero || '');
+    return {
+        method,
+        label,
+        qrUrl: info.qr_url || '',
+        accountNum,
+        bank: info.banco || '',
+        waPhone: phone.startsWith('57') ? phone : `57${phone}`,
+    };
+}
 
 function getFogonExpertResponse(rawText) {
     const q = (rawText || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -353,6 +390,27 @@ export default function LandingAgent({ hidden = false }) {
         }
     };
 
+    const handleAttachChatReceipt = (msgId, e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            toast.error('Por favor adjunta una imagen (recibo o captura de pago)');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            setHistory((prev) =>
+                prev.map((m) =>
+                    m.id === msgId
+                        ? { ...m, receipt: { dataUrl: reader.result, fileName: file.name } }
+                        : m
+                )
+            );
+            toast.success('¡Soporte de pago adjuntado! Ahora pulsa "Enviar resumen al WhatsApp" para finalizar.');
+        };
+        reader.readAsDataURL(file);
+    };
+
     const sendUserQuery = async (userMessage) => {
         if (!userMessage.trim() || isLoading) return;
 
@@ -360,6 +418,20 @@ export default function LandingAgent({ hidden = false }) {
         setMessage('');
         setHistory(prev => [...prev, { role: 'user', content: cleanMsg }]);
         setIsLoading(true);
+
+        const detectedPm = detectDigitalPaymentMethod(cleanMsg);
+        if (detectedPm) {
+            const card = loadLocalPaymentCard(detectedPm);
+            const replyMsg = {
+                role: 'model',
+                id: Date.now(),
+                content: `¡Perfecto! Aquí tienes los datos oficiales para pagar con **${card.label}** en **Veco's Restaurante**.\n\n1️⃣ Escanea el código QR (o copia el número) y realiza tu pago.\n2️⃣ Guarda el comprobante en tu galería y súbelo con el botón **"Adjuntar soporte de pago"** aquí abajo.\n3️⃣ Pulsa **"Enviar resumen al WhatsApp"** para que nuestro equipo reciba tu pago al instante.`,
+                paymentCard: card,
+            };
+            setHistory(prev => [...prev, replyMsg]);
+            setIsLoading(false);
+            return;
+        }
 
         try {
             const endpoint = API_URL.endsWith('/api') ? `${API_URL}/public/landing-chat` : `${API_URL}/api/public/landing-chat`;
@@ -463,6 +535,96 @@ export default function LandingAgent({ hidden = false }) {
                                                 return part;
                                             })}
                                         </div>
+
+                                        {/* Tarjeta interactiva de QR + Adjuntar soporte + Enviar al WhatsApp dentro del chat */}
+                                        {msg.paymentCard && (() => {
+                                            const card = msg.paymentCard;
+                                            const waText = encodeURIComponent(
+                                                `🍽️ *RESUMEN DE PAGO — VECO'S RESTAURANTE*\n━━━━━━━━━━━━━━━━━━\n💳 *Medio de pago:* ${card.label.toUpperCase()}\n${card.accountNum ? `🔢 *Cuenta/Número:* ${card.accountNum}\n` : ''}${msg.receipt ? `📎 *Soporte de pago:* Adjuntado (${msg.receipt.fileName}) — te comparto la captura aquí mismo.\n` : `📎 *Soporte de pago:* Te envío mi comprobante de pago por aquí.\n`}━━━━━━━━━━━━━━━━━━\nHola Veco's Restaurante, acabo de realizar mi pago por ${card.label} y envío mi comprobante para confirmar mi pedido.`
+                                            );
+                                            return (
+                                                <div className="mt-2 p-3 rounded-2xl bg-purple-50/80 border border-purple-200 space-y-2.5 text-left">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] font-black uppercase tracking-wider text-purple-900">
+                                                            Pago con {card.label}
+                                                        </span>
+                                                    </div>
+
+                                                    {card.qrUrl ? (
+                                                        <div className="flex flex-col items-center gap-1 py-1">
+                                                            <div className="p-2 bg-white rounded-xl border border-purple-100 shadow-sm">
+                                                                <img
+                                                                    src={card.qrUrl}
+                                                                    alt={`QR ${card.label}`}
+                                                                    className="w-36 h-36 object-contain rounded-lg"
+                                                                />
+                                                            </div>
+                                                            <span className="text-[10px] font-bold text-purple-700">
+                                                                Escanea este código QR desde tu app
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-[11px] text-purple-800 bg-white/80 p-2 rounded-xl border border-purple-100">
+                                                            El administrador aún no ha subido la imagen QR de {card.label} en <b>Configuración → Pagos</b>.
+                                                        </p>
+                                                    )}
+
+                                                    {card.accountNum && (
+                                                        <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-purple-200/70">
+                                                            <div className="min-w-0">
+                                                                <p className="text-[9px] font-bold uppercase text-gray-400">Número {card.label}</p>
+                                                                <p className="text-xs font-mono font-black text-gray-900 truncate">{card.accountNum}</p>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    navigator.clipboard?.writeText(String(card.accountNum));
+                                                                    toast.success(`Número ${card.accountNum} copiado`);
+                                                                }}
+                                                                className="px-2.5 py-1 rounded-lg bg-[#181615] hover:bg-[#C86414] text-white text-[10px] font-black uppercase flex items-center gap-1 shrink-0"
+                                                            >
+                                                                <Copy className="w-3 h-3" /> Copiar
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Botón para adjuntar soporte de pago */}
+                                                    {msg.receipt ? (
+                                                        <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200">
+                                                            <img src={msg.receipt.dataUrl} alt="Soporte" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-[10px] font-black text-emerald-800 flex items-center gap-1">
+                                                                    <CheckCircle2 className="w-3 h-3 shrink-0" /> Soporte adjuntado
+                                                                </p>
+                                                                <p className="text-[9px] text-emerald-700 truncate">{msg.receipt.fileName}</p>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <label className="w-full py-2 px-3 rounded-xl bg-white hover:bg-purple-100/70 border-2 border-dashed border-purple-300 text-purple-900 text-[11px] font-black flex items-center justify-center gap-1.5 cursor-pointer transition-all">
+                                                            <Upload className="w-3.5 h-3.5 text-[#C86414]" />
+                                                            Adjuntar soporte de pago
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                onChange={(e) => handleAttachChatReceipt(msg.id, e)}
+                                                                className="hidden"
+                                                            />
+                                                        </label>
+                                                    )}
+
+                                                    {/* Enviar resumen al WhatsApp del negocio */}
+                                                    <a
+                                                        href={`https://wa.me/${card.waPhone}?text=${waText}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="w-full py-2.5 px-3 rounded-xl bg-[#22C55E] hover:bg-[#16A34A] text-white text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                                                    >
+                                                        <Send className="w-3.5 h-3.5" />
+                                                        Enviar resumen al WhatsApp
+                                                    </a>
+                                                </div>
+                                            );
+                                        })()}
 
                                         {/* Play Button for Assistant Messages */}
                                         {msg.role === 'model' && (

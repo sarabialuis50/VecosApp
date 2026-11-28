@@ -27,7 +27,10 @@ import {
     Clock,
     Ticket,
     AlertCircle,
-    Copy
+    Copy,
+    Paperclip,
+    Upload,
+    Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -621,7 +624,15 @@ export default function DemoRestaurante() {
     const loadPaymentDetails = () => {
         try {
             const raw = localStorage.getItem('fogon_mesa_datos_pago');
-            if (raw) return JSON.parse(raw);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') return parsed;
+            }
+            const bizRaw = localStorage.getItem('vecos_business_config');
+            if (bizRaw) {
+                const biz = JSON.parse(bizRaw);
+                if (biz?.datos_pago) return biz.datos_pago;
+            }
         } catch {}
         return {
             nequi: { numero: '', qr_url: '' },
@@ -633,14 +644,82 @@ export default function DemoRestaurante() {
         try {
             const raw = localStorage.getItem('vecos_restaurant_phone');
             if (raw && raw.trim()) return raw.replace(/\D/g, '');
+            const bizRaw = localStorage.getItem('vecos_business_config');
+            if (bizRaw) {
+                const biz = JSON.parse(bizRaw);
+                if (biz?.telefono) return String(biz.telefono).replace(/\D/g, '');
+            }
         } catch {}
         return '3017810256';
     };
     const [paymentDetails, setPaymentDetails] = useState(loadPaymentDetails);
     const [restaurantPhone, setRestaurantPhone] = useState(loadRestaurantPhone);
+    const [paymentReceipt, setPaymentReceipt] = useState(null); // { dataUrl, fileName }
     const [couponCodeInput, setCouponCodeInput] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [availableCoupons, setAvailableCoupons] = useState([]);
+
+    const handleReceiptUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            toast.error('Por favor adjunta una imagen (captura de pantalla o foto del recibo)');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            const dataUrl = reader.result;
+            setPaymentReceipt({ dataUrl, fileName: file.name });
+            toast.success('¡Soporte de pago adjuntado correctamente!');
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const buildWhatsAppOrderSummary = (order) => {
+        if (!order) return '';
+        const pmLabel = String(order.metodo_pago || 'efectivo').toUpperCase();
+        const isDigital = ['nequi', 'daviplata', 'transferencia'].includes(String(order.metodo_pago || '').toLowerCase());
+        const serviceText = order.tipo === 'mesa'
+            ? `🍽️ En Mesa (${order.mesa_numero || 'Salón'})`
+            : order.tipo === 'takeaway'
+                ? '🛍️ Recoger / Para Llevar'
+                : `🛵 Domicilio — ${order.direccion || 'Sin dirección'}`;
+        const itemsLines = (order.items || [])
+            .map((it) => `• ${it.cantidad}x ${it.nombre} — ${formatCurrency(Number(it.precio_unitario || 0) * Number(it.cantidad || 1))}`)
+            .join('\n');
+
+        const lines = [
+            `🍽️ *NUEVO PEDIDO — VECO'S RESTAURANTE*`,
+            `━━━━━━━━━━━━━━━━━━`,
+            `🧾 *Orden:* #${order.numero_orden || order.id}`,
+            `👤 *Cliente:* ${order.cliente_nombre || 'Cliente'}`,
+            `📱 *Celular:* ${order.cliente_telefono || ''}`,
+            `📍 *Servicio:* ${serviceText}`,
+            `💳 *Medio de pago:* ${pmLabel}`,
+        ];
+        if (isDigital) {
+            lines.push(
+                order.comprobante_pago
+                    ? `📎 *Soporte de pago:* Adjuntado en la app (envío captura aquí mismo)`
+                    : `📎 *Soporte de pago:* Pendiente por adjuntar aquí`
+            );
+        }
+        lines.push(``, `📋 *DETALLE DEL PEDIDO:*`, itemsLines);
+        if (Number(order.icopor_total || 0) > 0) {
+            lines.push(`📦 *Empaque Icopor:* ${formatCurrency(order.icopor_total)}`);
+        }
+        if (Number(order.descuento_cupon || 0) > 0) {
+            lines.push(`🎁 *Descuento Cupón (${order.cupon_ruleta || 'Ruleta'}):* -${formatCurrency(order.descuento_cupon)}`);
+        }
+        if (order.domicilio_gratis) {
+            lines.push(`🛵 *Premio:* Domicilio Gratis aplicado`);
+        }
+        if (order.notas) {
+            lines.push(`📝 *Nota:* ${order.notas}`);
+        }
+        lines.push(`━━━━━━━━━━━━━━━━━━`, `💰 *TOTAL A PAGAR:* ${formatCurrency(order.total || 0)}`);
+        return lines.join('\n');
+    };
 
     // Pre-cargar datos del cliente si existen en el perfil local
     useEffect(() => {
@@ -902,6 +981,8 @@ export default function DemoRestaurante() {
                 cupon_ruleta: appliedCoupon?.coupon?.codigo_cupon || null,
                 notas: couponNote,
                 metodo_pago: checkoutData.metodo_pago,
+                comprobante_pago: paymentReceipt?.dataUrl || null,
+                comprobante_nombre: paymentReceipt?.fileName || null,
                 created_at: new Date().toISOString(),
                 items: cart.map((item) => ({
                     nombre: item.nombre,
@@ -928,6 +1009,13 @@ export default function DemoRestaurante() {
                 origin: { y: 0.6 },
                 colors: ['#C86414', '#1F1C1A', '#ffffff']
             });
+
+            // Abrir automáticamente WhatsApp del negocio con el resumen completo del pedido y pago
+            try {
+                const waPhone = restaurantPhone.startsWith('57') ? restaurantPhone : `57${restaurantPhone}`;
+                const summaryMsg = encodeURIComponent(buildWhatsAppOrderSummary(newOrderRecord));
+                window.open(`https://wa.me/${waPhone}?text=${summaryMsg}`, '_blank', 'noopener,noreferrer');
+            } catch {}
         }
     };
 
@@ -1886,6 +1974,51 @@ export default function DemoRestaurante() {
                                                                 Puedes confirmar tu pedido ahora y te enviaremos el QR / número de {bankName} por WhatsApp (el administrador puede cargarlo en <b>Configuración → Pagos</b>).
                                                             </p>
                                                         )}
+
+                                                        {/* Botón para adjuntar soporte / comprobante de pago desde galería */}
+                                                        <div className="pt-2 border-t border-purple-200/70 space-y-2">
+                                                            <p className="text-[10px] font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                                                                <Paperclip className="w-3.5 h-3.5 text-[#C86414]" />
+                                                                Soporte de pago (Recibo de tu galería)
+                                                            </p>
+                                                            {paymentReceipt ? (
+                                                                <div className="flex items-center gap-3 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                                                                    <img
+                                                                        src={paymentReceipt.dataUrl}
+                                                                        alt="Soporte de pago"
+                                                                        className="w-12 h-12 rounded-lg object-cover border border-emerald-200 shrink-0"
+                                                                    />
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="text-[11px] font-black text-emerald-800 flex items-center gap-1">
+                                                                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                                                            Soporte adjuntado
+                                                                        </p>
+                                                                        <p className="text-[10px] text-emerald-700 truncate">
+                                                                            {paymentReceipt.fileName}
+                                                                        </p>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setPaymentReceipt(null)}
+                                                                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-100 transition-colors"
+                                                                        title="Quitar soporte"
+                                                                    >
+                                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <label className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-purple-100/60 border-2 border-dashed border-purple-300 text-purple-900 text-xs font-black flex items-center justify-center gap-2 cursor-pointer transition-all">
+                                                                    <Upload className="w-4 h-4 text-[#C86414]" />
+                                                                    Adjuntar soporte de pago
+                                                                    <input
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        onChange={handleReceiptUpload}
+                                                                        className="hidden"
+                                                                    />
+                                                                </label>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 );
                                             })()}
@@ -2029,27 +2162,29 @@ export default function DemoRestaurante() {
                                             <div className="flex justify-between text-xs font-bold"><span>Total</span><span className="text-[#C86414] font-black">{formatCurrency(lastOrderSnapshot?.total ?? finalTotal)}</span></div>
                                         </div>
 
-                                        {/* QR + Botón de Comprobante WhatsApp si pagó por medio digital */}
-                                        {['nequi', 'daviplata', 'transferencia'].includes(checkoutData.metodo_pago) && (() => {
+                                        {/* Resumen y envío completo al WhatsApp del negocio + Soporte adjunto */}
+                                        {(() => {
                                             const pm = checkoutData.metodo_pago;
+                                            const isDigital = ['nequi', 'daviplata', 'transferencia'].includes(pm);
                                             const info = paymentDetails?.[pm] || {};
                                             const accountNum = pm === 'transferencia' ? info.numero_cuenta : info.numero;
                                             const qrUrl = info.qr_url;
                                             const waPhone = restaurantPhone.startsWith('57') ? restaurantPhone : `57${restaurantPhone}`;
                                             const waMsg = encodeURIComponent(
-                                                `Hola Veco's Restaurante! Acabo de realizar el pedido *${lastOrderNumber}* a nombre de *${checkoutData.nombre}* por *${formatCurrency(lastOrderSnapshot?.total ?? finalTotal)}* (${pm.toUpperCase()}). Adjunto mi comprobante de pago.`
+                                                buildWhatsAppOrderSummary(lastOrderSnapshot) ||
+                                                `Hola Veco's Restaurante! Acabo de realizar el pedido *#${lastOrderNumber}* a nombre de *${checkoutData.nombre}* por *${formatCurrency(lastOrderSnapshot?.total ?? finalTotal)}* (${pm.toUpperCase()}).`
                                             );
 
                                             return (
                                                 <div className="w-full p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 mb-6 space-y-3 text-center">
-                                                    {qrUrl && (
+                                                    {isDigital && qrUrl && !paymentReceipt && (
                                                         <div className="flex justify-center">
                                                             <div className="p-2 bg-white rounded-2xl border border-emerald-100 shadow-sm">
                                                                 <img src={qrUrl} alt={`QR ${pm}`} className="w-36 h-36 object-contain rounded-xl" />
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {accountNum && (
+                                                    {isDigital && accountNum && (
                                                         <div className="flex items-center justify-center gap-2 text-xs font-mono font-black text-gray-900">
                                                             <span className="uppercase text-emerald-700">{pm}:</span>
                                                             <span>{accountNum}</span>
@@ -2066,14 +2201,23 @@ export default function DemoRestaurante() {
                                                             </button>
                                                         </div>
                                                     )}
+                                                    {paymentReceipt && (
+                                                        <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-emerald-200 text-left">
+                                                            <img src={paymentReceipt.dataUrl} alt="Soporte" className="w-11 h-11 rounded-lg object-cover shrink-0" />
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-[11px] font-black text-emerald-800">✓ Soporte guardado en tu pedido</p>
+                                                                <p className="text-[10px] text-gray-500 truncate">Envía el resumen y adjunta esta captura en WhatsApp</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     <a
                                                         href={`https://wa.me/${waPhone}?text=${waMsg}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="w-full py-2.5 px-4 rounded-xl bg-[#22C55E] hover:bg-[#16A34A] text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all"
+                                                        className="w-full py-3 px-4 rounded-xl bg-[#22C55E] hover:bg-[#16A34A] text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all"
                                                     >
                                                         <Send className="w-3.5 h-3.5" />
-                                                        Enviar comprobante por WhatsApp
+                                                        {isDigital ? 'Enviar resumen y soporte al WhatsApp' : 'Enviar resumen del pedido al WhatsApp'}
                                                     </a>
                                                 </div>
                                             );
