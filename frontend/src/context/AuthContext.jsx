@@ -124,7 +124,13 @@ export const AuthProvider = ({ children }) => {
     const normalizedEmail = (email || '').trim().toLowerCase();
     try {
       const response = await axios.post(`${API}/auth/login`, { email: normalizedEmail, password });
-      const { access_token, business } = response.data;
+      const data = response.data;
+      if (!data || typeof data !== 'object' || !data.access_token) {
+        const staticErr = new Error('Static host response without API');
+        staticErr.isStaticFallback = true;
+        throw staticErr;
+      }
+      const { access_token, business } = data;
       localStorage.setItem('menu.ia_token', access_token);
       setToken(access_token);
       setUser(business);
@@ -134,7 +140,8 @@ export const AuthProvider = ({ children }) => {
       const status = err.response?.status;
       const isAuthorizedAdmin =
         normalizedEmail === 'sarabialuis50@gmail.com' && password === 'Luisar777+';
-      const isBackendUnavailable = !err.response || status === 404 || status === 405 || status >= 500;
+      const isBackendUnavailable =
+        Boolean(err.isStaticFallback) || !err.response || status === 404 || status === 405 || status >= 500;
 
       // Fallback administrativo únicamente para el administrador oficial cuando el backend no está disponible (despliegue estático)
       if (isBackendUnavailable && isAuthorizedAdmin) {
@@ -147,6 +154,11 @@ export const AuthProvider = ({ children }) => {
         setUser(adminBusiness);
         setTrialLocked(null);
         return adminBusiness;
+      }
+      if (err.isStaticFallback) {
+        const authErr = new Error('Credenciales inválidas');
+        authErr.response = { status: 401, data: { detail: 'Correo o contraseña incorrectos' } };
+        throw authErr;
       }
       throw err;
     }

@@ -240,57 +240,66 @@ export default function ClientProfilePage() {
     }, [token, user, slug]);
 
     async function fetchBusiness() {
-        if (token === 'universal-client-token') {
+        const localLogo = localStorage.getItem('fogon_mesa_logo') || '/images/vecos-logo.jpg';
+        if (token && token.startsWith('vecos-client-session:')) {
             setBusiness({
                 nombre: "Veco's Restaurante",
-                slug: slug || 'demo-restaurante',
-                logo_url: '/images/vecos-logo.jpg',
+                slug: slug || 'vecos',
+                logo_url: localLogo,
             });
             return;
         }
         try {
             const res = await axios.get(`/api/business/${slug}`);
-            setBusiness(res.data);
+            if (res.data && typeof res.data === 'object' && res.data.nombre) {
+                setBusiness(res.data);
+            } else {
+                setBusiness({ nombre: "Veco's Restaurante", slug: 'vecos', logo_url: localLogo });
+            }
         } catch (err) {
-            console.error("Error fetching business:", err);
+            setBusiness({ nombre: "Veco's Restaurante", slug: 'vecos', logo_url: localLogo });
         }
     }
 
     async function fetchProfile() {
         if (!token) return;
-        if (token === 'universal-client-token') {
-            const savedProfile = localStorage.getItem('universal_client_profile');
-            const parsed = savedProfile ? JSON.parse(savedProfile) : {};
-            const savedSecurity = localStorage.getItem('universal_client_security');
-            const parsedSec = savedSecurity ? JSON.parse(savedSecurity) : {};
-            const savedAddresses = localStorage.getItem('universal_client_addresses');
-            const parsedAddresses = savedAddresses ? JSON.parse(savedAddresses) : DEFAULT_DEMO_ADDRESSES;
+        if (token.startsWith('vecos-client-session:')) {
+            const last10 = token.replace('vecos-client-session:', '');
+            let customers = [];
+            let allOrders = [];
+            let savedAddresses = [];
+            try {
+                customers = JSON.parse(localStorage.getItem('vecos_customers') || '[]');
+                allOrders = JSON.parse(localStorage.getItem('vecos_orders') || '[]');
+                savedAddresses = JSON.parse(localStorage.getItem(`vecos_client_addresses_${last10}`) || '[]');
+            } catch {}
+
+            const match = (Array.isArray(customers) ? customers : []).find((c) => {
+                const d = String(c.telefono || c.phone || '').replace(/\D/g, '');
+                return d.slice(-10) === last10;
+            });
+
+            const myOrders = (Array.isArray(allOrders) ? allOrders : []).filter((o) => {
+                const d = String(o.cliente_telefono || '').replace(/\D/g, '');
+                return d.slice(-10) === last10;
+            });
+
+            const storedPts = Number(localStorage.getItem(`fogon_mesa_pts_${last10}`) || 0);
+            const customerPts = Math.max(Number(match?.puntos_totales ?? match?.puntos ?? 0), storedPts);
 
             setUser({
-                id: 'demo-client-1',
-                nombre: parsed.nombre || 'Cliente de Prueba',
-                telefono: parsed.telefono || '+57 300 123 4567',
-                email: parsed.email || 'cliente@fogonmesa.com',
-                avatar_url: parsed.avatar_url || '',
-                recovery_method: parsedSec.recovery_method || 'hint',
-                pin_hint: parsedSec.pin_hint || '1234',
-                security_question: parsedSec.security_question || '',
+                id: match?.id || `cli-${last10}`,
+                nombre: match?.nombre || match?.name || `Cliente ${last10.slice(-4)}`,
+                telefono: match?.telefono || last10,
+                email: match?.email || '',
+                avatar_url: match?.avatar_url || '',
+                recovery_method: match?.recovery_method || 'hint',
+                pin_hint: match?.pin_hint || '',
+                security_question: match?.security_question || '',
             });
-            if (parsedSec.recovery_method) setRecoveryMethod(parsedSec.recovery_method);
-            if (parsedSec.pin_hint) setPinHint(parsedSec.pin_hint);
-            if (parsedSec.security_question) setSecurityQuestion(parsedSec.security_question);
-
-            setLoyalty({ puntos: 250, activo: true });
-            setAddresses(Array.isArray(parsedAddresses) && parsedAddresses.length > 0 ? parsedAddresses : DEFAULT_DEMO_ADDRESSES);
-            setOrders([
-                {
-                    id: 'PED-1042',
-                    estado: 'entregado',
-                    total: 22000,
-                    created_at: new Date().toISOString(),
-                    items: [{ nombre: 'Churrasco a la Brasa (250g)', cantidad: 1, precio_unitario: 22000 }],
-                },
-            ]);
+            setLoyalty({ puntos: customerPts, activo: true });
+            setAddresses(Array.isArray(savedAddresses) ? savedAddresses : []);
+            setOrders(myOrders);
             setLoading(false);
             return;
         }
@@ -377,6 +386,11 @@ export default function ClientProfilePage() {
 
     async function handleLoginPin(e) {
         e.preventDefault();
+        const digits = String(phone || '').replace(/\D/g, '');
+        if (digits.length < 10) {
+            toast.error("Ingresa un número celular válido de 10 dígitos");
+            return;
+        }
         if (!pin || pin.length < 4) {
             toast.error("Ingresa tu PIN de 4 dígitos");
             return;
@@ -384,21 +398,91 @@ export default function ClientProfilePage() {
         setSubmitting(true);
         try {
             const res = await axios.post('/api/auth/client/login-pin', { telefono: phone, pin });
-            const { access_token, cliente } = res.data;
-            
+            const data = res.data;
+            if (!data || typeof data !== 'object' || !data.access_token) {
+                const staticErr = new Error('Static host response without API');
+                staticErr.isStaticFallback = true;
+                throw staticErr;
+            }
+            const { access_token, cliente } = data;
             try {
                 localStorage.setItem('client_token', access_token);
             } catch (e) {
                 console.error("Storage Error:", e);
                 toast.warning("El navegador bloqueó el almacenamiento. Tu sesión podría perderse al recargar.");
             }
-            
-            // Set user immediately and set token
             if (cliente) setUser(cliente);
             setToken(access_token);
-            setLoading(false); // Asegurar que loading sea false
+            setLoading(false);
             toast.success("¡Bienvenido!");
         } catch (error) {
+            const status = error.response?.status;
+            const isBackendUnavailable =
+                Boolean(error.isStaticFallback) || !error.response || status === 404 || status === 405 || status >= 500;
+
+            if (isBackendUnavailable) {
+                const last10 = digits.slice(-10);
+                const defaultPin = last10.slice(-4);
+                let savedPins = {};
+                try {
+                    savedPins = JSON.parse(localStorage.getItem('vecos_client_pins') || '{}');
+                } catch {}
+                const expectedPin = savedPins[last10] || defaultPin;
+
+                if (String(pin).trim() !== String(expectedPin)) {
+                    toast.error(
+                        savedPins[last10]
+                            ? "PIN incorrecto. Verifica tu clave e intenta nuevamente."
+                            : "PIN incorrecto. Si es tu primera vez, usa los últimos 4 dígitos de tu celular."
+                    );
+                    return;
+                }
+
+                // Registrar o cargar cliente real en vecos_customers
+                let customers = [];
+                try {
+                    customers = JSON.parse(localStorage.getItem('vecos_customers') || '[]');
+                    if (!Array.isArray(customers)) customers = [];
+                } catch {
+                    customers = [];
+                }
+
+                let existing = customers.find((c) => {
+                    const d = String(c.telefono || c.phone || '').replace(/\D/g, '');
+                    return d.slice(-10) === last10;
+                });
+
+                if (!existing) {
+                    existing = {
+                        id: `cli-${last10}`,
+                        nombre: `Cliente ${last10.slice(-4)}`,
+                        name: `Cliente ${last10.slice(-4)}`,
+                        telefono: last10,
+                        phone: last10,
+                        email: '',
+                        puntos: 0,
+                        puntos_totales: 0,
+                        total_gastado: 0,
+                        pedidos_count: 0,
+                        created_at: new Date().toISOString(),
+                    };
+                    customers.unshift(existing);
+                    try {
+                        localStorage.setItem('vecos_customers', JSON.stringify(customers));
+                        window.dispatchEvent(new Event('vecos-data-updated'));
+                    } catch {}
+                }
+
+                const sessionToken = `vecos-client-session:${last10}`;
+                try {
+                    localStorage.setItem('client_token', sessionToken);
+                } catch {}
+                setToken(sessionToken);
+                setUser(null); // dispara fetchProfile() con el nuevo sessionToken
+                toast.success("¡Bienvenido a Veco's Restaurante!");
+                return;
+            }
+
             const detail = error.response?.data?.detail || "Teléfono o PIN incorrecto. Verifica tus datos e intenta nuevamente.";
             toast.error(detail);
         } finally {
