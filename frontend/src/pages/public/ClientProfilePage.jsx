@@ -21,35 +21,9 @@ import { getCouponsForUser, PENDING_COUPON_KEY } from '@/utils/wheelDefaults';
 const RAW_API = (import.meta.env && (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL)) || '';
 const API_BASE = RAW_API ? (RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api`) : '/api';
 
-const DEFAULT_DEMO_ADDRESSES = [
-    { id: 'addr-1', nombre: 'Oficina', direccion: 'Calle 84 # 45 - 22, Piso 3', es_principal: true },
-];
+const DEFAULT_DEMO_ADDRESSES = [];
 
-const DEFAULT_NOTIFICATIONS = [
-    {
-        id: 'notif-wheel',
-        title: '¡Giro diario en la Ruleta disponible!',
-        message: 'Tienes 1 tiro gratis hoy para ganar almuerzos, postres o bebidas gratis.',
-        actionLabel: 'Girar ahora',
-        actionType: 'wheel',
-        theme: 'orange',
-        read: false
-    },
-    {
-        id: 'notif-order',
-        title: 'Estado de Pedido',
-        message: "Tu último pedido fue entregado con éxito. ¡Gracias por preferir Veco's Restaurante!",
-        theme: 'green',
-        read: false
-    },
-    {
-        id: 'notif-chef',
-        title: 'Recomendación del Chef',
-        message: 'Hoy tenemos Churrasco a la Brasa y Cazuela de Frijoles fresca en el menú.',
-        theme: 'blue',
-        read: false
-    }
-];
+const DEFAULT_NOTIFICATIONS = [];
 import {
     Dialog,
     DialogContent,
@@ -117,7 +91,16 @@ export default function ClientProfilePage() {
     const [notifications, setNotifications] = useState(() => {
         try {
             const saved = localStorage.getItem('client_notifications');
-            if (saved !== null) return JSON.parse(saved);
+            if (saved !== null) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) {
+                    const cleaned = parsed.filter((n) => !['notif-wheel', 'notif-order', 'notif-chef'].includes(n?.id));
+                    if (cleaned.length !== parsed.length) {
+                        localStorage.setItem('client_notifications', JSON.stringify(cleaned));
+                    }
+                    return cleaned;
+                }
+            }
         } catch (e) {
             console.warn('Error loading notifications', e);
         }
@@ -1134,15 +1117,15 @@ export default function ClientProfilePage() {
         );
     }
 
-    // Profile Calculations
+    // Profile Calculations (100% reales, sin datos de prueba)
     const primaryAddress = addresses.find(a => a.es_principal) || addresses[0] || null;
-    const puntosCount = loyalty?.puntos_actuales ?? loyalty?.puntos ?? (user?.puntos || 250);
+    const puntosCount = Number(loyalty?.puntos_actuales ?? loyalty?.puntos ?? user?.puntos ?? 0);
     const nivel = puntosCount >= 300 ? 'Cliente Diamante' : puntosCount >= 150 ? 'Cliente Oro' : puntosCount >= 50 ? 'Cliente Plata' : 'Cliente Bronce';
 
     const visibleOrders = orders.filter(o => !hiddenOrderIds.includes(o.id));
-    const inProcessOrdersCount = visibleOrders.filter(o => ['pendiente', 'aceptado', 'preparando', 'nuevo'].includes(o.estado?.toLowerCase())).length || (visibleOrders.length > 0 ? 0 : 2);
-    const onTheWayOrdersCount = visibleOrders.filter(o => ['enviado', 'en_camino'].includes(o.estado?.toLowerCase())).length || (visibleOrders.length > 0 ? 0 : 1);
-    const deliveredOrdersCount = visibleOrders.filter(o => ['entregado', 'completado', 'listo'].includes(o.estado?.toLowerCase())).length || (visibleOrders.length > 0 ? visibleOrders.length : 12);
+    const inProcessOrdersCount = visibleOrders.filter(o => ['pendiente', 'aceptado', 'preparando', 'nuevo'].includes(o.estado?.toLowerCase())).length;
+    const onTheWayOrdersCount = visibleOrders.filter(o => ['enviado', 'en_camino'].includes(o.estado?.toLowerCase())).length;
+    const deliveredOrdersCount = visibleOrders.filter(o => ['entregado', 'completado', 'listo'].includes(o.estado?.toLowerCase())).length;
 
     return (
         <div className="min-h-screen bg-[#F6F7F9] font-sans flex justify-center pb-28 md:pb-16 selection:bg-[#C86414] selection:text-white">
@@ -1151,7 +1134,7 @@ export default function ClientProfilePage() {
                 <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-gradient-to-br from-amber-900 to-[#181615]">
                     <img
                         src={business?.banner_url || "/images/hero-almuerzo.jpg"}
-                        alt="Fogón & Mesa"
+                        alt="Veco's Restaurante"
                         className="w-full h-full object-cover opacity-90 scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-black/40" />
@@ -1325,14 +1308,16 @@ export default function ClientProfilePage() {
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                                 <span className="font-bold text-xs text-[#181615] truncate">
-                                    {primaryAddress?.nombre || 'Oficina'}
+                                    {primaryAddress?.nombre || (user.direccion ? 'Mi Dirección' : 'Sin dirección registrada')}
                                 </span>
-                                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                                    Principal
-                                </span>
+                                {(primaryAddress || user.direccion) && (
+                                    <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                                        Principal
+                                    </span>
+                                )}
                             </div>
                             <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                                {primaryAddress?.direccion || user.direccion || 'Calle 84 # 45 - 22, Piso 3'}
+                                {primaryAddress?.direccion || user.direccion || 'Toca para agregar tu dirección de entrega'}
                             </p>
                         </div>
                         <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
