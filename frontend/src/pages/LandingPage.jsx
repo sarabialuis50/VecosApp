@@ -455,7 +455,15 @@ export default function LandingPage() {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const hasClientToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('client_token'));
+  const hasClientToken = (() => {
+    if (typeof window === 'undefined') return false;
+    const raw = localStorage.getItem('client_token');
+    if (raw === 'universal-client-token') {
+      localStorage.removeItem('client_token');
+      return false;
+    }
+    return Boolean(raw);
+  })();
 
   return (
     <div
@@ -1266,26 +1274,14 @@ export default function LandingPage() {
 
                 <Button
                   onClick={() => {
-                    localStorage.setItem('client_token', 'universal-client-token');
                     setIsAuthModalOpen(false);
                     navigate('/mi-cuenta');
                   }}
                   className="w-full h-12 rounded-full bg-[#C86414] hover:bg-[#DF741D] text-white font-bold text-sm"
                 >
                   <User className="w-4 h-4 mr-2" />
-                  {hasClientToken ? 'Ir a Mi Perfil' : 'Ingresar a Mi Perfil (Prueba)'}
+                  {hasClientToken ? 'Ir a Mi Perfil' : 'Iniciar Sesión / Registrarme'}
                 </Button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAuthModalOpen(false);
-                    navigate('/mi-cuenta');
-                  }}
-                  className="w-full py-2 text-xs font-semibold text-[#665E57] hover:text-[#1F1C1A]"
-                >
-                  O ingresar con mi número celular real →
-                </button>
 
                 <button
                   type="button"

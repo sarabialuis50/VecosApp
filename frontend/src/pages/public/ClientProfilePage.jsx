@@ -62,8 +62,15 @@ export default function ClientProfilePage() {
     const { slug = 'vecos' } = useParams();
     const navigate = useNavigate();
 
-    // Auth State
-    const [token, setToken] = useState(localStorage.getItem('client_token'));
+    // Auth State (purgar sesiones de prueba antiguas)
+    const [token, setToken] = useState(() => {
+        const stored = localStorage.getItem('client_token');
+        if (stored === 'universal-client-token') {
+            localStorage.removeItem('client_token');
+            return null;
+        }
+        return stored;
+    });
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [authStep, setAuthStep] = useState('phone'); // phone, otp, pin
@@ -392,11 +399,8 @@ export default function ClientProfilePage() {
             setLoading(false); // Asegurar que loading sea false
             toast.success("¡Bienvenido!");
         } catch (error) {
-            // Modo prueba: permitir acceso universal sin clave real
-            localStorage.setItem('client_token', 'universal-client-token');
-            setToken('universal-client-token');
-            setLoading(false);
-            toast.success("¡Bienvenido en modo prueba!");
+            const detail = error.response?.data?.detail || "Teléfono o PIN incorrecto. Verifica tus datos e intenta nuevamente.";
+            toast.error(detail);
         } finally {
             setSubmitting(false);
         }
@@ -774,19 +778,6 @@ export default function ClientProfilePage() {
                                             disabled={submitting}
                                         >
                                             {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Entrar con PIN"}
-                                        </Button>
-
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={() => {
-                                                localStorage.setItem('client_token', 'universal-client-token');
-                                                setToken('universal-client-token');
-                                                toast.success("Acceso de prueba activado");
-                                            }}
-                                            className="w-full h-11 rounded-xl border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50"
-                                        >
-                                            Entrar sin clave (Modo Prueba)
                                         </Button>
 
                                         <button

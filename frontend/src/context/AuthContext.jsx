@@ -15,7 +15,8 @@ export const useAuth = () => {
   return context;
 };
 
-const UNIVERSAL_ADMIN_TOKEN = 'universal-admin-token';
+const UNIVERSAL_ADMIN_TOKEN = 'vecos-admin-session-v2';
+const LEGACY_TEST_ADMIN_TOKEN = 'universal-admin-token';
 const savedLocalLogo = typeof window !== 'undefined' ? localStorage.getItem('fogon_mesa_logo') : null;
 const savedLocalBanner = typeof window !== 'undefined' ? localStorage.getItem('fogon_mesa_banner') : null;
 
@@ -31,9 +32,19 @@ const UNIVERSAL_ADMIN_BUSINESS = {
   banner_url: savedLocalBanner || '/images/hero-almuerzo.jpg',
 };
 
+function getInitialAdminToken() {
+  if (typeof window === 'undefined') return null;
+  const stored = localStorage.getItem('menu.ia_token');
+  if (stored === LEGACY_TEST_ADMIN_TOKEN) {
+    localStorage.removeItem('menu.ia_token');
+    return null;
+  }
+  return stored;
+}
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('menu.ia_token'));
+  const [token, setToken] = useState(getInitialAdminToken);
   const [loading, setLoading] = useState(true);
   const [trialLocked, setTrialLocked] = useState(null);
 
