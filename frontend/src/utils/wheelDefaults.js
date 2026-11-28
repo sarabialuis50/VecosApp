@@ -267,6 +267,36 @@ export function getCouponsForUser(rawPhone = '') {
     });
 }
 
+export const WELCOME_POINTS_KEY = 'vecos_welcome_points';
+
+export function getWelcomePoints() {
+  try {
+    const raw = localStorage.getItem(WELCOME_POINTS_KEY);
+    if (raw !== null) {
+      const n = Number(raw);
+      if (!Number.isNaN(n) && n >= 0) return n;
+    }
+    const loyaltyRaw = localStorage.getItem('vecos_loyalty_config');
+    if (loyaltyRaw) {
+      const cfg = JSON.parse(loyaltyRaw);
+      if (cfg && cfg.puntos_bienvenida !== undefined) {
+        const n = Number(cfg.puntos_bienvenida);
+        if (!Number.isNaN(n) && n >= 0) return n;
+      }
+    }
+  } catch {}
+  return 10;
+}
+
+export function setWelcomePoints(pts) {
+  const n = Math.max(0, parseInt(pts, 10) || 0);
+  try {
+    localStorage.setItem(WELCOME_POINTS_KEY, String(n));
+    window.dispatchEvent(new Event('vecos-data-updated'));
+  } catch {}
+  return n;
+}
+
 export function getMinDeliveryCost() {
   try {
     const raw = localStorage.getItem('vecos_business_config');

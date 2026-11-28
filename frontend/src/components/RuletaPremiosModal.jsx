@@ -99,7 +99,7 @@ export default function RuletaPremiosModal({
   const [identified, setIdentified] = useState(previewMode);
   const [checkingAuth, setCheckingAuth] = useState(false);
   const [customerStatus, setCustomerStatus] = useState({
-    puntos_disponibles: 50,
+    puntos_disponibles: 0,
     tiros_gratis_restantes: 1,
     tiros_puntos_restantes: 2,
     costo_tiro_puntos: 30,
@@ -217,11 +217,19 @@ export default function RuletaPremiosModal({
     const freeUsed = userToday.filter((h) => h.modo === 'gratis').length;
     const pointsUsed = userToday.filter((h) => h.modo === 'puntos').length;
 
-    // Read customer points from localStorage or default 60 pts welcome balance in demo
-    let pointsBalance = 60;
+    // Read real customer points balance (defaults to 0 for newly registered customers)
+    let pointsBalance = 0;
     try {
       const savedPts = localStorage.getItem(`fogon_mesa_pts_${cleanPhone}`);
-      if (savedPts !== null) pointsBalance = Number(savedPts);
+      const customers = JSON.parse(localStorage.getItem('vecos_customers') || '[]');
+      const last10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+      const match = (Array.isArray(customers) ? customers : []).find((c) => {
+        const d = String(c.telefono || c.phone || '').replace(/\D/g, '');
+        return d.slice(-10) === last10;
+      });
+      const dbPts = Number(match?.puntos_totales ?? match?.puntos ?? 0);
+      const localPts = savedPts !== null ? Number(savedPts) : 0;
+      pointsBalance = Math.max(dbPts, localPts);
     } catch {}
 
     setCustomerStatus({

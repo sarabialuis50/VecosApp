@@ -16,7 +16,7 @@ import {
     Copy, Clock
 } from 'lucide-react';
 import RuletaPremiosModal from '@/components/RuletaPremiosModal';
-import { getCouponsForUser, PENDING_COUPON_KEY } from '@/utils/wheelDefaults';
+import { getCouponsForUser, getWelcomePoints, PENDING_COUPON_KEY } from '@/utils/wheelDefaults';
 
 const RAW_API = (import.meta.env && (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL)) || '';
 const API_BASE = RAW_API ? (RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api`) : '/api';
@@ -435,7 +435,10 @@ export default function ClientProfilePage() {
                     return d.slice(-10) === last10;
                 });
 
+                let isNewCustomer = false;
                 if (!existing) {
+                    isNewCustomer = true;
+                    const welcomePts = getWelcomePoints();
                     existing = {
                         id: `cli-${last10}`,
                         nombre: `Cliente ${last10.slice(-4)}`,
@@ -443,14 +446,16 @@ export default function ClientProfilePage() {
                         telefono: last10,
                         phone: last10,
                         email: '',
-                        puntos: 0,
-                        puntos_totales: 0,
+                        puntos: welcomePts,
+                        puntos_disponibles: welcomePts,
+                        puntos_totales: welcomePts,
                         total_gastado: 0,
                         pedidos_count: 0,
                         created_at: new Date().toISOString(),
                     };
                     customers.unshift(existing);
                     try {
+                        localStorage.setItem(`fogon_mesa_pts_${last10}`, String(welcomePts));
                         localStorage.setItem('vecos_customers', JSON.stringify(customers));
                         window.dispatchEvent(new Event('vecos-data-updated'));
                     } catch {}
@@ -462,7 +467,11 @@ export default function ClientProfilePage() {
                 } catch {}
                 setToken(sessionToken);
                 setUser(null); // dispara fetchProfile() con el nuevo sessionToken
-                toast.success("¡Bienvenido a Veco's Restaurante!");
+                if (isNewCustomer && existing.puntos > 0) {
+                    toast.success(`¡Bienvenido a Veco's! Recibiste ${existing.puntos} puntos de bienvenida 🎁`);
+                } else {
+                    toast.success("¡Bienvenido a Veco's Restaurante!");
+                }
                 return;
             }
 

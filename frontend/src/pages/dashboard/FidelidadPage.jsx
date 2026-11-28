@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import RuletaAdminSection from '@/components/RuletaAdminSection';
+import { getWelcomePoints, setWelcomePoints } from '@/utils/wheelDefaults';
 
 export default function FidelidadPage() {
   const { slug = 'vecos' } = useParams();
@@ -24,6 +25,7 @@ export default function FidelidadPage() {
     pesos_por_punto: 0,
     puntos_minimo_canje: 0,
     valor_punto_descuento: 0,
+    puntos_bienvenida: getWelcomePoints(),
     nivel_bronce_min: 0,
     nivel_plata_min: 300,
     nivel_oro_min: 1000
@@ -113,8 +115,12 @@ export default function FidelidadPage() {
         api().get(`/loyalty/${slug}/recent-transactions?limit=50`).catch(() => ({ data: [] }))
       ]);
       if (configRes.data) {
-        setConfig(configRes.data);
-        setOriginalConfig(configRes.data);
+        const mergedCfg = {
+          ...configRes.data,
+          puntos_bienvenida: configRes.data.puntos_bienvenida ?? getWelcomePoints(),
+        };
+        setConfig(mergedCfg);
+        setOriginalConfig(mergedCfg);
         if (configRes.data.nivel_bronce_min !== undefined || configRes.data.nivel_plata_min || configRes.data.nivel_oro_min) {
           const loadedTiers = {
             nivel_bronce_min: configRes.data.nivel_bronce_min ?? 0,
@@ -185,8 +191,9 @@ export default function FidelidadPage() {
 
     setSaving(true);
     try {
+      const savedWelcome = setWelcomePoints(config.puntos_bienvenida ?? 10);
       localStorage.setItem('fogon_mesa_loyalty_tiers', JSON.stringify(tierConfig));
-      const payload = { ...config, ...tierConfig };
+      const payload = { ...config, ...tierConfig, puntos_bienvenida: savedWelcome };
       const res = await api().post(`/loyalty/${slug}/config`, payload);
       setOriginalConfig(res.data || payload);
       toast.success('¡Configuración guardada exitosamente!');
@@ -535,7 +542,7 @@ export default function FidelidadPage() {
                   <p className="text-[10px] font-medium text-gray-400">Usa el "Resultado Sugerido" de arriba como guía, pero escribe aquí el valor final.</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 w-full lg:w-auto">
+                <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 w-full lg:w-auto flex-wrap">
                   <div className="space-y-3 w-full sm:w-auto flex flex-col items-center sm:items-start text-center sm:text-left">
                     <Label className="text-[9px] font-black text-[#22C55E] uppercase tracking-widest px-1">5. COLOCA AQUÍ TU VALOR ($)</Label>
                     <div className="h-12 md:h-14 bg-gray-50 border-2 border-[#22C55E]/40 rounded-full flex items-center p-1.5 pr-4 md:pr-5 group focus-within:border-[#22C55E] focus-within:bg-white transition-all w-fit mx-auto sm:mx-0">
@@ -554,6 +561,27 @@ export default function FidelidadPage() {
                         onWheel={(e) => e.target.blur()}
                       />
                       <span className="text-[9px] md:text-[10px] font-black text-[#22C55E] uppercase tracking-tighter whitespace-nowrap ml-1">/ 1 PUNTO</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 w-full sm:w-auto flex flex-col items-center sm:items-start text-center sm:text-left">
+                    <Label className="text-[9px] font-black text-amber-600 uppercase tracking-widest px-1">6. PUNTOS DE BIENVENIDA</Label>
+                    <div className="h-12 md:h-14 bg-amber-50/50 border-2 border-amber-300/60 rounded-full flex items-center p-1.5 pr-4 md:pr-5 group focus-within:border-amber-500 focus-within:bg-white transition-all w-fit mx-auto sm:mx-0">
+                      <div className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-white shadow-sm flex items-center justify-center font-black text-amber-500 text-base md:text-lg">🎁</div>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={config.puntos_bienvenida ?? 10}
+                        onChange={(e) => {
+                          const parsed = Math.max(0, parseInt(e.target.value, 10) || 0);
+                          setConfig({ ...config, puntos_bienvenida: parsed });
+                        }}
+                        className="border border-amber-200 bg-white px-2 md:px-3 text-lg md:text-xl font-black text-gray-900 focus-visible:ring-1 focus-visible:ring-amber-400 w-16 md:w-20 h-8 md:h-10 rounded-xl text-center transition-all"
+                        placeholder="10"
+                        id="welcome-points-input"
+                        onWheel={(e) => e.target.blur()}
+                      />
+                      <span className="text-[9px] md:text-[10px] font-black text-amber-700 uppercase tracking-tighter whitespace-nowrap ml-1">PTS AL REGISTRARSE</span>
                     </div>
                   </div>
 
